@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <nrf.h>
+#include "printf.h"
+#include "nrf52840_helper.h"
+
+#define UART_TX_BIT_US 104
+
+#define LED_RED_PIN 3
+#define LED_RED_PORT NRF_P0
+#define LED_GREEN_PIN 4
+#define LED_GREEN_PORT NRF_P0
+
+#define BUTTON_PIN 11
+#define BUTTON_PORT NRF_P0
+
+volatile uint32_t ticks_at_starting = 0;
+
+void rising_handler(uint32_t gpio, uint32_t events)
+{
+    // This handler is called on rising edge, but we don't need to do anything here
+    // since we are not using a rising edge handler in this test.
+    printf("Rising edge detected on GPIO %d\n", gpio);
+    uint32_t current_ticks = get_timer_ticks();
+    uint32_t elapsed_time = get_elapsed_time(ticks_at_starting, current_ticks);
+    printf("Elapsed time since button press: %lu ms\n", elapsed_time);
+    // Optionally, you can turn on the red LED to indicate a rising edge
+
+    gpio_drive_low(LED_GREEN_PORT, LED_GREEN_PIN); // Turn off the red LED
+}
+void falling_handler(uint32_t gpio, uint32_t events)
+{
+    printf("Falling edge detected on GPIO %d\n", gpio);
+    ticks_at_starting = get_timer_ticks(); // Record the time when the button was pressed
+
+    gpio_drive_high(LED_GREEN_PORT, LED_GREEN_PIN); // Turn on the green LED
+}
+
+void led_test_routine(void)
+{
+    printf("Starting LED test...\n");
+
+    // Blink red LED 5 times
+    for (uint32_t i = 0; i < 5; i++)
+    {
+        gpio_drive_high(LED_RED_PORT, LED_RED_PIN);
+        delay_ms(200);
+        gpio_drive_low(LED_RED_PORT, LED_RED_PIN);
+        delay_ms(200);
+    }
+
+    // Blink green LED 5 times
+    for (uint32_t i = 0; i < 5; i++)
+    {
+        gpio_drive_high(LED_GREEN_PORT, LED_GREEN_PIN);
+        delay_ms(200);
+        gpio_drive_low(LED_GREEN_PORT, LED_GREEN_PIN);
+        delay_ms(200);
+    }
+
+    printf("LED test complete.\n");
+}
+
+int main(void)
+{
+    io_init();
+    printf("button.c Diagnostic Test\n");
+    printf("Running on %s\n", get_chip_family_name());
+    printf("Chip UID: %s\n", get_unique_id_str());
+    printf("Red LED on port %d, pin %d\n", LED_RED_PORT, LED_RED_PIN);
+    printf("Green LED on port %d, pin %d\n", LED_GREEN_PORT, LED_GREEN_PIN);
+    printf("Button on port %d, pin %d\n", BUTTON_PORT, BUTTON_PIN);
+    gpio_output_init(LED_RED_PORT, LED_RED_PIN);
+    gpio_output_init(LED_GREEN_PORT, LED_GREEN_PIN);
+    led_test_routine();
+
+    reset_timer();
+    start_timer();
+
+    gpio_open_drain_with_interrupt(
+        BUTTON_PORT,
+        BUTTON_PIN,
+        &rising_handler, // Rising handler
+        &falling_handler // Falling handler
+    );
+
+
+
+    while (1)
+    {
+        //__WFI(); // Wait for interrupt
+    }
+
+    return 0;
+}
