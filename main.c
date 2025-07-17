@@ -60,6 +60,31 @@
 #define DEBOUNCE_DELAY_US 20
 #define RESPONSE_TIMEOUT_MS 50
 
+#define INIT 0
+#define INITIATOR 1
+#define RESPONDER 2
+#define SUCCESS 3
+#define FAILED 4
+#define MAYBE_RESPONDER 5
+
+#define INITIATOR 0
+#define RESPONDER 1
+
+// Pin Data Structure
+typedef struct {
+    uint32_t pin;
+    bool ack;
+    bool syn;
+    bool syn_ack;
+    bool role; // 0 for initiator, 1 for responder
+    uint8_t num_false_responses;
+    bool blacklisted;
+    bool successful;
+    const char* error_reason;
+} PinData;
+
+
+
 // State tracking
 uint32_t needded_tries = 0;
 bool i_was_the_initiator = false;
