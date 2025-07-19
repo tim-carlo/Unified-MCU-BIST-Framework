@@ -78,7 +78,7 @@ static inline uint32_t get_timer_counter(void)
  *
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_pullup_init_abs(uint32_t abs_pin)
+static inline void gpio_pullup_init(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -94,7 +94,7 @@ static inline void gpio_pullup_init_abs(uint32_t abs_pin)
  *
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_pulldown_init_abs(uint32_t abs_pin)
+static inline void gpio_pulldown_init(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -110,7 +110,7 @@ static inline void gpio_pulldown_init_abs(uint32_t abs_pin)
  *
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_pullup_clear_abs(uint32_t abs_pin)
+static inline void gpio_pullup_clear(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -122,20 +122,10 @@ static inline void gpio_pullup_clear_abs(uint32_t abs_pin)
 }
 
 /**
- * @brief Disable pull-down resistor on GPIO pin using absolute pin number
- *
- * @param abs_pin Absolute pin number (0-47)
- */
-static inline void gpio_pulldown_clear_abs(uint32_t abs_pin)
-{
-    gpio_pullup_clear_abs(abs_pin);
-}
-
-/**
 * @brief Drive GPIO pin low (output) using absolute pin number
 * @param abs_pin Absolute pin number (0-47)
 */
-static inline void gpio_drive_low_abs(uint32_t abs_pin)
+static inline void gpio_drive_low(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -148,7 +138,7 @@ static inline void gpio_drive_low_abs(uint32_t abs_pin)
  *
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_drive_high_abs(uint32_t abs_pin)
+static inline void gpio_drive_high(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -159,7 +149,7 @@ static inline void gpio_drive_high_abs(uint32_t abs_pin)
  * @brief Set GPIO pin as input (no pull) using absolute pin number
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_input_init_abs(uint32_t abs_pin)
+static inline void gpio_input_init(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -170,7 +160,7 @@ static inline void gpio_input_init_abs(uint32_t abs_pin)
  * @brief Initialize GPIO pin as output using absolute pin number
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_output_init_abs(uint32_t abs_pin)
+static inline void gpio_output_init(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -187,7 +177,7 @@ static inline void gpio_output_init_abs(uint32_t abs_pin)
  * @param abs_pin Absolute pin number (0-47)
  * @return true if pin is high, false if low
  */
-static inline bool gpio_read_abs(uint32_t abs_pin)
+static inline bool gpio_read(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -199,10 +189,10 @@ static inline bool gpio_read_abs(uint32_t abs_pin)
  *
  * @param stack Pointer to the stack where active pins will be pushed
  */
-static inline void push_active_pins_to_stack_abs(Stack *stack)
+static inline void push_active_pins_to_stack(Stack *stack)
 {
     for (uint32_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++) {
-        if (gpio_read_abs(abs_pin)) {
+        if (gpio_read(abs_pin)) {
             push(stack, &abs_pin);
         }
     }
@@ -214,11 +204,11 @@ static inline void push_active_pins_to_stack_abs(Stack *stack)
  * @param stack Pointer to the stack where active pins will be pushed
  * @param exclude_abs_pin Absolute pin number to exclude from pushing
  */
-static inline void push_active_pins_except_to_stack_abs(Stack *stack, uint32_t exclude_abs_pin)
+static inline void push_active_pins_except_to_stack(Stack *stack, uint32_t exclude_abs_pin)
 {
     for (uint32_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++) {
         if (abs_pin == exclude_abs_pin) continue;
-        if (gpio_read_abs(abs_pin)) {
+        if (gpio_read(abs_pin)) {
             push(stack, &abs_pin);
         }
     }
@@ -228,7 +218,7 @@ static inline void push_active_pins_except_to_stack_abs(Stack *stack, uint32_t e
  * @brief Reset GPIO pin using absolute pin number (no-op placeholder)
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void gpio_reset_abs(uint32_t abs_pin)
+static inline void gpio_reset(uint32_t abs_pin)
 {
     // Placeholder: implement if needed
 }
@@ -373,7 +363,7 @@ static pin_time_measurement_t time_measurements[NUMBER_OF_GPIO_PINS];
  * @param current_time Current timestamp in milliseconds
  * @param pin_state State of the pin (true for high, false for low)
  */
-static inline void log_pin_state_abs(uint32_t abs_pin, uint64_t current_time, bool pin_state)
+static inline void log_pin_state(uint32_t abs_pin, uint64_t current_time, bool pin_state)
 {
     if (abs_pin >= NUMBER_OF_GPIO_PINS) {
         return;
@@ -528,7 +518,7 @@ void GPIOTE_IRQHandler(void) {
  * @brief Release GPIO pin from open-drain state (set as input) using absolute pin number
  * @param abs_pin Absolute pin number (0-47)
  */
-static inline void release_gpio_open_drain_abs(uint32_t abs_pin)
+static inline void release_gpio_open_drain(uint32_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
@@ -609,12 +599,12 @@ static inline bool wait_for_signal_abs(uint32_t abs_pin, bool level, uint32_t ti
     uint32_t start = get_timer_counter();
     if (timeout_us == 0)
     {
-        while (gpio_read_abs(abs_pin) != level)
+        while (gpio_read(abs_pin) != level)
         {
         }
         return true;
     }
-    while (gpio_read_abs(abs_pin) != level)
+    while (gpio_read(abs_pin) != level)
     {
         uint32_t current = get_timer_counter();
         uint32_t elapsed = get_elapsed_time(start, current);
@@ -627,16 +617,15 @@ static inline bool wait_for_signal_abs(uint32_t abs_pin, bool level, uint32_t ti
 /**
  * @brief Check if a signal is active on a GPIO pin with debounce
  *
- * @param PORT Pointer to the GPIO port (NRF_P0 or NRF_P1)
  * @param pin GPIO pin number
  * @param assert_high True if checking for high signal, false for low
  * @return true if signal is stable, false if not
  */
-static inline bool is_signal_active(NRF_GPIO_Type *PORT, uint8_t pin, bool assert_high)
+static inline bool is_signal_active(uint32_t pin, bool assert_high)
 {
     for (uint32_t i = 0; i < DEBOUNCE_SAMPLES; ++i)
     {
-        if (gpio_read(PORT, pin) != assert_high)
+        if (gpio_read(pin) != assert_high)
             return false;
         delay_us(DEBOUNCE_DELAY_US);
     }
@@ -795,7 +784,6 @@ static inline uint32_t select_random_non_blacklisted_and_not_successful_pin(PinD
 
 uint32_t bibanging_uart_baudtrate = -1;   // Default baud rate for UART
 uint32_t bibanging_uart_bit_time_us = -1; // Bit time in microseconds
-NRF_GPIO_Type *UART_PORT = NULL;
 uint8_t UART_PIN = -1;
 
 /**
@@ -807,16 +795,15 @@ uint8_t UART_PIN = -1;
  * @param abs_pin Absolute pin number (0-47)
  * @param baudrate Baud rate for UART communication
  */
-static inline void init_software_serial_abs(uint32_t abs_pin, uint32_t baudrate)
+static inline void init_software_serial(uint32_t abs_pin, uint32_t baudrate)
 {
     bibanging_uart_baudtrate = baudrate;
     bibanging_uart_bit_time_us = (uint32_t)(1000000 / baudrate); // Calculate bit time in microseconds
-    UART_PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     UART_PIN = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
 
     // Initialize GPIO pin for open-drain output
     gpio_open_drain_abs(abs_pin);
-    release_gpio_open_drain_abs(abs_pin); // Set pin to high (open-drain release state)
+    release_gpio_open_drain(abs_pin); // Set pin to high (open-drain release state)
 }
 /**
  * @brief Transmit a byte via bit-banging UART
@@ -828,13 +815,13 @@ static inline void init_software_serial_abs(uint32_t abs_pin, uint32_t baudrate)
  */
 static inline void software_serial_tx(uint8_t byte)
 {
-    if (UART_PORT == NULL || UART_PIN == -1 || bibanging_uart_bit_time_us == -1)
+    if ( UART_PIN == -1 || bibanging_uart_bit_time_us == -1)
     {
         // UART not initialized
         return;
     }
     // Startbit (Low)
-    gpio_drive_low(UART_PORT, UART_PIN);
+    gpio_drive_low(UART_PIN);
     delay_us(bibanging_uart_bit_time_us);
 
     // 8 Datenbits (LSB first)
@@ -842,17 +829,17 @@ static inline void software_serial_tx(uint8_t byte)
     {
         if (byte & (1 << i))
         {
-            release_gpio_open_drain(UART_PORT, UART_PIN); // High (loslassen)
+            release_gpio_open_drain(UART_PIN); // High (loslassen)
         }
         else
         {
-            gpio_drive_low(UART_PORT, UART_PIN); // Low
+            gpio_drive_low(UART_PIN); // Low
         }
         delay_us(bibanging_uart_bit_time_us);
     }
 
     // Stopbit (High)
-    release_gpio_open_drain(UART_PORT, UART_PIN);
+    release_gpio_open_drain(UART_PIN);
     delay_us(bibanging_uart_bit_time_us);
 }
 

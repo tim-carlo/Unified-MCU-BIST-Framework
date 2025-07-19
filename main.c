@@ -47,6 +47,9 @@
 #define LED_GREEN_PIN 4
 #define LED_GREEN_PORT NRF_P0
 
+#define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
+#define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
+
 #endif
 
 #include "stack.h"
@@ -74,7 +77,6 @@
 #define SUCCESS 4
 #define FAILED 5
 
-
 #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 3 // Maximum number of false responses before blacklisting a pin
 
 #define INITIATOR_ROLE 0
@@ -82,8 +84,8 @@
 
 typedef struct
 {
-    uint32_t pin;         // Pin number
-    
+    uint32_t pin; // Pin number
+
     uint32_t duration_ms; // Duration of the signal in milliseconds
     bool is_ack;          // True if this is an ACK signal, false otherwise
     bool is_syn_ack;      // True if this is a SYN-ACK signal, false otherwise
@@ -101,7 +103,7 @@ bool red_led_on = false;
 bool green_led_on = false;
 
 PinData pin_data_tmp; // Temporary data structure for pin data
-Stack pin_events; // Stack to hold pin data events
+Stack pin_events;     // Stack to hold pin data events
 
 // State machine enum
 typedef enum
@@ -176,16 +178,16 @@ void rising_handler(uint32_t pin) // Wird bei STEIGENDER Flanke (HIGH) aufgerufe
         printf("Signal duration out of expected range: %lu ms\n", signal_duration);
     }
 }
-void falling_handler(uint32_t gpio)
+void falling_handler(uint32_t pin)
 {
     if (self_driven_signal)
         return; // Ignore if this is a self-driven signal
 
     delay_us(DEBOUNCE_DELAY_US); // Debounce delay
 
-    if (gpio_read(TEST_PORT, TEST_PIN) == 0) // Check if pin is still low after debounce
+    if (gpio_read(pin) == 0) // Check if pin is still low after debounce
     {
-        log_pin_state(TEST_PORT, TEST_PIN, get_timer_ticks(), false);
+        log_pin_state(pin, get_timer_ticks(), false);
     }
 }
 
@@ -193,12 +195,12 @@ void turn_off_leds(void)
 {
     if (red_led_on)
     {
-        gpio_drive_low(LED_RED_PORT, LED_RED_PIN);
+        gpio_drive_low(ABSOLUTE_PIN_RED);
         red_led_on = false;
     }
     if (green_led_on)
     {
-        gpio_drive_low(LED_GREEN_PORT, LED_GREEN_PIN);
+        gpio_drive_low(ABSOLUTE_PIN_GREEN);
         green_led_on = false;
     }
 }
@@ -210,33 +212,33 @@ void led_test_routine(void)
     // Blink red LED 5 times
     for (uint32_t i = 0; i < 5; i++)
     {
-        gpio_drive_high(LED_RED_PORT, LED_RED_PIN);
+        gpio_drive_high(ABSOLUTE_PIN_GREEN);
         delay_ms(200);
-        gpio_drive_low(LED_RED_PORT, LED_RED_PIN);
+        gpio_drive_low(ABSOLUTE_PIN_GREEN);
         delay_ms(200);
     }
 
     // Blink green LED 5 times
     for (uint32_t i = 0; i < 5; i++)
     {
-        gpio_drive_high(LED_GREEN_PORT, LED_GREEN_PIN);
+        gpio_drive_high(ABSOLUTE_PIN_RED);
         delay_ms(200);
-        gpio_drive_low(LED_GREEN_PORT, LED_GREEN_PIN);
+        gpio_drive_low(ABSOLUTE_PIN_RED);
         delay_ms(200);
     }
 
     printf("LED test complete.\n");
 }
 
-void send_signal(NRF_GPIO_Type *port, uint8_t pin, uint32_t duration_ms)
+void send_signal(uint32_t pin, uint32_t duration_ms)
 {
     // This function is used to send a self-driven signal
     self_driven_signal = true; // Set the flag to indicate self-driven signal
-    gpio_drive_low(port, pin);
+    gpio_drive_low(pin);
     delay_ms(duration_ms);
-    release_gpio_open_drain(port, pin);
+    release_gpio_open_drain(pin);
     uint64_t timeout = get_timer_ticks() + 5000; // 5ms timeout
-    while (!gpio_read(port, pin) && get_timer_ticks() < timeout)
+    while (!gpio_read(pin) && get_timer_ticks() < timeout)
         ;
     self_driven_signal = false; // Set the flag to indicate self-driven signal
 }
@@ -246,16 +248,15 @@ int main(void)
     io_init();
     printf("Running on %s\n", get_chip_family_name());
     printf("Chip UID: %s\n", get_unique_id_str());
-
-    gpio_open_drain_with_interrupt(
-        TEST_PORT,
-        TEST_PIN,
-        &rising_handler, // Rising handler
-        &falling_handler // Falling handler
+    
+    gpio_listen_interrupt_on_all_pins(
+        0,              // No blacklist
+        rising_handler, // Rising edge handler
+        falling_handler // Falling edge handler
     );
 
-    gpio_output_init(LED_RED_PORT, LED_RED_PIN);
-    gpio_output_init(LED_GREEN_PORT, LED_GREEN_PIN);
+    gpio_output_init(ABSOLUTE_PIN_GREEN);
+    gpio_output_init(ABSOLUTE_PIN_RED);
 
     led_test_routine();
 
@@ -268,34 +269,31 @@ int main(void)
             // Release the test pin (open-drain)
 
             printf("INIT_MODE\n");
-            reset_signal_flags();
 
             // Wait for a random delay before initiating
             uint32_t initial_delay = random32() % (INITIAL_DELAY_MAX_MS + 1);
 
             selected_pin = random32() % NUMBER_OF_GPIO_PINS;
-            selected_pin = select_random_non_blacklisted_and_not_successful_pin(selected_pin, NUMBER_OF_GPIO_PINS);
+            selected_pin = select_random_non_blacklisted_and_not_successful_pin(pin_data, NUMBER_OF_GPIO_PINS);
 
             printf("Initial delay: %lu ms\n", initial_delay);
 
             reset_timer();
             start_timer();
             uint64_t start_ticks = get_timer_ticks();
-            bool signal_received = false;
 
-            Stack* active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
+            Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
             bool active_signal_detected = false;
-            
 
             // Wait during initial delay — if a signal is detected, we become responder
             while (timer_diff_ms(start_ticks, get_timer_ticks()) < initial_delay)
             {
 
-                push_active_pins_to_stack(&active_pins_stack);
-                if (!isStackEmpty(&active_pins_stack))
+                push_active_pins_to_stack(active_pins_stack);
+                if (!isStackEmpty(active_pins_stack))
                 {
                     PinEvent *event = NULL;
-                    pop(&active_pins_stack, &event);
+                    pop(active_pins_stack, &event);
                     if (event == NULL)
                         continue;              // Skip if no event is available
                     selected_pin = event->pin; // Use the pin from the event
@@ -361,9 +359,8 @@ int main(void)
                     {
                         signal_received = true;
                         printf("SYN event received on pin %lu\n", event->pin);
-                        set_syn_flag(&pin_data[selected_pin], true);
-                        set_role_flag(&pin_data[selected_pin], RESPONDER_ROLE);
-
+                        set_syn(&pin_data[selected_pin], true);
+                        set_role(&pin_data[selected_pin], RESPONDER_ROLE);
 
                         break;
                     }
@@ -403,7 +400,7 @@ int main(void)
 
             // Send SYN signal as initiator
             printf("INITIATOR_MODE: Sending SYN signal\n");
-            send_signal(TEST_PORT, TEST_PIN, SYN_SIGNAL_DURATION_MS);
+            send_signal(selected_pin, SYN_SIGNAL_DURATION_MS);
 
             while (get_timer_ticks() < sendtimeout)
             {
@@ -416,7 +413,7 @@ int main(void)
 
             while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks()) < syn_ack_timeout) && !signal_received)
             {
-                if ((gpio_read(TEST_PORT, selected_pin) == 0) && !timeout_inceased)
+                if ((gpio_read(selected_pin) == 0) && !timeout_inceased)
                 {
                     // If the line is low, increase the timeout
                     syn_ack_timeout += SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY; // Increase timeout by SYN signal duration
@@ -426,26 +423,24 @@ int main(void)
                 PinEvent *event = NULL;
                 peek(&pin_events, &event);
 
-                if(event != NULL && event->is_syn_ack && event->pin == selected_pin)
+                if (event != NULL && event->is_syn_ack && event->pin == selected_pin)
                 {
                     signal_received = true;
                     pop(&pin_events, &event);
                     printf("Received SYN-ACK signal\n");
-                    set_syn_ack_flag(&pin_data_tmp, true);
+                    set_syn_ack(&pin_data_tmp, true);
                     // Acknowledge the SYN-ACK signal
-                    send_signal(TEST_PORT, TEST_PIN, ACK_SIGNAL_DURATION_MS);
-                    set_ack_flag(&pin_data_tmp, true);
+                    send_signal(selected_pin, ACK_SIGNAL_DURATION_MS);
+                    set_ack(&pin_data_tmp, true);
                     break;
                 }
-
 
                 if (signal_received)
                 {
                     printf("Received SYN-ACK signal\n");
                     // Acknowledge the SYN-ACK signal
-                    send_signal(TEST_PORT, TEST_PIN, ACK_SIGNAL_DURATION_MS);
+                    send_signal(selected_pin, ACK_SIGNAL_DURATION_MS);
                     state = SUCCESS;
-
                 }
             }
 
@@ -458,7 +453,7 @@ int main(void)
             printf("RESPONDER_MODE\n");
 
             // Acknowledge the initial signal
-            send_signal(TEST_PORT, TEST_PIN, SYN_ACK_SIGNAL_DURATION_MS);
+            send_signal(selected_pin, SYN_ACK_SIGNAL_DURATION_MS);
 
             bool signal_received = false;
             reset_timer();
@@ -471,14 +466,14 @@ int main(void)
             // Wait for final signal from initiator
             while ((timer_diff_ms(start_ticks, get_timer_ticks()) < ack_timeout) && !signal_received)
             {
-                if ((gpio_read(TEST_PORT, selected_pin) == 0) && !increase_timeout)
+                if ((gpio_read(selected_pin) == 0) && !increase_timeout)
                 {
                     // If the line is low, increase the timeout
                     ack_timeout += ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY; // Increase timeout by ACK signal duration
                     printf("Increasing ACK timeout to %lu ms\n", ack_timeout);
                     increase_timeout = true;
                 }
-                
+
                 PinEvent *event = NULL;
                 peek(&pin_events, &event);
 
@@ -509,9 +504,9 @@ int main(void)
             printf("Handshake failed, tries needed: %lu\n", needded_tries);
 
             red_led_on = true;
-            gpio_drive_high(LED_RED_PORT, LED_RED_PIN);
+            gpio_drive_high(ABSOLUTE_PIN_RED);
 
-            set_blacklisted_flag(&pin_data_tmp, true);
+            set_blacklisted(&pin_data_tmp, true);
 
             // Reset state
             state = INIT_MODE;
@@ -522,7 +517,6 @@ int main(void)
 
         case SUCCESS:
         {
-
 
             printf("SUCCESS_MODE\n");
             needded_tries++;
@@ -538,7 +532,7 @@ int main(void)
             }
 
             needded_tries = 0;
-            gpio_drive_high(LED_GREEN_PORT, LED_GREEN_PIN);
+            gpio_drive_high(ABSOLUTE_PIN_GREEN);
             green_led_on = true;
 
             delay_ms(1000);
