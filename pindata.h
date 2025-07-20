@@ -16,6 +16,7 @@ typedef struct
     // Bit 5: Success status (1 = successful)
     uint8_t steps;
     uint8_t num_false_responses; // Number of false responses received
+    uint8_t num_tries;          // Number of tries made with this pin
     uint8_t error_reason;        // Error reason code
 } PinData;
 
@@ -32,6 +33,7 @@ inline void reset_pin_data(PinData *data)
     data->steps = 0;
     data->num_false_responses = 0;
     data->error_reason = 0;
+    data->num_tries = 0;
 }
 
 /** 
@@ -186,6 +188,19 @@ inline bool is_blacklisted(PinData *data)
 inline bool is_successful(PinData *data)
 {
     return (data->steps & (1 << 5)) != 0;
+}
+
+/**
+ * @brief Set blacklisted status in a mask
+ *
+ * @param data Pointer to the PinData structure
+ * @param pin Pin number (0-47)
+ */
+inline void set_blacklisted_in_mask(uint64_t *mask, uint32_t pin)
+{
+    if (pin < 64) {
+        *mask |= (1ULL << pin);
+    }
 }
 
 #endif // PINDATAHELPER_H

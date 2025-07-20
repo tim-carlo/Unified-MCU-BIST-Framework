@@ -2,6 +2,7 @@
     "files.associations": {
         "*.ejs": "html",
         "nrf52840.h": "c",
-        "pindata.h": "c"
+        "pindata.h": "c",
+        "check_initial_state.h": "c"
     }
 }

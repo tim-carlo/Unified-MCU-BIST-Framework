@@ -33,15 +33,6 @@ typedef struct {
     bool pin_state;
 } pin_time_measurement_t;
 
-// Extern variables
-extern gpio_interrupt_handler_t rising_callback_single;
-extern gpio_interrupt_handler_t falling_callback_single;
-extern uint8_t gpiote_pin0;
-extern uint32_t ticks_at_starting_point;
-extern uint32_t bibanging_uart_baudtrate;
-extern uint32_t bibanging_uart_bit_time_us;
-extern uint8_t UART_PIN;
-extern pin_time_measurement_t time_measurements[NUMBER_OF_GPIO_PINS];
 
 // Function prototypes
 void io_init(void);
