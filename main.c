@@ -118,7 +118,7 @@ State state = INIT;
 volatile bool self_driven_signal = false; // Flag to indicate if the signal is self-driven
 volatile uint32_t selected_pin = 0;
 volatile PinData *selected_pin_data = NULL; // Pointer to the currently selected pin data
-volatile uint64_t black_list_mask = 0;      // Global blacklist mask for GPIO pins
+uint64_t black_list_mask = 0;      // Global blacklist mask for GPIO pins
 
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint32_t pin) // Wird bei STEIGENDER Flanke (HIGH) aufgerufen
@@ -318,6 +318,10 @@ int main(void)
 
     uint64_t get_initial_state = get_initial_pin_state();
 
+    black_list_mask = get_initial_state; // Set the initial blacklist mask
+    printf("Initial pin state: 0x%016llx\n", get_initial_state);
+
+
     printf("GPIO interrupt handlers set up.\n");
     print_low_level_pins();
 
@@ -363,8 +367,6 @@ int main(void)
                 {
                     uint32_t pin;
                     pop(active_pins_stack, &pin);
-                    if (pin == NULL)
-                        continue; // Skip if no event is available
 
                     set_selected_pin(pin); // Set the selected pin to the active pin
                     printf("Active pin detected: %lu\n", selected_pin);
