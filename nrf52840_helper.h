@@ -27,7 +27,7 @@ typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 #define MAX_GPIO_INTERRUPT_HANDLERS 4
 
 typedef struct {
-    uint32_t pin;         // Pin number (0-47)
+    uint32_t pin;        // Pin number (0-47)
     NRF_GPIO_Type* PORT; // Pointer to the GPIO port (NRF_P0 or NRF_P1)
     uint64_t timestamp;
     bool pin_state;
@@ -46,7 +46,9 @@ void gpio_input_init(uint32_t abs_pin);
 void gpio_output_init(uint32_t abs_pin);
 bool gpio_read(uint32_t abs_pin);
 void push_active_pins_to_stack(Stack *stack, uint8_t level);
-void push_active_pins_except_to_stack(Stack *stack, uint32_t exclude_abs_pin);
+void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
+
+
 void gpio_reset(uint32_t abs_pin);
 void gpio_open_drain_abs(uint32_t abs_pin);
 void log_pin_state(uint32_t abs_pin, uint64_t current_time, bool pin_state);
@@ -72,7 +74,7 @@ uint32_t timer_diff_us(uint64_t start, uint64_t end);
 uint32_t timer_diff_ms(uint64_t start, uint64_t end);
 uint32_t random32_lfsr(void);
 uint32_t random32(void);
-uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint32_t length);
+uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
 void init_software_serial(uint32_t abs_pin, uint32_t baudrate);
 void software_serial_tx(uint8_t byte);
 uint64_t get_unique_id(void);

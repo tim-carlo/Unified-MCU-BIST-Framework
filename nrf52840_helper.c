@@ -193,13 +193,15 @@ void push_active_pins_to_stack(Stack *stack, uint8_t level)
  * @brief Push all active GPIO pins except the specified one to a stack using absolute pin numbers
  *
  * @param stack Pointer to the stack where active pins will be pushed
- * @param exclude_abs_pin Absolute pin number to exclude from pushing
+ * @param expected_level Expected level of the pins (true for high, false for low)
+ * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
  */
-void push_active_pins_except_to_stack(Stack *stack, uint32_t exclude_abs_pin)
-{
+void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask)
+{ 
     for (uint32_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++) {
-        if (abs_pin == exclude_abs_pin) continue;
-        if (gpio_read(abs_pin)) {
+        if ((blacklist_mask >> abs_pin) & 1) continue;
+        if (gpio_read(abs_pin) == expected_level) {
+            printf("Pushing active pin %lu to stack\n", abs_pin);
             push(stack, &abs_pin);
         }
     }
@@ -616,28 +618,40 @@ uint32_t random32(void)
  * @param length Number of elements in the array
  * @return uint32_t Pin number, or 0xFFFFFFFF if none available
  */
-uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint32_t length)
+uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask)
 {
-    // Count valid pins
+    // Count valid pins that are not blacklisted and not successful
     uint32_t valid_count = 0;
-    for (uint32_t i = 0; i < length; ++i) {
-        if (!is_blacklisted(&pindata[i]) && !is_successful(&pindata[i])) {
+    for (uint32_t i = 0; i < NUMBER_OF_GPIO_PINS; ++i) {
+        uint32_t pin = pindata[i].pin;
+        if (pin >= 64) continue; // Skip invalid pins
+        if (((blacklist_mask >> pin) & 1) == 0 && !is_successful(&pindata[i])) {
             valid_count++;
         }
     }
+
+    // If no valid pins found, return 0xFFFFFFFF
     if (valid_count == 0) {
         return 0xFFFFFFFF;
     }
-    // Pick a random valid index
+
+    // Select a random index from the valid pins
+    printf("Valid pins count: %u\n", valid_count);
     uint32_t pick = random32() % valid_count;
-    for (uint32_t i = 0; i < length; ++i) {
-        if (!is_blacklisted(&pindata[i]) && !is_successful(&pindata[i])) {
+    printf("Random pick index: %u\n", pick);
+
+    // Iterate through the pins again to find the selected one
+    for (uint32_t i = 0; i < NUMBER_OF_GPIO_PINS; ++i) {
+        uint32_t pin = pindata[i].pin;
+        if (pin >= 64) continue;
+        if (((blacklist_mask >> pin) & 1) == 0 && !is_successful(&pindata[i])) {
             if (pick == 0) {
-                return pindata[i].pin;
+                return pin;
             }
             pick--;
         }
     }
+
     return 0xFFFFFFFF;
 }
 
