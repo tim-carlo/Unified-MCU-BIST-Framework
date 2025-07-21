@@ -316,6 +316,8 @@ int main(void)
     );
     print_all_pins_state();
 
+    printf("GPIO pins initialized.\n");
+
     uint64_t get_initial_state = get_initial_pin_state();
 
     black_list_mask = get_initial_state; // Set the initial blacklist mask

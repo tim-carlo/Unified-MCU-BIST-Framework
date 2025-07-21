@@ -31,6 +31,10 @@
 #include "stack.h"
 #include "pindata.h"
 
+#define NUMBER_OF_SCANNING_ITERATIONS 3
+
+
+
 // Add function prototypes here if needed
 /**
  * @brief Get the initial state of all GPIO pins
@@ -40,7 +44,7 @@
  *
  * @return uint64_t Initial state of GPIO pins
  */
-uint64_t get_initial_pin_state(void);
+uint64_t get_initial_pin_state(uint8_t expected_state);
 
 #endif // CHECK_INITIAL_STATE_H
 
