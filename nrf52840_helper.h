@@ -50,7 +50,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
 
 
 void gpio_reset(uint32_t abs_pin);
-void gpio_open_drain_abs(uint32_t abs_pin);
+void gpio_open_drain(uint32_t abs_pin);
 void log_pin_state(uint32_t abs_pin, uint64_t current_time, bool pin_state);
 void clear_time_measurements(void);
 void clear_time_measurement(uint32_t abs_pin);
