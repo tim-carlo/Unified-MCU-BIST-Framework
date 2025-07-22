@@ -56,8 +56,11 @@ void gpio_reset(uint32_t abs_pin);
 void gpio_open_drain(uint32_t abs_pin);
 
 bool is_interupt_blacklisted(uint32_t abs_pin);
+void configure_pin_sense(uint32_t abs_pin, bool sense_low);
 void gpio_listen_interrupt_on_all_pins(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
-void GPIOTE_IRQHandler(void);
+
+
+
 void release_gpio_open_drain(uint32_t abs_pin);
 uint32_t get_elapsed_time(uint32_t start, uint32_t current);
 void delay_us(uint32_t us);

@@ -232,7 +232,7 @@ bool is_interupt_blacklisted(uint32_t abs_pin)
  * @param abs_pin Absolute pin number (0-47)
  * @param sense_low If true, configure for low sense (falling edge), else for high sense (rising edge)
  */
-static void configure_pin_sense(uint32_t abs_pin, bool sense_low)
+void configure_pin_sense(uint32_t abs_pin, bool sense_low)
 {
     NRF_GPIO_Type *port = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint32_t pin = abs_pin % 32;

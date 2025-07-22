@@ -117,7 +117,7 @@ State state = INIT;
 
 // Flags controlled via interrupts
 
-volatile bool self_driven_signal = false; // Flag to indicate if the signal is self-driven
+volatile uint32_t current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Pin that is currently being driven by the self-driven signal 
 volatile uint32_t selected_pin = 0;
 volatile PinData *selected_pin_data = NULL; // Pointer to the currently selected pin data
 uint64_t black_list_mask = 0;               // Global blacklist mask for GPIO pins
@@ -125,7 +125,7 @@ uint64_t black_list_mask = 0;               // Global blacklist mask for GPIO pi
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint32_t pin) // Wird bei STEIGENDER Flanke (HIGH) aufgerufen
 {
-    if (self_driven_signal || pin_data[pin].last_falling_edge == -1)
+    if (pin == (current_driven_pin) || pin_data[pin].last_falling_edge == -1)
         return; // Ignore if this is a self-driven signal or no previous measurement
 
     delay_us(DEBOUNCE_DELAY_US); // Debounce delay
@@ -174,11 +174,12 @@ void rising_handler(uint32_t pin) // Wird bei STEIGENDER Flanke (HIGH) aufgerufe
 }
 void falling_handler(uint32_t pin)
 {
-    if (self_driven_signal)
+    if (current_driven_pin == pin)
         return; // Ignore if this is a self-driven signal
 
     delay_us(DEBOUNCE_DELAY_US); // Debounce delay
 
+    printf("current_driven_pin: %lu\n", current_driven_pin);
     printf("Falling edge detected on pin %lu\n", pin);
 
     if (gpio_read(pin) == 0) // Check if pin is still low after debounce
@@ -230,15 +231,12 @@ void led_test_routine(void)
 
 void send_signal(uint32_t pin, uint32_t duration_ms)
 {
-    // This function is used to send a self-driven signal
-    self_driven_signal = true; // Set the flag to indicate self-driven signal
+    current_driven_pin = pin; // Set the flag to indicate self-driven signal
     gpio_drive_low(pin);
     delay_ms(duration_ms);
-    release_gpio_open_drain(pin);
-    uint64_t timeout = get_timer_ticks(TIMER_A) + 5000; // 5ms timeout
-    while (!gpio_read(pin) && get_timer_ticks(TIMER_A) < timeout)
-        ;
-    self_driven_signal = false; // Set the flag to indicate self-driven signal
+    configure_pin_sense(pin, true);
+
+    current_driven_pin =  NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
 }
 
 void set_selected_pin(uint32_t pin)
@@ -309,6 +307,7 @@ int main(void)
 
     while (1)
     {
+        printf("Current state: %d\n", state);
         switch (state)
         {
         case INIT:
@@ -328,15 +327,14 @@ int main(void)
             start_timer(TIMER_A);
             uint64_t start_ticks = get_timer_ticks(TIMER_A);
 
-            Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
+            
             bool active_signal_detected = false;
 
             // Wait during initial delay — if a signal is detected, we become responder
             while (timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < initial_delay)
             {
-
+                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
-
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
                 if (!isStackEmpty(active_pins_stack))
@@ -348,6 +346,7 @@ int main(void)
                     printf("Active pin detected: %lu\n", selected_pin);
                     active_signal_detected = true;
                 }
+                freeStack(active_pins_stack);
             }
 
             stop_timer(TIMER_A);
@@ -378,7 +377,7 @@ int main(void)
             bool signal_received = false;
 
             uint64_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
-            Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
+            // Create a stack to hold active pins
 
             bool another_active_pin_detected = false;
 
@@ -386,7 +385,7 @@ int main(void)
             {
                 printf("Waiting for SYN signal on pin %lu...\n", selected_pin);
                 // Check for active pins except the selected one
-                freeStack(active_pins_stack);                                 // Free the stack to avoid memory leaks
+                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); 
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
@@ -399,6 +398,7 @@ int main(void)
                     another_active_pin_detected = true;
                     set_selected_pin(pin); // Set the selected pin to the active pin
                 }
+                freeStack(active_pins_stack);
 
                 // Check for SYN event in the pin_events
                 if (!isStackEmpty(pin_events))
@@ -450,13 +450,42 @@ int main(void)
             uint32_t sendtimeout = ticks_at_starting_point + SYN_SIGNAL_DURATION_MS;
 
             // Send SYN signal as initiator
+            current_driven_pin = selected_pin; // Set the flag to indicate self-driven signal
+            printf("CURRENT_DRIVEN_PIN: %lu\n", current_driven_pin);
             printf("INITIATOR_MODE: Sending SYN signal\n");
-            send_signal(selected_pin, SYN_SIGNAL_DURATION_MS);
+
+            
+            gpio_drive_low(selected_pin);
+            bool received_other_signal = false;
 
             while (get_timer_ticks(TIMER_A) < sendtimeout)
             {
+                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t));
+                uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin);
+                push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
+
+                if (!isStackEmpty(active_pins_stack)) {
+                    uint32_t pin;
+                    pop(active_pins_stack, &pin);
+                    set_selected_pin(pin);
+                    printf("Another pin is high: %lu, switching to MAYBE_RESPONDER\n", selected_pin);
+                    received_other_signal = true;
+                    freeStack(active_pins_stack);
+                    break;
+                }
+                freeStack(active_pins_stack);
             }
+            configure_pin_sense(selected_pin, true); // Configure the pin for low sense (falling edge)
+            //printf("SYN signal sent on pin %lu\n", selected_pin);
+            current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
             stop_timer(TIMER_A);
+
+
+            if (received_other_signal)
+            {
+                state = MAYBE_RESPONDER;
+                break;
+            }
 
             uint32_t syn_ack_timeout = TIMEOUT_SYN_ACK_MS;
             bool timeout_inceased = false;
