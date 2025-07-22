@@ -6,7 +6,7 @@
 gpio_interrupt_handler_t rising_callback_single = NULL;
 gpio_interrupt_handler_t falling_callback_single = NULL;
 uint8_t gpiote_pin0 = 0xFF;
-uint32_t ticks_at_starting_point = 0;
+
 uint32_t bibanging_uart_baudtrate = -1;
 uint32_t bibanging_uart_bit_time_us = -1;
 uint8_t UART_PIN = -1;
@@ -220,70 +220,6 @@ void gpio_open_drain(uint32_t abs_pin)
                          BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) |
                          BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
 }
-
-/**
- * @brief Log a pin state change with timestamp using absolute pin number
- *
- * @param abs_pin Absolute pin number (0-47)
- * @param current_time Current timestamp in milliseconds
- * @param pin_state State of the pin (true for high, false for low)
- */
-void log_pin_state(uint32_t abs_pin, uint64_t current_time, bool pin_state)
-{
-    if (abs_pin >= NUMBER_OF_GPIO_PINS)
-    {
-        return;
-    }
-
-    time_measurements[abs_pin].pin = abs_pin;
-    time_measurements[abs_pin].PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
-    time_measurements[abs_pin].timestamp = current_time;
-    time_measurements[abs_pin].pin_state = pin_state;
-}
-
-/**
- * @brief Clear all stored time measurements
- */
-void clear_time_measurements(void)
-{
-    for (uint32_t i = 0; i < NUMBER_OF_GPIO_PINS; i++)
-    {
-        time_measurements[i].timestamp = 0;
-        time_measurements[i].pin_state = false;
-    }
-}
-
-/**
- * @brief Clear a specific time measurement by absolute pin number
- *
- * @param abs_pin Absolute pin number (0-47)
- */
-void clear_time_measurement(uint32_t abs_pin)
-{
-    if (abs_pin >= NUMBER_OF_GPIO_PINS)
-    {
-        return;
-    }
-
-    time_measurements[abs_pin].timestamp = 0;
-    time_measurements[abs_pin].pin_state = false;
-}
-
-/**
- * @brief Get a specific time measurement by absolute pin number
- *
- * @param abs_pin Absolute pin number (0-47)
- * @return pin_time_measurement_t* Pointer to measurement or NULL if invalid pin
- */
-pin_time_measurement_t *get_measurement(uint32_t abs_pin)
-{
-    if (abs_pin >= NUMBER_OF_GPIO_PINS)
-    {
-        return NULL;
-    }
-    return &time_measurements[abs_pin];
-}
-
 bool is_interupt_blacklisted(uint32_t abs_pin)
 {
     return (gpio_blacklist_intern_mask >> abs_pin) & 1;
@@ -424,28 +360,28 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
  */
 void delay_us(uint32_t us)
 {
-    NRF_TIMER1->TASKS_STOP = 1;
-    NRF_TIMER1->TASKS_CLEAR = 1;
+    NRF_TIMER3->TASKS_STOP = 1;
+    NRF_TIMER3->TASKS_CLEAR = 1;
 
-    NRF_TIMER1->PRESCALER = 4; // 1 MHz
-    NRF_TIMER1->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER1->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    NRF_TIMER3->PRESCALER = 4; // 1 MHz
+    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
 
-    NRF_TIMER1->TASKS_START = 1;
+    NRF_TIMER3->TASKS_START = 1;
 
     // Capture current timer value into CC[1]
-    NRF_TIMER1->TASKS_CAPTURE[1] = 1;
-    uint32_t start = NRF_TIMER1->CC[1];
+    NRF_TIMER3->TASKS_CAPTURE[1] = 1;
+    uint32_t start = NRF_TIMER3->CC[1];
 
     while (1)
     {
-        NRF_TIMER1->TASKS_CAPTURE[1] = 1;
-        uint32_t now = NRF_TIMER1->CC[1];
+        NRF_TIMER3->TASKS_CAPTURE[1] = 1;
+        uint32_t now = NRF_TIMER3->CC[1];
         if ((now - start) >= us)
             break;
     }
 
-    NRF_TIMER1->TASKS_STOP = 1;
+    NRF_TIMER3->TASKS_STOP = 1;
 }
 
 /**
@@ -484,46 +420,38 @@ bool is_signal_active(uint32_t pin, bool assert_high)
  *
  * This function captures the current value of TIMER0's counter.
  * It is used to measure elapsed time in microseconds.
- *
+ * @param timer Pointer to the NRF_TIMER_Type structure for the timer
  * @return uint32_t Current timer counter value
  */
-uint32_t get_timer_counter(void)
+uint32_t get_timer_ticks(NRF_TIMER_Type *timer)
 {
-    NRF_TIMER0->TASKS_CAPTURE[0] = 1;
-    return NRF_TIMER0->CC[0];
+    timer->TASKS_CAPTURE[0] = 1;
+    return timer->CC[0];
 }
 
 /**
- * @brief Get the timer ticks object
+ * @brief Start the TIMER0 peripheral for timing operations
  *
- * @return uint64_t
+ * This function configures TIMER0 to run at 1 MHz (1 µs per tick) and starts it.
+ * It also records the current time as the starting point for subsequent measurements.
  */
-uint64_t get_timer_ticks(void)
+void start_timer(NRF_TIMER_Type *timer)
 {
-    uint32_t current = get_timer_counter();
-    return (uint64_t)get_elapsed_time(ticks_at_starting_point, current);
-}
-
-// Start timer (record current time)
-void start_timer(void)
-{
-    NRF_TIMER0->TASKS_STOP = 1;
-    NRF_TIMER0->MODE = TIMER_MODE_MODE_Timer;
-    NRF_TIMER0->PRESCALER = 4; // 1 MHz = 1 µs per tick
-    NRF_TIMER0->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
-    NRF_TIMER0->TASKS_CLEAR = 1; // Reset the counter
-    NRF_TIMER0->TASKS_START = 1; // Now
-
-    ticks_at_starting_point = get_timer_counter(); // Record the current time as the starting point
+    timer->TASKS_STOP = 1;
+    timer->MODE = TIMER_MODE_MODE_Timer;
+    timer->PRESCALER = 4; // 1 MHz = 1 µs per tick
+    timer->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
+    timer->TASKS_CLEAR = 1; // Reset the counter
+    timer->TASKS_START = 1; // Now
 }
 
 /**
  * @brief This function stops the TIMER0 peripheral, which is used for timing operations.
  *
  */
-void stop_timer(void)
+void stop_timer(NRF_TIMER_Type *timer)
 {
-    NRF_TIMER0->TASKS_STOP = 1; // Stop TIMER0
+    timer->TASKS_STOP = 1; // Stop the specified timer
 }
 
 /**

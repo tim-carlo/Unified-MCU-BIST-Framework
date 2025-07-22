@@ -22,6 +22,9 @@
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)
 #define BV_BY_VALUE(field, value) (((value) << field##_Pos) & field##_Msk)
 
+#define TIMER_A NRF_TIMER0
+#define TIMER_B NRF_TIMER1
+
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
 #define MAX_GPIO_INTERRUPT_HANDLERS 4
@@ -51,10 +54,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
 
 void gpio_reset(uint32_t abs_pin);
 void gpio_open_drain(uint32_t abs_pin);
-void log_pin_state(uint32_t abs_pin, uint64_t current_time, bool pin_state);
-void clear_time_measurements(void);
-void clear_time_measurement(uint32_t abs_pin);
-pin_time_measurement_t* get_measurement(uint32_t abs_pin);
+
 bool is_interupt_blacklisted(uint32_t abs_pin);
 void gpio_listen_interrupt_on_all_pins(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
 void GPIOTE_IRQHandler(void);
@@ -62,11 +62,12 @@ void release_gpio_open_drain(uint32_t abs_pin);
 uint32_t get_elapsed_time(uint32_t start, uint32_t current);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);
-bool wait_for_signal_abs(uint32_t abs_pin, bool level, uint32_t timeout_us);
+
 bool is_signal_active(uint32_t pin, bool assert_high);
-uint64_t get_timer_ticks(void);
-void start_timer(void);
-void stop_timer(void);
+uint32_t get_timer_ticks(NRF_TIMER_Type *timer);
+void start_timer(NRF_TIMER_Type *timer);
+void stop_timer(NRF_TIMER_Type *timer);
+
 void reset_timer(void);
 uint32_t ticks_to_us(uint64_t ticks);
 uint32_t ticks_to_ms(uint64_t ticks);

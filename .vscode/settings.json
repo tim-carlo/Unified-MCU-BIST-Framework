@@ -4,6 +4,7 @@
         "nrf52840.h": "c",
         "pindata.h": "c",
         "check_initial_state.h": "c",
-        "nrf52840_helper.h": "c"
+        "nrf52840_helper.h": "c",
+        "compare": "c"
     }
 }

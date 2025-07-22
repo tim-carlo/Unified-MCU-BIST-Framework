@@ -24,7 +24,7 @@ uint64_t get_initial_pin_state(uint8_t expected_state)
             }
         }
         state &= temp;
-        delay_ms(10); // Delay to allow for pin state stabilization
+        delay_ms(DELAY_BETWEEN_READS_MS); // Delay to allow for pin state stabilization
     }
 
     return state;

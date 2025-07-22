@@ -18,6 +18,7 @@ typedef struct
     uint8_t num_false_responses; // Number of false responses received
     uint8_t num_tries;          // Number of tries made with this pin
     uint8_t error_reason;        // Error reason code
+    uint32_t last_falling_edge; // Timestamp of the last falling edge
 } PinData;
 
 /**
@@ -34,6 +35,39 @@ inline void reset_pin_data(PinData *data)
     data->num_false_responses = 0;
     data->error_reason = 0;
     data->num_tries = 0;
+    data->last_falling_edge = 0;
+}
+
+
+/**
+ * @brief Reset the last falling edge timestamp in the PinData structure
+ * 
+ * @param data Pointer to the PinData structure
+ */
+inline void reset_last_falling_edge(PinData *data)
+{
+    data->last_falling_edge = 0;
+}
+
+
+/**
+ * @brief Initialize an array of PinData structures
+ *
+ * This function initializes each PinData structure in the array with default values.
+ *
+ * @param array Pointer to the array of PinData structures
+ * @param length Number of elements in the array
+ */
+inline void initialize_pin_data_array(PinData *array, uint32_t length)
+{
+    for (uint32_t i = 0; i < length; ++i) {
+        array[i].pin = i;
+        array[i].steps = 0;
+        array[i].num_false_responses = 0;
+        array[i].num_tries = 0;
+        array[i].error_reason = 0;
+        array[i].last_falling_edge = -1;
+    }
 }
 
 /** 

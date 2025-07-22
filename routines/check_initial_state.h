@@ -31,7 +31,8 @@
 #include "stack.h"
 #include "pindata.h"
 
-#define NUMBER_OF_SCANNING_ITERATIONS 3
+#define NUMBER_OF_SCANNING_ITERATIONS 10
+#define DELAY_BETWEEN_READS_MS 100
 
 
 
