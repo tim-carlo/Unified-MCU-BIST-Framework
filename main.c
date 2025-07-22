@@ -59,7 +59,7 @@
 #include "routines/check_initial_state.h"
 
 // Handshake timing constants
-#define INITIAL_DELAY_MAX_MS 1000
+#define INITIAL_DELAY_MAX_MS 10000
 
 #define MINIMUM_SIGNAL_DURATION_MS 90     // Minimum duration for a valid signal
 #define SYN_SIGNAL_DURATION_MS 100        // Duration of SYN signal in ms
@@ -215,6 +215,7 @@ void send_signal(uint32_t pin, uint32_t duration_ms)
     current_driven_pin = pin; // Set the flag to indicate self-driven signal
     gpio_drive_low(pin);
     delay_ms(duration_ms);
+    release_gpio_open_drain(pin); // Release the pin after sending the signal
     configure_pin_sense(pin, true);
 
     current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
@@ -362,7 +363,6 @@ int main(void)
 
             while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received)
             {
-                printf("Waiting for SYN signal on pin %lu...\n", selected_pin);
                 // Check for active pins except the selected one
                 Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t));
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
@@ -417,6 +417,7 @@ int main(void)
         case INITIATOR:
         {
             i_was_the_initiator = true;
+            set_role(&pin_data_tmp, INITIATOR_ROLE);
 
             reset_timer();
             start_timer(TIMER_A);
@@ -449,6 +450,7 @@ int main(void)
                 }
                 freeStack(active_pins_stack);
             }
+            release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
             configure_pin_sense(selected_pin, true); // Configure the pin for low sense (falling edge)
             // printf("SYN signal sent on pin %lu\n", selected_pin);
             current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
@@ -459,7 +461,8 @@ int main(void)
                 state = MAYBE_RESPONDER;
                 break;
             }
-
+            printf("SYN signal sent, waiting for SYN-ACK signal...\n");
+            start_timer(TIMER_A);
             uint32_t syn_ack_timeout = TIMEOUT_SYN_ACK_MS;
             bool timeout_inceased = false;
             bool signal_received = false;
@@ -504,6 +507,7 @@ int main(void)
         case RESPONDER:
         {
             i_was_the_responder = true;
+            set_role(&pin_data_tmp, RESPONDER_ROLE);
             printf("RESPONDER_MODE\n");
 
             // Acknowledge the initial signal
@@ -592,6 +596,10 @@ int main(void)
             printf("SUCCESS_MODE\n");
             needded_tries++;
             printf("Handshake successful, tries needed: %lu\n", needded_tries);
+
+            set_successful(&pin_data_tmp, true);
+            set_blacklisted(&pin_data_tmp, false); // Ensure the pin is not blacklisted
+            set_blacklisted_in_mask(&black_list_mask, selected_pin);
 
             if (i_was_the_initiator)
             {
