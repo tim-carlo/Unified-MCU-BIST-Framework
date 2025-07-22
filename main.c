@@ -160,10 +160,6 @@ void rising_handler(uint32_t pin)
         last_event_valid = true;
         last_event = event; // Store the last event for later processing
     }
-    else
-    {
-        return; // Unknown signal
-    }
 }
 
 void falling_handler(uint32_t pin)
