@@ -34,6 +34,7 @@
 #define LED_GREEN_PIN 1
 #define TEST_PORT 3
 #define TEST_PIN 7
+#define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -93,9 +94,6 @@ typedef struct
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 
 // State tracking
-uint32_t needded_tries = 0;
-bool i_was_the_initiator = false;
-bool i_was_the_responder = false;
 bool red_led_on = false;
 bool green_led_on = false;
 
@@ -112,7 +110,8 @@ typedef enum
     INITIATOR,
     RESPONDER,
     SUCCESS,
-    FAILED
+    FAILED,
+    SCANNED_ALL_PINS
 } State;
 
 State state = INIT;
@@ -251,7 +250,7 @@ void print_active_pins_from_mask(uint64_t mask)
 int main(void)
 {
 
-    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);        // Initialize pin data array
+    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS); // Initialize pin data array
 
     io_init();
 
@@ -299,6 +298,15 @@ int main(void)
             uint32_t initial_delay = random32() % (INITIAL_DELAY_MAX_MS + 1);
 
             uint32_t random_pin = select_random_non_blacklisted_and_not_successful_pin(pin_data, black_list_mask);
+
+            if (random_pin == 0xFFFFFFFF)
+            {
+                printf("No valid pins found, exiting.\n");
+                state = SCANNED_ALL_PINS;
+                break;
+            }
+
+
             set_selected_pin(random_pin);
 
             printf("Selected pin: %lu\n", selected_pin);
@@ -416,7 +424,6 @@ int main(void)
 
         case INITIATOR:
         {
-            i_was_the_initiator = true;
             set_role(&pin_data_tmp, INITIATOR_ROLE);
 
             reset_timer();
@@ -450,7 +457,7 @@ int main(void)
                 }
                 freeStack(active_pins_stack);
             }
-            release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
+            release_gpio_open_drain(selected_pin);   // Release the pin after sending the signal
             configure_pin_sense(selected_pin, true); // Configure the pin for low sense (falling edge)
             // printf("SYN signal sent on pin %lu\n", selected_pin);
             current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
@@ -506,7 +513,6 @@ int main(void)
 
         case RESPONDER:
         {
-            i_was_the_responder = true;
             set_role(&pin_data_tmp, RESPONDER_ROLE);
             printf("RESPONDER_MODE\n");
 
@@ -555,11 +561,6 @@ int main(void)
 
         case FAILED:
         {
-            needded_tries++;
-            printf("Handshake failed, tries needed: %lu\n", needded_tries);
-
-            red_led_on = true;
-            gpio_drive_high(ABSOLUTE_PIN_RED);
 
             if (pin_data_tmp.num_tries >= MAXIMUM_NUMBER_OF_TRIES)
             {
@@ -574,18 +575,18 @@ int main(void)
 
                 set_blacklisted(&pin_data_tmp, true);
                 set_blacklisted_in_mask(&black_list_mask, selected_pin);
+                printf("Pin %lu blacklisted.\n", selected_pin);
+                print_active_pins_from_mask(black_list_mask);
 
                 // Reset state
                 state = INIT;
-                i_was_the_initiator = false;
-                i_was_the_responder = false;
+
                 break;
             }
+            pin_data_tmp.num_tries = pin_data_tmp.num_tries + 1; // Increment the number of tries
             printf("Retrying handshake...\n");
             // Reset state
             state = INIT;
-            i_was_the_initiator = false;
-            i_was_the_responder = false;
 
             break;
         }
@@ -593,24 +594,9 @@ int main(void)
         case SUCCESS:
         {
 
-            printf("SUCCESS_MODE\n");
-            needded_tries++;
-            printf("Handshake successful, tries needed: %lu\n", needded_tries);
-
             set_successful(&pin_data_tmp, true);
             set_blacklisted(&pin_data_tmp, false); // Ensure the pin is not blacklisted
             set_blacklisted_in_mask(&black_list_mask, selected_pin);
-
-            if (i_was_the_initiator)
-            {
-                printf("I was the initiator.\n");
-            }
-            if (i_was_the_responder)
-            {
-                printf("I was the responder.\n");
-            }
-
-            needded_tries = 0;
             gpio_drive_high(ABSOLUTE_PIN_GREEN);
             green_led_on = true;
 
@@ -618,8 +604,12 @@ int main(void)
 
             // Reset state
             state = INIT;
-            i_was_the_initiator = false;
-            i_was_the_responder = false;
+            break;
+        }
+        case SCANNED_ALL_PINS:
+        {
+            printf("All pins scanned, exiting...\n");
+            delay_ms(1000);
             break;
         }
         }
