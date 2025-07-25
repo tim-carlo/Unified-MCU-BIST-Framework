@@ -245,6 +245,7 @@ void configure_pin_sense(uint32_t abs_pin, bool sense_low)
     else
         port->PIN_CNF[pin] |= (GPIO_PIN_CNF_SENSE_High << GPIO_PIN_CNF_SENSE_Pos);
 }
+
 /**
  * @brief Function to listen for GPIO interrupts on all pins, excluding blacklisted ones
  * 

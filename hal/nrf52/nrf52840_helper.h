@@ -27,19 +27,9 @@
 
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
-#define MAX_GPIO_INTERRUPT_HANDLERS 4
-
-typedef struct {
-    uint32_t pin;        // Pin number (0-47)
-    NRF_GPIO_Type* PORT; // Pointer to the GPIO port (NRF_P0 or NRF_P1)
-    uint64_t timestamp;
-    bool pin_state;
-} pin_time_measurement_t;
-
 
 // Function prototypes
 void io_init(void);
-uint32_t get_timer_counter(void);
 void gpio_pullup_init(uint32_t abs_pin);
 void gpio_pulldown_init(uint32_t abs_pin);
 void gpio_pullup_clear(uint32_t abs_pin);
@@ -58,7 +48,6 @@ void gpio_open_drain(uint32_t abs_pin);
 bool is_interupt_blacklisted(uint32_t abs_pin);
 void configure_pin_sense(uint32_t abs_pin, bool sense_low);
 void gpio_listen_interrupt_on_all_pins(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
-
 
 
 void release_gpio_open_drain(uint32_t abs_pin);
@@ -81,6 +70,7 @@ uint32_t random32(void);
 uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
 void init_software_serial(uint32_t abs_pin, uint32_t baudrate);
 void software_serial_tx(uint8_t byte);
+
 uint64_t get_unique_id(void);
 const char *get_unique_id_str(void);
 const char *get_chip_family_name(void);
