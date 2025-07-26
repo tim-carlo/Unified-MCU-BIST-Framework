@@ -12,18 +12,28 @@
 #include "stack.h"   // Stack implementation for managing GPIO states
 #include "pindata.h" // PinData structure and helper functions
 
+#define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
+
+// UART configuration - Fixed to UCA0 at 9600 baud
+#define UART_ID 0 // Identifier for UCA0
+#define BAUD_RATE 9600
+#define UART_PIN_TX ABS_PIN(2,0) // P2.0 (gpio 8)
+#define UART_PIN_RX ABS_PIN(2,1) // P2.1 (gpio 9)
+
 // Register offsets from port base
 #define PORT_IN_OFFSET 0x00
 #define PORT_OUT_OFFSET 0x02
 #define PORT_DIR_OFFSET 0x04
 #define PORT_REN_OFFSET 0x06
 #define PORT_SEL0_OFFSET 0x0A
-
-// UART configuration - Fixed to UCA0 at 9600 baud
-#define UART_ID 0 // Identifier for UCA0
-#define BAUD_RATE 9600
-#define UART_TX_PIN 8 // P2.0 (gpio 8)
-#define UART_RX_PIN 9 // P2.1 (gpio 9)
+#define PORT_SEL1_OFFSET 0x0C
+#define PORT_SEL2_OFFSET 0x0E 
+#define PORT_SEL3_OFFSET 0x10 
+#define PORT_SEL4_OFFSET 0x12 
+#define PORT_SEL5_OFFSET 0x14 
+#define PORT_SEL6_OFFSET 0x16 
+#define PORT_SEL7_OFFSET 0x18 
+#define PORT_SEL8_OFFSET 0x1A 
 
 // Base address of the device descriptor table
 #define DEVICE_DESCRIPTOR_ADDR 0x1A00
@@ -90,6 +100,8 @@ extern "C"
     void configure_pin_sense(uint8_t abs_pin, bool sense_low);
     void gpio_listen_on_all_pins_polling(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
     void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
+    uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
+
 
     uint32_t get_elapsed_time(uint32_t start, uint32_t current);
     void delay_us(uint32_t us);
@@ -107,9 +119,8 @@ extern "C"
 
     uint32_t random32_lfsr(void);
     uint32_t random32(void);
-    uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
 
-    void init_software_serial(uint32_t abs_pin, uint32_t baudrate);
+    void init_software_serial(uint8_t abs_pin, uint32_t baudrate);
     void software_serial_tx(uint8_t byte);
 
     uint64_t get_unique_id(void);
