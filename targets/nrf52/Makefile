@@ -43,12 +43,14 @@ CFLAGS += -Wa,-adhlns=$@.lst
 ASMFLAGS := $(filter-out -std=gnu99,$(CFLAGS))
 
 
-LDFLAGS := -T$(LINKER_SCRIPT) -Wl,--gc-sections,-Map=$(OUTPUT_DIR)/build.map
-LDFLAGS += --specs=nosys.specs --specs=nano.specs
+LDFLAGS += $(OPT)
+LDFLAGS += -T$(LINKER_SCRIPT)
+LDFLAGS += -Wl,--gc-sections,-Map=${OUTPUT_DIR}/build.map
+LDFLAGS += --specs=nosys.specs --specs=nano.specs  # Beide specs hinzufügen
+LDFLAGS += -Wl,--entry=Reset_Handler  # Expliziter Entry Point
+LDFLAGS += -Wl,--no-warn-rwx-segments  # Unterdrückt Warnungen
 LDFLAGS += -mthumb -mabi=aapcs -mcpu=cortex-m4
 LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
-LDFLAGS += -Wl,--entry=Reset_Handler
-LDFLAGS += -Wl,--no-warn-rwx-segments
 
 # Minimal required libraries
 LIBRARIES := -lc_nano -lm -lnosys
@@ -63,7 +65,8 @@ clean:
 
 flash: all
 	nrfjprog -f NRF52 --program $(OUTPUT_DIR)/build.hex --chiperase --verify
-	nrfjprog -f NRF52 --reset
+	nrfjprog -f NRF52 --pinresetenable  
+	nrfjprog -f NRF52 --reset           
 
 
 $(OUTPUT_DIR)/%.o: $(ROOT)/%.c | $(OUTPUT_DIR)
