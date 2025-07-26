@@ -22,59 +22,61 @@
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)
 #define BV_BY_VALUE(field, value) (((value) << field##_Pos) & field##_Msk)
 
-#define TIMER_A NRF_TIMER0
-#define TIMER_B NRF_TIMER1
+#define TIMER_A0 NRF_TIMER0
+#define TIMER_B0 NRF_TIMER1
 
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
 
 // Function prototypes
+const uint32_t get_absolute_pin_number(NRF_GPIO_Type *PORT, uint8_t pin);
+
 void io_init(void);
-void gpio_pullup_init(uint32_t abs_pin);
-void gpio_pulldown_init(uint32_t abs_pin);
-void gpio_pullup_clear(uint32_t abs_pin);
-void gpio_drive_low(uint32_t abs_pin);
-void gpio_drive_high(uint32_t abs_pin);
-void gpio_input_init(uint32_t abs_pin);
-void gpio_output_init(uint32_t abs_pin);
-bool gpio_read(uint32_t abs_pin);
+void gpio_pullup_init(uint8_t abs_pin);
+void gpio_pulldown_init(uint8_t abs_pin);
+void gpio_pullup_clear(uint8_t abs_pin);
+void gpio_drive_low(uint8_t abs_pin);
+void gpio_drive_high(uint8_t abs_pin);
+void gpio_input_init(uint8_t abs_pin);
+void gpio_output_init(uint8_t abs_pin);
+bool gpio_read(uint8_t abs_pin);
 void push_active_pins_to_stack(Stack *stack, uint8_t level);
 void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
 
 
-void gpio_reset(uint32_t abs_pin);
-void gpio_open_drain(uint32_t abs_pin);
+void gpio_reset(uint8_t abs_pin);
+void gpio_open_drain(uint8_t abs_pin);
 
-bool is_interupt_blacklisted(uint32_t abs_pin);
-void configure_pin_sense(uint32_t abs_pin, bool sense_low);
-void gpio_listen_interrupt_on_all_pins(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
+bool is_interupt_blacklisted(uint8_t abs_pin);
+void configure_pin_sense(uint8_t abs_pin, bool sense_low);
+void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
 
 
-void release_gpio_open_drain(uint32_t abs_pin);
+void release_gpio_open_drain(uint8_t abs_pin);
 uint32_t get_elapsed_time(uint32_t start, uint32_t current);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);
 
-bool is_signal_active(uint32_t pin, bool assert_high);
 uint32_t get_timer_ticks(NRF_TIMER_Type *timer);
 void start_timer(NRF_TIMER_Type *timer);
 void stop_timer(NRF_TIMER_Type *timer);
 
-void reset_timer(void);
+void reset_timer(NRF_TIMER_Type *timer);
 uint32_t ticks_to_us(uint64_t ticks);
 uint32_t ticks_to_ms(uint64_t ticks);
 uint32_t timer_diff_us(uint64_t start, uint64_t end);
 uint32_t timer_diff_ms(uint64_t start, uint64_t end);
 uint32_t random32_lfsr(void);
 uint32_t random32(void);
+
 uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
-void init_software_serial(uint32_t abs_pin, uint32_t baudrate);
+void init_software_serial(uint8_t abs_pin, uint32_t baudrate);
 void software_serial_tx(uint8_t byte);
 
 uint64_t get_unique_id(void);
 const char *get_unique_id_str(void);
 const char *get_chip_family_name(void);
-const uint32_t get_absolute_pin_number(NRF_GPIO_Type *PORT, uint8_t pin);
+
 
 
 #endif // NRF52840_HELPER_H
