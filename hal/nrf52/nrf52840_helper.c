@@ -10,7 +10,6 @@ uint8_t gpiote_pin0 = 0xFF;
 uint32_t bibanging_uart_baudtrate = -1;
 uint32_t bibanging_uart_bit_time_us = -1;
 uint8_t UART_PIN = -1;
-pin_time_measurement_t time_measurements[NUMBER_OF_GPIO_PINS];
 
 uint64_t gpio_blacklist_intern_mask = 0; // Global blacklist for GPIO pins
 gpio_interrupt_handler_t rising_handler_global = NULL;

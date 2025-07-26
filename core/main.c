@@ -57,7 +57,9 @@
 
 #include "stack.h"
 #include "pindata.h"
-#include "routines/check_initial_state.h"
+#include "check_initial_state.h"
+
+
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
