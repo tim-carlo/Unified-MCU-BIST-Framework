@@ -2,8 +2,13 @@
 
 # Configuration
 MSPFLASHER_PATH="/Users/timcarlo/ti/MSPFlasher_1.3.20"
-OUTPUT_HEX="../build/build.hex"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+OUTPUT_HEX="$SCRIPT_DIR/targets/msp430/build/build.hex"
 DEVICE="MSP430FR5994"
+
+echo "Starting flash process for $DEVICE..."
+echo "$OUTPUT_HEX"
 
 # Check if the file exists
 if [ ! -f "$OUTPUT_HEX" ]; then
