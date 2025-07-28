@@ -3,6 +3,7 @@ PREFIX := $(MSP_GNU_ROOT)/bin/msp430-elf-
 SUPPORT_FILE_DIRECTORY := $(MSP_GNU_ROOT)/include
 
 # Docker integration
+# Docker is needed since the MSP430 toolchain is not available on MacOS with Apple Silicon.
 DOCKER_IMAGE := msp430-buildenv
 DOCKER_CMD := docker run --rm --platform linux/amd64 -v "$(CURDIR)/../..:/project" -w /project/targets/msp430 $(DOCKER_IMAGE)
 

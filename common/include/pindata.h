@@ -4,9 +4,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define ERROR_REASON_NONE 0
+#define ERROR_REASON_TIMEOUT 1  
+#define ERROR_REASON_BLACKLISTED 2
+#define ERROR_REASON_DISTURBED 3
+#define ERROR_REASON_TRIES_EXCEEDED 4
+
+
 typedef struct
 {
-    uint32_t pin; // Pin number
     // The 'steps' field uses individual bits to represent various flags:
     // Bit 0: ACK signal
     // Bit 1: SYN-ACK signal

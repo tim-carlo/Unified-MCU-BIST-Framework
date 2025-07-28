@@ -22,8 +22,8 @@
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)
 #define BV_BY_VALUE(field, value) (((value) << field##_Pos) & field##_Msk)
 
-#define TIMER_A0 NRF_TIMER0
-#define TIMER_B0 NRF_TIMER1
+#define TIMER_A NRF_TIMER0
+#define TIMER_B NRF_TIMER1
 
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
@@ -69,7 +69,7 @@ uint32_t timer_diff_ms(uint64_t start, uint64_t end);
 uint32_t random32_lfsr(void);
 uint32_t random32(void);
 
-uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
+uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
 void init_software_serial(uint8_t abs_pin, uint32_t baudrate);
 void software_serial_tx(uint8_t byte);
 
