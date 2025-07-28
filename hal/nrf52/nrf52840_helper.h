@@ -53,6 +53,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask, gpio_interrupt_h
 
 
 void release_gpio_open_drain(uint8_t abs_pin);
+void gpio_open_drain_drive(uint8_t abs_pin);
 uint32_t get_elapsed_time(uint32_t start, uint32_t current);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);

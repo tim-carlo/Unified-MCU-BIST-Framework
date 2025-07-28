@@ -9,7 +9,6 @@
  * @return Stack* A pointer to the created stacks
  */
 Stack* createStack(int capacity, size_t element_size) {
-    printf("Creating stack with capacity %d and element size %zu\n", capacity, element_size);
 
     Stack *stack = (Stack*)malloc(sizeof(Stack));
     if (!stack) {

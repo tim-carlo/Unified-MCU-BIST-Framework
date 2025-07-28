@@ -13,6 +13,7 @@
 
 typedef struct
 {
+    uint8_t pin; // Pin number (0-47)
     // The 'steps' field uses individual bits to represent various flags:
     // Bit 0: ACK signal
     // Bit 1: SYN-ACK signal
