@@ -312,7 +312,7 @@ int main(void)
             printf("Selected pin: %lu\n", selected_pin);
             printf("Initial delay: %lu ms\n", initial_delay);
 
-            reset_timer();
+            
             start_timer(TIMER_A);
             uint64_t start_ticks = get_timer_ticks(TIMER_A);
 
@@ -360,7 +360,7 @@ int main(void)
 
             printf("MAYBE_RESPONDER_MODE\n");
 
-            reset_timer();
+            
             start_timer(TIMER_A);
             bool signal_received = false;
 
@@ -426,7 +426,7 @@ int main(void)
         {
             set_role(&pin_data_tmp, INITIATOR_ROLE);
 
-            reset_timer();
+            
             start_timer(TIMER_A);
             uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
             uint32_t sendtimeout = ticks_at_starting_point + SYN_SIGNAL_DURATION_MS;
@@ -520,7 +520,7 @@ int main(void)
             send_signal(selected_pin, SYN_ACK_SIGNAL_DURATION_MS);
 
             bool signal_received = false;
-            reset_timer();
+            
             start_timer(TIMER_A);
             uint32_t start_ticks = get_timer_ticks(TIMER_A);
 

@@ -22,8 +22,8 @@
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)
 #define BV_BY_VALUE(field, value) (((value) << field##_Pos) & field##_Msk)
 
-#define TIMER_A0 NRF_TIMER0
-#define TIMER_B0 NRF_TIMER1
+#define TIMER_A NRF_TIMER0
+#define TIMER_B NRF_TIMER1
 
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
