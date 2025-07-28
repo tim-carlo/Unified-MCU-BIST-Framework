@@ -53,6 +53,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask, gpio_interrupt_h
 
 
 void release_gpio_open_drain(uint8_t abs_pin);
+void gpio_open_drain_drive(uint8_t abs_pin);
 uint32_t get_elapsed_time(uint32_t start, uint32_t current);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);
@@ -69,7 +70,7 @@ uint32_t timer_diff_ms(uint64_t start, uint64_t end);
 uint32_t random32_lfsr(void);
 uint32_t random32(void);
 
-uint32_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
+uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
 void init_software_serial(uint8_t abs_pin, uint32_t baudrate);
 void software_serial_tx(uint8_t byte);
 

@@ -34,7 +34,7 @@ void reset_last_falling_edge(PinData *data) {
  * @param length Number of elements in the array
  */
 void initialize_pin_data_array(PinData *array, uint32_t length) {
-    for (uint32_t i = 0; i < length; ++i) {
+    for (uint8_t i = 0; i < length; ++i) {
         array[i].pin = i;
         array[i].steps = 0;
         array[i].num_false_responses = 0;

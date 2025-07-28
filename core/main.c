@@ -34,7 +34,11 @@
 #define LED_GREEN_PIN 1
 #define TEST_PORT 3
 #define TEST_PIN 7
-#define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
+#define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
+#define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
+
+#define TIMER_A TIMER_A4
+#define TIMER_B TIMER_B0
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -84,7 +88,7 @@
 
 typedef struct
 {
-    uint32_t pin;    // Pin number
+    uint8_t pin;     // Pin number
     bool is_ack;     // True if this is an ACK signal, false otherwise
     bool is_syn_ack; // True if this is a SYN-ACK signal, false otherwise
     bool is_syn;     // True if this is a SYN signal, false otherwise
@@ -97,7 +101,6 @@ PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 bool red_led_on = false;
 bool green_led_on = false;
 
-PinData pin_data_tmp; // Temporary data structure for pin data
 
 volatile PinEvent last_event;
 volatile bool last_event_valid = false;
@@ -118,10 +121,10 @@ State state = INIT;
 
 // Flags controlled via interrupts
 
-volatile uint32_t current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Pin that is currently being driven by the self-driven signal
-volatile uint32_t selected_pin = 0;
-volatile PinData *selected_pin_data = NULL; // Pointer to the currently selected pin data
-uint64_t black_list_mask = 0;               // Global blacklist mask for GPIO pins
+volatile uint8_t current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Pin that is currently being driven by the self-driven signal
+volatile uint8_t selected_pin = 0;
+PinData *selected_pin_data = NULL; // Pointer to the currently selected pin data
+volatile uint64_t black_list_mask = 0;               // Global blacklist mask for GPIO pins
 
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint32_t pin)
@@ -209,29 +212,39 @@ void led_test_routine(void)
     printf("LED test complete.\n");
 }
 
-void send_signal(uint32_t pin, uint32_t duration_ms)
+void send_signal(uint8_t pin, uint32_t duration_ms)
 {
     current_driven_pin = pin; // Set the flag to indicate self-driven signal
-    gpio_drive_low(pin);
+    gpio_open_drain_drive(pin);
     delay_ms(duration_ms);
     release_gpio_open_drain(pin); // Release the pin after sending the signal
-    configure_pin_sense(pin, true);
 
     current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
 }
 
-void set_selected_pin(uint32_t pin)
+void set_selected_pin(uint8_t pin)
 {
+    if (pin >= NUMBER_OF_GPIO_PINS)
+    {
+        return; // Invalid pin number, do nothing
+    }
     selected_pin = pin;
     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
-
-    printf("Selected pin set to: %lu\n", selected_pin);
 }
 void set_standart_blacklist_pins(uint64_t *mask)
 {
-    *mask |= (1ULL << ABSOLUTE_PIN_RED);   // Add the red LED pin to the blacklist
-    *mask |= (1ULL << ABSOLUTE_PIN_GREEN); // Add the green LED pin to the blacklist
-    *mask |= (1ULL << UART_PIN_TX);        // Add the UART TX pin to the blacklist
+    *mask = 0xFFFFFFFFFFFFFFFFULL;
+    // Remove all pins 0-7 (first 8 pins) from the mask
+
+    *mask &= ~(1ULL << 11);
+    *mask &= ~(1ULL << 12);
+    *mask &= ~(1ULL << 13);
+    *mask &= ~(1ULL << 14);
+
+    /*
+     *mask |= (1ULL << ABSOLUTE_PIN_RED);   // Add the red LED pin to the blacklist
+     *mask |= (1ULL << ABSOLUTE_PIN_GREEN); // Add the green LED pin to the blacklist
+     *mask |= (1ULL << UART_PIN_TX);        // Add the UART TX pin to the blacklist */
 }
 
 void print_active_pins_from_mask(uint64_t mask)
@@ -249,10 +262,8 @@ void print_active_pins_from_mask(uint64_t mask)
 
 int main(void)
 {
-
-    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS); // Initialize pin data array
-
     io_init();
+    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS); // Initialize pin data array
 
     // Start Timer B for Pin Time Measurements
     start_timer(TIMER_B);
@@ -260,24 +271,27 @@ int main(void)
     printf("Running on %s\n", get_chip_family_name());
     printf("Chip UID: %s\n", get_unique_id_str());
 
-    for (uint32_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    {
-        gpio_open_drain(pin);
-    }
+    // printf("Initializing GPIO pins...\n");
 
     gpio_output_init(ABSOLUTE_PIN_GREEN);
     gpio_output_init(ABSOLUTE_PIN_RED);
 
-    uint64_t get_initial_state = get_initial_pin_state(0);
-
-    black_list_mask = get_initial_state; // Set the initial blacklist mask
-    print_active_pins_from_mask(black_list_mask);
     set_standart_blacklist_pins(&black_list_mask); // Set standard blacklist pins
+                                                   // print_active_pins_from_mask(black_list_mask);
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (black_list_mask & (1ULL << pin))
+            continue;          // Skip blacklisted pins
+        gpio_pullup_init(pin); // Initialize all pins with pull-up resistors
+    }
+
+    uint64_t get_initial_state = get_initial_pin_state(0);
+    //  black_list_mask |= ~get_initial_state; // Add initial state to the blacklist mask
 
     printf("Initial pin state: 0x%016llx\n", get_initial_state);
     print_active_pins_from_mask(black_list_mask);
 
-    gpio_listen_interrupt_on_all_pins(
+    gpio_listen_on_all_pins_interrupt(
         black_list_mask,
         falling_handler, // Falling edge handler
         rising_handler   // Rising edge handler
@@ -299,20 +313,19 @@ int main(void)
 
             uint32_t random_pin = select_random_non_blacklisted_and_not_successful_pin(pin_data, black_list_mask);
 
-            if (random_pin == 0xFFFFFFFF)
+            if (random_pin == 255)
             {
                 printf("No valid pins found, exiting.\n");
                 state = SCANNED_ALL_PINS;
                 break;
             }
 
-
             set_selected_pin(random_pin);
 
             printf("Selected pin: %lu\n", selected_pin);
+            printf("Selected pin data: %lu\n", selected_pin_data->pin);
             printf("Initial delay: %lu ms\n", initial_delay);
 
-            
             start_timer(TIMER_A);
             uint64_t start_ticks = get_timer_ticks(TIMER_A);
 
@@ -321,13 +334,13 @@ int main(void)
             // Wait during initial delay — if a signal is detected, we become responder
             while (timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < initial_delay)
             {
-                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t)); // Create a stack to hold active pins
-                uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin);                  // Exclude the selected pin from the search
+                Stack *active_pins_stack = createStack(10, sizeof(uint8_t));
+                uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
                 if (!isStackEmpty(active_pins_stack))
                 {
-                    uint32_t pin;
+                    uint8_t pin;
                     pop(active_pins_stack, &pin);
 
                     set_selected_pin(pin); // Set the selected pin to the active pin
@@ -360,7 +373,6 @@ int main(void)
 
             printf("MAYBE_RESPONDER_MODE\n");
 
-            
             start_timer(TIMER_A);
             bool signal_received = false;
 
@@ -372,13 +384,13 @@ int main(void)
             while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received)
             {
                 // Check for active pins except the selected one
-                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t));
+                Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint8_t));
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
                 if (!isStackEmpty(active_pins_stack))
                 {
-                    uint32_t pin;
+                    uint8_t pin;
                     pop(active_pins_stack, &pin);
 
                     printf("Another active pin detected: %lu\n", pin);
@@ -415,6 +427,14 @@ int main(void)
             else
             {
                 // No SYN signal received, we become the initiator
+
+                selected_pin_data->num_false_responses++;
+                if (selected_pin_data->num_false_responses >= MAXIMUM_NUMBER_OF_FALSE_RESPONSES)
+                {
+                    set_blacklisted_in_mask(&black_list_mask, selected_pin);
+                    set_blacklisted(selected_pin_data, true);
+                    selected_pin_data->error_reason = ERROR_REASON_DISTURBED;
+                }
                 printf("No SYN signal received, go back to INIT_MODE.\n");
                 state = INIT;
             }
@@ -424,22 +444,21 @@ int main(void)
 
         case INITIATOR:
         {
-            set_role(&pin_data_tmp, INITIATOR_ROLE);
+            set_role(selected_pin_data, INITIATOR_ROLE);
 
-            
             start_timer(TIMER_A);
-            uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
-            uint32_t sendtimeout = ticks_at_starting_point + SYN_SIGNAL_DURATION_MS;
 
             // Send SYN signal as initiator
             current_driven_pin = selected_pin; // Set the flag to indicate self-driven signal
             printf("CURRENT_DRIVEN_PIN: %lu\n", current_driven_pin);
             printf("INITIATOR_MODE: Sending SYN signal\n");
+            uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
 
-            gpio_drive_low(selected_pin);
+            gpio_open_drain_drive(selected_pin);
+            printf("Sending SYN signal on pin %lu\n", selected_pin);
             bool received_other_signal = false;
 
-            while (get_timer_ticks(TIMER_A) < sendtimeout)
+            while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < SYN_SIGNAL_DURATION_MS) && !received_other_signal)
             {
                 Stack *active_pins_stack = createStack(NUMBER_OF_GPIO_PINS, sizeof(uint32_t));
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin);
@@ -457,9 +476,8 @@ int main(void)
                 }
                 freeStack(active_pins_stack);
             }
-            release_gpio_open_drain(selected_pin);   // Release the pin after sending the signal
-            configure_pin_sense(selected_pin, true); // Configure the pin for low sense (falling edge)
-            // printf("SYN signal sent on pin %lu\n", selected_pin);
+            release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
+            printf("SYN signal sent on pin %lu\n", selected_pin);
             current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
             stop_timer(TIMER_A);
 
@@ -487,10 +505,10 @@ int main(void)
                 {
                     signal_received = true;
                     printf("Received SYN-ACK signal\n");
-                    set_syn_ack(&pin_data_tmp, true);
+                    set_syn_ack(selected_pin_data, true);
                     // Acknowledge the SYN-ACK signal
                     send_signal(selected_pin, ACK_SIGNAL_DURATION_MS);
-                    set_ack(&pin_data_tmp, true);
+                    set_ack(selected_pin_data, true);
                     last_event_valid = false; // Reset after processing
                     break;
                 }
@@ -513,14 +531,13 @@ int main(void)
 
         case RESPONDER:
         {
-            set_role(&pin_data_tmp, RESPONDER_ROLE);
+            set_role(selected_pin_data, RESPONDER_ROLE);
             printf("RESPONDER_MODE\n");
 
             // Acknowledge the initial signal
             send_signal(selected_pin, SYN_ACK_SIGNAL_DURATION_MS);
 
             bool signal_received = false;
-            
             start_timer(TIMER_A);
             uint32_t start_ticks = get_timer_ticks(TIMER_A);
 
@@ -561,19 +578,18 @@ int main(void)
 
         case FAILED:
         {
-
-            if (pin_data_tmp.num_tries >= MAXIMUM_NUMBER_OF_TRIES)
+            printf("Number of tries: %d\n", selected_pin_data->num_tries);
+            selected_pin_data->num_tries = selected_pin_data->num_tries + 1; // Increment the number of tries
+            if (selected_pin_data->num_tries >= MAXIMUM_NUMBER_OF_TRIES)
             {
                 printf("Maximum number of tries reached for pin %lu, blacklisting it.\n", selected_pin);
 
-                // Blacklist the pin
-                pin_data_tmp.pin = selected_pin;
-                pin_data_tmp.num_tries = pin_data_tmp.num_tries + 1; // Increment the number of tries
-                pin_data_tmp.error_reason = 1;                       // Set error reason to 1 for failed handshake
+                selected_pin_data->num_tries = selected_pin_data->num_tries + 1;     // Increment the number of tries
+                selected_pin_data->error_reason = ERROR_REASON_TRIES_EXCEEDED; // Set error reason to tries exceeded
 
                 // Set the blacklisted status
 
-                set_blacklisted(&pin_data_tmp, true);
+                set_blacklisted(selected_pin_data, true);
                 set_blacklisted_in_mask(&black_list_mask, selected_pin);
                 printf("Pin %lu blacklisted.\n", selected_pin);
                 print_active_pins_from_mask(black_list_mask);
@@ -583,7 +599,6 @@ int main(void)
 
                 break;
             }
-            pin_data_tmp.num_tries = pin_data_tmp.num_tries + 1; // Increment the number of tries
             printf("Retrying handshake...\n");
             // Reset state
             state = INIT;
@@ -594,8 +609,8 @@ int main(void)
         case SUCCESS:
         {
 
-            set_successful(&pin_data_tmp, true);
-            set_blacklisted(&pin_data_tmp, false); // Ensure the pin is not blacklisted
+            set_successful(selected_pin_data, true);
+            set_blacklisted(selected_pin_data, false); // Ensure the pin is not blacklisted
             set_blacklisted_in_mask(&black_list_mask, selected_pin);
             gpio_drive_high(ABSOLUTE_PIN_GREEN);
             green_led_on = true;

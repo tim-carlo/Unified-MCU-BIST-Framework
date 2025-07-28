@@ -1,5 +1,5 @@
 #include "nrf52840_helper.h"
-#include "nrf52840.h"
+
 #include <string.h>
 
 // Variable definitions
@@ -74,7 +74,7 @@ void gpio_pulldown_init(uint8_t abs_pin)
     PORT->PIN_CNF[pin] = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
                          BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
                          BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown) |
-                         BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) |
+                         BV_BY_NAME(GPIO_PIN_CNF_DRIVE, D0S1) |
                          BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
 }
 
@@ -225,10 +225,9 @@ bool is_interupt_blacklisted(uint8_t abs_pin)
     return (gpio_blacklist_intern_mask >> abs_pin) & 1;
 }
 
-
 /**
  * @brief Configure pin sense for interrupts using absolute pin number
- * 
+ *
  * @param abs_pin Absolute pin number (0-47)
  * @param sense_low If true, configure for low sense (falling edge), else for high sense (rising edge)
  */
@@ -241,14 +240,14 @@ void configure_pin_sense(uint8_t abs_pin, bool sense_low)
     port->PIN_CNF[pin] &= ~GPIO_PIN_CNF_SENSE_Msk;
 
     if (sense_low)
-        port->PIN_CNF[pin] |= (GPIO_PIN_CNF_SENSE_Low << GPIO_PIN_CNF_SENSE_Pos);
+        port->PIN_CNF[pin] |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
     else
-        port->PIN_CNF[pin] |= (GPIO_PIN_CNF_SENSE_High << GPIO_PIN_CNF_SENSE_Pos);
+        port->PIN_CNF[pin] |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, High);
 }
 
 /**
  * @brief Function to listen for GPIO interrupts on all pins, excluding blacklisted ones
- * 
+ *
  * @param blacklist Bitmask of pins to exclude (1 for excluded, 0 for included)
  * @param falling_handler Function to call on falling edge
  * @param rising_handler Function to call on rising edge
@@ -271,10 +270,10 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
 
         // Set pin as input with pull-up resistor
         port->PIN_CNF[pin_idx] =
-            (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-            (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
-            (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos) |
-            (GPIO_PIN_CNF_SENSE_Low << GPIO_PIN_CNF_SENSE_Pos);
+            BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+            BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+            BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
+            BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
     }
 
     // Clear all latch bits to ensure no false triggers
@@ -332,8 +331,24 @@ void GPIOTE_IRQHandler(void)
  */
 void release_gpio_open_drain(uint8_t abs_pin)
 {
-    gpio_pullup_init(abs_pin); // Set pin as input with pull-down resistor
-    configure_pin_sense(abs_pin, true); // Set to low sense (falling edge)
+    NRF_GPIO_Type *port = (abs_pin < 32) ? NRF_P0 : NRF_P1;
+    uint32_t pin_idx = abs_pin % 32;
+    port->PIN_CNF[pin_idx] =
+        BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+        BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
+    port->DIRCLR = (1UL << pin_idx); // Set pin as input
+}
+
+/**
+ * @brief Drive GPIO pin in open-drain mode using absolute pin number
+ *
+ */
+void gpio_open_drain_drive(uint8_t abs_pin)
+{
+    gpio_output_init(abs_pin);
+    gpio_drive_low(abs_pin);
 }
 
 /**
@@ -396,7 +411,6 @@ void delay_ms(uint32_t ms)
         delay_us(1000);
     }
 }
-
 
 /**
  * @brief Get the current timer counter value
@@ -489,6 +503,52 @@ uint32_t timer_diff_ms(uint64_t start, uint64_t end)
 {
     return (uint32_t)((end - start) / 1000);
 }
+/**
+ * @brief Selects a random pin that is not blacklisted and not successful from a PinData array
+ *
+ * @param pindata Pointer to PinData array
+ * @param length Number of elements in the array
+ * @return uint32_t Pin number, or 0xFFFFFFFF if none available
+ */
+uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask)
+{
+    // Count valid pins that are not blacklisted and not successful
+    uint8_t valid_count = 0;
+    for (uint8_t i = 0; i < NUMBER_OF_GPIO_PINS; ++i)
+    {
+        uint8_t pin = pindata[i].pin;
+        if (pin >= 64)
+            continue; // Skip invalid pins
+        if (((blacklist_mask >> pin) & 1) == 0 && !is_successful(&pindata[i]))
+        {
+            valid_count++;
+        }
+    }
+
+    // If no valid pins found, return 0xFFFFFFFF
+    if (valid_count == 0)
+    {
+        return 255; // 0xFFFFFFFF in uint8_t is 255, which is invalid for pin numbers
+    }
+    uint32_t pick = random32() % valid_count;
+
+    // Iterate through the pins again to find the selected one
+    for (uint32_t i = 0; i < NUMBER_OF_GPIO_PINS; ++i)
+    {
+        uint8_t pin = pindata[i].pin;
+        if (pin >= 64)
+            continue;
+        if (((blacklist_mask >> pin) & 1) == 0 && !is_successful(&pindata[i]))
+        {
+            if (pick == 0)
+            {
+                return pin;
+            }
+            pick--;
+        }
+    }
+    return 255; // Should never reach here, but return 255 as a fallback
+}
 
 /**
  * @brief Generate a random 32-bit number using the LFSR algorithm
@@ -521,7 +581,6 @@ uint32_t random32(void)
     NRF_RNG->EVENTS_VALRDY = 0;
     return rnd;
 }
-
 
 /**
  * @brief Initialize software serial for bit-banging UART using absolute pin number

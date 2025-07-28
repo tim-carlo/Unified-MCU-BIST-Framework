@@ -55,6 +55,10 @@ LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # Minimal required libraries
 LIBRARIES := -lc_nano -lm -lnosys
 
+# Debug: Show found source files
+$(info === Found C source files ===)
+$(foreach file,$(CSRC_FILES),$(info - $(file)))
+$(info =============================)
 
 .PHONY: all clean flash
 

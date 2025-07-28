@@ -1,5 +1,5 @@
 #include "stack.h"
-
+#include "printf.h"
 
 /**
  * @brief Create a Stack object
@@ -9,11 +9,24 @@
  * @return Stack* A pointer to the created stacks
  */
 Stack* createStack(int capacity, size_t element_size) {
+
     Stack *stack = (Stack*)malloc(sizeof(Stack));
+    if (!stack) {
+        printf("ERROR: malloc for stack failed!\n");
+        return NULL;
+    }
+
     stack->capacity = capacity;
     stack->top = -1;
     stack->element_size = element_size;
     stack->array = malloc(stack->capacity * stack->element_size);
+
+    if (!stack->array) {
+        printf("ERROR: malloc for stack array failed!\n");
+        free(stack);
+        return NULL;
+    }
+
     return stack;
 }
 
