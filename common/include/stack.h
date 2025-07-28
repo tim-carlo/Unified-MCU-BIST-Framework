@@ -5,6 +5,9 @@
 #include <string.h>
 
 
+/**
+ * @brief Stack data structure for managing a collection of elements
+ */
 typedef struct {
     int top;
     int capacity;

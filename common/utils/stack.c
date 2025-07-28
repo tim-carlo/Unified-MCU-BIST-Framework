@@ -1,6 +1,13 @@
 #include "stack.h"
 
 
+/**
+ * @brief Create a Stack object
+ * 
+ * @param capacity Maximum number of elements in the stack
+ * @param element_size Size of each element in the stack
+ * @return Stack* A pointer to the created stacks
+ */
 Stack* createStack(int capacity, size_t element_size) {
     Stack *stack = (Stack*)malloc(sizeof(Stack));
     stack->capacity = capacity;
@@ -10,17 +17,32 @@ Stack* createStack(int capacity, size_t element_size) {
     return stack;
 }
 
-
+/**
+ * @brief Check if the stack is full
+ * 
+ * @param stack Pointer to the stack
+ * @return int 1 if full, 0 otherwise
+ */
 int isFull(Stack* stack) {
     return stack->top == stack->capacity - 1;
 }
 
-
+/**
+ * @brief Check if the stack is empty
+ * 
+ * @param stack Pointer to the stack
+ * @return int 1 if empty, 0 otherwise
+ */
 int isEmpty(Stack* stack) {
     return stack->top == -1;
 }
 
-
+/**
+ * @brief Push an item onto the stack
+ * 
+ * @param stack Pointer to the stack
+ * @param item Pointer to the item to be pushed onto the stack
+ */
 void push(Stack* stack, void *item) {
     if (isFull(stack))
         return;
@@ -28,7 +50,12 @@ void push(Stack* stack, void *item) {
     memcpy(target, item, stack->element_size);
 }
 
-
+/**
+ * @brief Pop an item from the stack
+ * 
+ * @param stack Pointer to the stack
+ * @param out Pointer to the location where the popped item will be stored
+ */
 void pop(Stack* stack, void *out) {
     if (isEmpty(stack)) {
         if (out) memset(out, 0, stack->element_size);
@@ -39,11 +66,22 @@ void pop(Stack* stack, void *out) {
     stack->top--;
 }
 
+/**
+ * @brief Peek at the top item of the stack without removing it
+ * 
+ * @param stack Pointer to the stack
+ * @param out Pointer to the location where the top item will be stored
+ */
 int isStackEmpty(Stack* stack) {
     return stack->top == -1;
 }
 
-
+/**
+ * @brief Peek at the top item of the stack without removing it
+ * 
+ * @param stack Pointer to the stack
+ * @param out Pointer to the location where the top item will be stored
+ */
 void peek(Stack* stack, void *out) {
     if (isEmpty(stack)) {
         if (out) memset(out, 0, stack->element_size);
@@ -53,7 +91,11 @@ void peek(Stack* stack, void *out) {
     memcpy(out, source, stack->element_size);
 }
 
-
+/**
+ * @brief Free the stack and its resources
+ * 
+ * @param stack Pointer to the stack to be freed
+ */
 void freeStack(Stack* stack) {
     free(stack->array);
     free(stack);
