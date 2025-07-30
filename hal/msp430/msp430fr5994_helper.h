@@ -89,6 +89,7 @@ extern "C"
     void gpio_output_init(uint8_t abs_pin);
     bool gpio_read(uint8_t abs_pin);
     uint64_t read_all_gpio_states(void);
+    void gpio_open_drain_drive(uint8_t abs_pin);
 
     void push_active_pins_to_stack(Stack *stack, uint8_t level);
     void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);

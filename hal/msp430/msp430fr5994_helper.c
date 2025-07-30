@@ -404,10 +404,10 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask,
     for (uint8_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++)
     {
         if ((blacklist_mask >> abs_pin) & 1)
-            continue; // Pin ignorieren
+            continue; // Skip blacklisted pins
 
-        gpio_pullup_init(abs_pin); // Pull-up aktivieren
-        gpio_input_init(abs_pin);  // Pin als Eingang konfigurieren
+        gpio_pullup_init(abs_pin);
+        gpio_input_init(abs_pin);  
 
         uint8_t port = abs_pin >> 3;
         uint8_t pin = abs_pin & 0x07;
@@ -484,6 +484,13 @@ void release_gpio_open_drain(uint8_t abs_pin)
 {
     gpio_pullup_init(abs_pin); // Set pin as input with pull-down resistor
     gpio_input_init(abs_pin); // Set pin as input
+}
+
+
+void gpio_open_drain_drive(uint8_t abs_pin)
+{
+    gpio_output_init(abs_pin); // Set pin as output
+    gpio_drive_low(abs_pin); // Drive pin low
 }
 
 /**

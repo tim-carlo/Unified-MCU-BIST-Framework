@@ -167,6 +167,9 @@ void push_active_pins_to_stack(Stack *stack, uint8_t level)
 {
     for (uint8_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++)
     {
+        if(gpio_blacklist_intern_mask & (1ULL << abs_pin))
+            continue; // Skip blacklisted pins
+            
         if (gpio_read(abs_pin) == level)
         {
             printf("Pushing active pin %lu to stack\n", abs_pin);
@@ -375,28 +378,23 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
  */
 void delay_us(uint32_t us)
 {
-    NRF_TIMER3->TASKS_STOP = 1;
+    NRF_TIMER3->TASKS_STOP  = 1;
     NRF_TIMER3->TASKS_CLEAR = 1;
 
-    NRF_TIMER3->PRESCALER = 4; // 1 MHz
-    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    //TIMER3: 1 MHz:  1 tick = 1 µs
+    NRF_TIMER3->PRESCALER = 4;
+    NRF_TIMER3->MODE      = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+    NRF_TIMER3->BITMODE   = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
 
+    NRF_TIMER3->CC[0] = us;
+    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
     NRF_TIMER3->TASKS_START = 1;
 
-    // Capture current timer value into CC[1]
-    NRF_TIMER3->TASKS_CAPTURE[1] = 1;
-    uint32_t start = NRF_TIMER3->CC[1];
-
-    while (1)
-    {
-        NRF_TIMER3->TASKS_CAPTURE[1] = 1;
-        uint32_t now = NRF_TIMER3->CC[1];
-        if ((now - start) >= us)
-            break;
-    }
+    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0) {}
 
     NRF_TIMER3->TASKS_STOP = 1;
+    // clear the flag
+    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
 }
 
 /**
@@ -406,10 +404,23 @@ void delay_us(uint32_t us)
  */
 void delay_ms(uint32_t ms)
 {
-    while (ms--)
-    {
-        delay_us(1000);
-    }
+    NRF_TIMER3->TASKS_STOP  = 1;
+    NRF_TIMER3->TASKS_CLEAR = 1;
+
+    //TIMER3: 1 MHz:  1 tick = 1 µs
+    NRF_TIMER3->PRESCALER = 4;
+    NRF_TIMER3->MODE      = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+    NRF_TIMER3->BITMODE   = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+
+    NRF_TIMER3->CC[0] = ms * 1000;
+    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
+    NRF_TIMER3->TASKS_START = 1;
+
+    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0) {}
+
+    NRF_TIMER3->TASKS_STOP = 1;
+    // clear the flag
+    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
 }
 
 /**
