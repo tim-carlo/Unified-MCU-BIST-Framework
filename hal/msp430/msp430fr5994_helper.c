@@ -132,8 +132,8 @@ void gpio_pullup_init(uint8_t abs_pin)
     uint16_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Enable pull-up resistor (REN = 1, OUT = 1)
-    *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
-    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
+    *(volatile uint8_t *)(base + PORT_REN_OFFSET) |= mask;
+    *(volatile uint8_t *)(base + PORT_OUT_OFFSET) |= mask;
 }
 
 /**
