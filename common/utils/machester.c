@@ -49,15 +49,14 @@ volatile uint8_t *rx_data = rx_default_data;
 
 void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
 {
-    // Initialize the Manchester encoder/decoder
-    TxPin = txPin; // Set the transmit pin
-    RxPin = rxPin; // Set the receive pin
-
-    // Configure both pins as open-drain (open-collector) outputs/inputs
+    TxPin = txPin;
+    RxPin = rxPin;
+    
+    // Configure both pins as open-drain
     gpio_open_drain(txPin); // Set Tx pin as open-drain output
     gpio_open_drain(rxPin); // Set Rx pin as open-drain input
 
-    // Initialize other variables
+    // Initialize variables
     rx_sample = 0;
     rx_last_sample = 0;
     rx_count = 0;
@@ -68,7 +67,8 @@ void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
     rx_numMB = 0;
     rx_curByte = 0;
 
-    rx_maxBytes = 2; // Default to 2 bytes for receiving data
+    rx_maxBytes = 2;
+    rx_data = rx_default_data;
 
     speedFactor = sF;
     // we don't use exact calculation of passed time spent outside of transmitter
