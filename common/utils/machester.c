@@ -47,7 +47,7 @@ volatile uint8_t rx_maxBytes = 2;
 volatile uint8_t rx_default_data[2];
 volatile uint8_t *rx_data = rx_default_data;
 
-void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t speedFactor)
+void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
 {
     // Initialize the Manchester encoder/decoder
     TxPin = txPin; // Set the transmit pin
@@ -70,7 +70,7 @@ void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t speedFactor)
 
     rx_maxBytes = 2; // Default to 2 bytes for receiving data
 
-    speedFactor = speedFactor;
+    speedFactor = sF;
     // we don't use exact calculation of passed time spent outside of transmitter
     // because of high ovehead associated with it, instead we use this
     // emprirically determined values to compensate for the time loss
