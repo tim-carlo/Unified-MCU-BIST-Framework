@@ -5,6 +5,9 @@
         "pindata.h": "c",
         "check_initial_state.h": "c",
         "nrf52840_helper.h": "c",
-        "locale": "c"
+        "locale": "c",
+        "msp430fr5994_helper.h": "c",
+        "stdbool.h": "c",
+        "printf.h": "c"
     }
 }

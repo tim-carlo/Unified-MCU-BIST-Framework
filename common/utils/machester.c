@@ -1,315 +1,466 @@
+/*
+This code is based on the Atmel Corporation Manchester
+Coding Basics Application Note.
+
+http://www.atmel.com/dyn/resources/prod_documents/doc9164.pdf
+
+Quotes from the application note:
+
+"Manchester coding states that there will always be a transition of the message signal
+at the mid-point of the data bit frame.
+What occurs at the bit edges depends on the state of the previous bit frame and
+does not always produce a transition. A logical '1' is defined as a mid-point transition
+from low to high and a '0' is a mid-point transition from high to low.
+
+We use Timing Based Manchester Decode.
+In this approach we will capture the time between each transition coming from the demodulation
+circuit."
+
+Timer 2 is used with a ATMega328. Timer 1 is used for a ATtiny85.
+
+This code gives a basic data rate as 1200 bauds. In manchester encoding we send 1 0 for a data bit 0.
+We send 0 1 for a data bit 1. This ensures an average over time of a fixed DC level in the TX/RX.
+This is required by the ASK RF link system to ensure its correct operation.
+The data rate is then 600 bits/s.
+*/
+
 #include "manchester.h"
-//#include "nrf52840_helper.h"
-#include <string.h>
+#include "nrf52840_helper.h"
 
-// The clock speed on the MSP is to inacurate to go higher than 2000 baud
-#define BAUD_RATE_MANCHESTER 100
-#define LONG_BIT_US (1000000UL / BAUD_RATE_MANCHESTER) // 500 us
-#define MID_BIT_US (LONG_BIT_US / 2)        // 250 us
-#define T_TIME_US MID_BIT_US                // 250 us
-#define T2_TIME_US LONG_BIT_US              // 500 us
+static int8_t RxPin = 255;
+static int8_t TxPin = 255;
+uint8_t applyWorkAround1Mhz = 0;
+uint8_t speedFactor = MAN_1200;
+uint16_t delay1 = 0;
+uint16_t delay2 = 0;
 
-#define T_WINDOW_US (T_TIME_US / 2) // ±50 % Toleranz (125 us)
-#define FRAME_TIMEOUT_US (64UL * LONG_BIT_US * 3UL)
+volatile static int16_t rx_sample = 0;
+volatile static int16_t rx_last_sample = 0;
+volatile static uint8_t rx_count = 0;
+volatile static uint8_t rx_sync_count = 0;
+volatile static uint8_t rx_mode = RX_MODE_IDLE;
 
-#define PREAMBLE_LENGTH 1
-#define PREAMBLE_BYTE 0xAA // Preamble byte for Manchester encoding
-#define CHECKSUM_LENGTH 1 // 1 byte checksum
+volatile uint16_t rx_manBits = 0;
+volatile uint8_t rx_numMB = 0;
+volatile uint8_t rx_curByte = 0;
+volatile uint8_t rx_maxBytes = 2;
+volatile uint8_t rx_default_data[2];
+volatile uint8_t *rx_data = rx_default_data;
 
-// Static variables to store pin configurations
-static volatile uint8_t tx_pin_num = 0;
-static volatile uint8_t rx_pin_num = 0;
-
-// Manchester decode state variables
-static volatile bool edge_detected = false;
-static volatile bool last_edge_was_rising = false;
-static volatile uint32_t edge_timestamp = 0;
-static volatile uint32_t last_edge_timestamp = 0;
-static volatile bool decode_active = false;
-static volatile bool current_bit_value = false;
-static volatile bool synchronized = false;
-static uint8_t *decode_buffer = NULL;
-static volatile uint16_t decode_bit_count = 0;
-static volatile uint16_t target_bit_count = 0;
-static volatile bool decode_error = false;
-
-// Helper function to check if timing is within acceptable window
-static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window)
+void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t speedFactor)
 {
-    return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window));
+    // Initialize the Manchester encoder/decoder
+    TxPin = txPin; // Set the transmit pin
+    RxPin = rxPin; // Set the receive pin
+
+    // Configure both pins as open-drain (open-collector) outputs/inputs
+    gpio_open_drain(txPin); // Set Tx pin as open-drain output
+    gpio_open_drain(rxPin); // Set Rx pin as open-drain input
+
+    // Initialize other variables
+    rx_sample = 0;
+    rx_last_sample = 0;
+    rx_count = 0;
+    rx_sync_count = 0;
+    rx_mode = RX_MODE_IDLE;
+
+    rx_manBits = 0;
+    rx_numMB = 0;
+    rx_curByte = 0;
+
+    rx_maxBytes = 2; // Default to 2 bytes for receiving data
+
+    speedFactor = speedFactor;
+    // we don't use exact calculation of passed time spent outside of transmitter
+    // because of high ovehead associated with it, instead we use this
+    // emprirically determined values to compensate for the time loss
+
+#if defined(NRF52840)
+    // 64 MHz core
+    uint16_t compensationFactor = 2;
+#elif defined(MSP430FR5994)
+    // 16 MHz core
+    uint16_t compensationFactor = 4;
+#endif
+
+
 }
 
-// Use existing get_elapsed_time function for time difference calculation
-static uint32_t get_time_diff(uint32_t start, uint32_t end)
+void manchester_transmit(uint8_t data)
 {
-    return get_elapsed_time(start, end);
+    uint8_t byteData[2] = {2, data};
+    transmitArray(2, byteData);
 }
 
-// Rising edge handler
-static void manchester_rising_handler(uint32_t pin)
-{
-    if (pin != rx_pin_num || !decode_active)
-        return;
-    edge_detected = true;
-    last_edge_was_rising = true;
-    edge_timestamp = get_timer_ticks(TIMER_A);
-}
+/*
+The 433.92 Mhz receivers have AGC, if no signal is present the gain will be set
+to its highest level.
 
-// Falling edge handler
-static void manchester_falling_handler(uint32_t pin)
-{
-    if (pin != rx_pin_num || !decode_active)
-        return;
-    edge_detected = true;
-    last_edge_was_rising = false;
-    edge_timestamp = get_timer_ticks(TIMER_A);
-}
+In this condition it will switch high to low at random intervals due to input noise.
+A CRO connected to the data line looks like 433.92 is full of transmissions.
 
-static uint8_t calculate_checksum(uint8_t *data, uint8_t length)
+Any ASK transmission method must first sent a capture signal of 101010........
+When the receiver has adjusted its AGC to the required level for the transmisssion
+the actual data transmission can occur.
+
+We send 14 0's 1010... It takes 1 to 3 10's for the receiver to adjust to
+the transmit level.
+
+The receiver waits until we have at least 10 10's and then a start pulse 01.
+The receiver is then operating correctly and we have locked onto the transmission.
+*/
+void manchester_transmitArray(uint8_t numBytes, uint8_t *data)
 {
-    uint8_t checksum = 0;
-    for (uint8_t i = 0; i < length; i++)
+
+#if SYNC_BIT_VALUE
+    for (int8_t i = 0; i < SYNC_PULSE_DEF; i++) // send capture pulses
     {
-        checksum ^= data[i];
+        sendOne(); // end of capture pulses
     }
-    return checksum;
-}
-
-static void mid_bit_duration(void)
-{
-    delay_us(MID_BIT_US);
-}
-
-static void send_zero(void)
-{
-    gpio_open_drain_drive(tx_pin_num);
-    mid_bit_duration();
-    release_gpio_open_drain(tx_pin_num);
-    mid_bit_duration();
-}
-
-static void send_one(void)
-{
-    release_gpio_open_drain(tx_pin_num);
-    mid_bit_duration();
-    gpio_open_drain_drive(tx_pin_num);
-    mid_bit_duration();
-}
-
-void manchester_init(uint8_t tx_pin, uint8_t rx_pin)
-{
-    tx_pin_num = tx_pin;
-    rx_pin_num = rx_pin;
-    release_gpio_open_drain(tx_pin);
-}
-
-void manchester_transmit_byte(uint8_t byte)
-{
-    release_gpio_open_drain(tx_pin_num);
-    for (int i = 7; i >= 0; i--)
+    sendZero(); // start data pulse
+#else
+    for (int8_t i = 0; i < SYNC_PULSE_DEF; i++) // send capture pulses
     {
-        if (byte & (1 << i))
-            send_one();
-        else
-            send_zero();
+        sendZero(); // end of capture pulses
     }
-    release_gpio_open_drain(tx_pin_num);
-}
+    sendOne(); // start data pulse
+#endif
 
-void manchester_transmit_array(uint8_t length, const uint8_t *data)
-{
-    if (data == NULL || length == 0)
-        return;
-
-    uint8_t total_length = PREAMBLE_LENGTH + length + CHECKSUM_LENGTH;
-    uint8_t transmit_buffer[PREAMBLE_LENGTH + 255 + CHECKSUM_LENGTH]; // Max 255 bytes payload
-
-    // Set preamble
-    transmit_buffer[0] = PREAMBLE_BYTE;
-    memcpy(&transmit_buffer[PREAMBLE_LENGTH], data, length);
-
-    // Calculate and append checksum
-    transmit_buffer[PREAMBLE_LENGTH + length] = calculate_checksum(&transmit_buffer[PREAMBLE_LENGTH], length);
-
-    // Transmit all bytes
-    for (uint8_t i = 0; i < total_length; i++)
+    // Send the user data
+    for (uint8_t i = 0; i < numBytes; i++)
     {
-        manchester_transmit_byte(transmit_buffer[i]);
-    }
-}
-
-bool manchester_receive_array(uint8_t *data, uint8_t length)
-{
-    if (data == NULL || length == 0)
-        return false;
-
-    printf("Starting Manchester decode for %d bytes\n", length);
-    printf("Timing params: T=%luus, 2T=%luus, Window=%luus\n",
-           T_TIME_US, T2_TIME_US, T_WINDOW_US);
-
-    decode_buffer = data;
-    target_bit_count = length * 8;
-    decode_bit_count = 0;
-    decode_error = false;
-    synchronized = false;
-    decode_active = true;
-
-    memset(data, 0, length);
-    start_timer(TIMER_A);
-
-    uint64_t blacklist = ~(1ULL << rx_pin_num);
-    gpio_listen_on_all_pins_interrupt(blacklist, manchester_rising_handler, manchester_falling_handler);
-
-    // 3. Start timer, capture first edge and discard this
-    edge_detected = false;
-    uint32_t timeout_start = get_timer_ticks(TIMER_A);
-    const uint32_t TIMEOUT_US = 1000000; // 1 second timeout
-
-    // Wait for first edge (discard)
-    while (!edge_detected)
-    {
-        if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US)
+        uint16_t mask = 0x01; // mask to send bits
+        uint8_t d = data[i] ^ DECOUPLING_MASK;
+        for (uint8_t j = 0; j < 8; j++)
         {
-            printf("Timeout waiting for first edge\n");
-            decode_active = false;
-            return false;
+            if ((d & mask) == 0)
+                sendZero();
+            else
+                sendOne();
+            mask <<= 1; // get next bit
+        } // end of byte
+    } // end of data
+
+    // Send 3 terminatings 0's to correctly terminate the previous bit and to turn the transmitter off
+#if SYNC_BIT_VALUE
+    sendOne();
+    sendOne();
+    sendOne();
+#else
+    sendZero();
+    sendZero();
+    sendZero();
+#endif
+} // end of send the data
+
+void sendZero(void) {
+    delay_us(delay1);
+    gpio_open_drain_drive(TxPin); // Drive low
+    delay_us(delay2);
+    release_gpio_open_drain(TxPin); // Release to high-impedance
+}
+
+void sendOne(void)
+{
+    delay_us(delay1);
+    release_gpio_open_drain(TxPin); // Set Tx pin high (send one)
+    delay_us(delay2);
+    gpio_open_drain_drive(TxPin); // Set Tx pin low (idle state)
+} // end of send one
+
+// TODO use repairing codes perhabs?
+// http://en.wikipedia.org/wiki/Hamming_code
+
+/*
+    format of the message including checksum and ID
+
+    [0][1][2][3][4][5][6][7][8][9][a][b][c][d][e][f]
+    [    ID    ][ checksum ][         data         ]
+                  checksum = ID xor data[7:4] xor data[3:0] xor 0b0011
+
+*/
+
+// decode 8 bit payload and 4 bit ID from the message, return true if checksum is correct, otherwise false
+uint8_t manchester_decodeMessage(uint16_t m, uint8_t *id, uint8_t *data)
+{
+    *data = (m & 0xFF);
+    *id = (m >> 12);
+    uint8_t ch = (m >> 8) & 0b1111;
+    uint8_t ech = (*id ^ *data ^ (*data >> 4) ^ 0b0011) & 0b1111;
+    return ch == ech;
+}
+
+// encode 8 bit payload, 4 bit ID and 4 bit checksum into 16 bit
+uint16_t manchester_encodeMessage(uint8_t id, uint8_t data)
+{
+    uint8_t chsum = (id ^ data ^ (data >> 4) ^ 0b0011) & 0b1111;
+    return ((id) << 12) | (chsum << 8) | (data);
+}
+
+void manchester_beginReceiveArray(uint8_t maxBytes, uint8_t *data)
+{
+    MANRX_BeginReceiveBytes(maxBytes, data);
+}
+
+void manchester_beginReceive(void)
+{
+    MANRX_BeginReceive();
+}
+
+uint8_t manchester_receiveComplete(void)
+{
+    return MANRX_ReceiveComplete();
+}
+
+uint8_t manchester_getMessage(void)
+{
+    return MANRX_GetMessage();
+}
+
+void manchester_stopReceive(void)
+{
+    MANRX_StopReceive();
+}
+
+void MANRX_SetupReceive(uint8_t speedFactor)
+{
+#if defined(NRF52840_XXAA)
+    // Beispiel: Samplingrate = 8x pro Bit, Bitdauer aus speedFactor ableiten
+    // Hier: 2T = Bitdauer, SAMPLES_PER_BIT = 8
+    uint32_t baudrate_tbl[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
+    uint32_t baud = baudrate_tbl[speedFactor];
+    uint32_t bit_time_us = 1000000UL / baud;
+    uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
+
+    // Set up the receive pin
+    gpio_open_drain(rx_pin_num);
+
+    // Configure timer 3 for Manchester RX
+    NVIC_DisableIRQ(TIMER3_IRQn);
+    NRF_TIMER3->TASKS_STOP = 1;
+    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer;
+    NRF_TIMER3->PRESCALER = 4; // 1 MHz
+    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
+    NRF_TIMER3->TASKS_CLEAR = 1;
+    NRF_TIMER3->CC[0] = sample_interval_us;
+    NRF_TIMER3->CC[1] = sample_interval_us;
+    NRF_TIMER3->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
+    NRF_TIMER3->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
+    NVIC_ClearPendingIRQ(TIMER3_IRQn);
+    NVIC_EnableIRQ(TIMER3_IRQn);
+#elif defined(__MSP430FR5994__)
+    // Beispiel: Samplingrate = 8x pro Bit, Bitdauer aus speedFactor ableiten
+    uint32_t baudrate_tbl[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
+    uint32_t baud = baudrate_tbl[speedFactor];
+    uint32_t bit_time_us = 1000000UL / baud;
+    uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
+
+    // RX-Pin als Open-Drain-Eingang
+    gpio_open_drain(rx_pin_num);
+
+    // Configure Timer A4 for Manchester RX
+    stop_timer(TIMER_A4);
+    volatile uint16_t *ctl = GET_TxxCTL(TIMER_A4);
+    volatile uint16_t *ccr0 = GET_TxxCCR0(TIMER_A4, 0);
+    *ctl = TASSEL__SMCLK | MC__UP | TACLR;                     // SMCLK, Up Mode, Clear
+    *ccr0 = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1; // Set CCR0 for sample interval
+    *ctl |= TAIE;                                              // Enable Timer Overflow A4 interrupt
+#endif
+}
+
+void MANRX_BeginReceive(void)
+{
+    rx_maxBytes = 2;
+    rx_data = rx_default_data;
+    rx_mode = RX_MODE_PRE;
+}
+
+void MANRX_BeginReceiveBytes(uint8_t maxBytes, uint8_t *data)
+{
+    rx_maxBytes = maxBytes;
+    rx_data = data;
+    rx_mode = RX_MODE_PRE;
+}
+
+void MANRX_StopReceive(void)
+{
+    rx_mode = RX_MODE_IDLE;
+}
+
+uint8_t MANRX_ReceiveComplete(void)
+{
+    return (rx_mode == RX_MODE_MSG);
+}
+
+uint8_t MANRX_GetMessage(void)
+{
+    return (((int16_t)rx_data[0]) << 8) | (int16_t)rx_data[1];
+}
+
+static void AddManBit(uint16_t *manBits, uint8_t *numMB,
+                      uint8_t *curByte, uint8_t *data,
+                      uint8_t bit)
+{
+    *manBits <<= 1;
+    *manBits |= bit;
+    (*numMB)++;
+    if (*numMB == 16)
+    {
+        uint8_t newData = 0;
+        for (int8_t i = 0; i < 8; i++)
+        {
+            // ManBits holds 16 bits of manchester data
+            // 1 = LO,HI
+            // 0 = HI,LO
+            // We can decode each bit by looking at the bottom bit of each pair.
+            newData <<= 1;
+            newData |= (*manBits & 1); // store the one
+            *manBits = *manBits >> 2;  // get next data bit
         }
-    }
-    edge_detected = false;
-    last_edge_timestamp = edge_timestamp;
+        data[*curByte] = newData ^ DECOUPLING_MASK;
+        (*curByte)++;
 
-    // 4-5. Synchronization phase: wait for 2T period
-    while (!synchronized && !decode_error)
-    {
-        timeout_start = get_timer_ticks(TIMER_A);
-        while (!edge_detected)
+        // added by caoxp @ https://github.com/caoxp
+        // compatible with unfixed-length data, with the data length defined by the first byte.
+        // at a maximum of 255 total data length.
+        if ((*curByte) == 1)
         {
-            if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US)
+            rx_maxBytes = data[0];
+        }
+
+        *numMB = 0;
+    }
+}
+
+#if defined(NRF52840_XXAA)
+void TIMER3_IRQHandler(void)
+{
+    if (NRF_TIMER3->EVENTS_COMPARE[0])
+    {
+        NRF_TIMER3->EVENTS_COMPARE[0] = 0; // Clear the event
+        MANRX_ISR();                       // Call the Manchester RX ISR
+    }
+}
+#elif defined(__MSP430FR5994__)
+void __attribute__((interrupt(TIMER4_A1_VECTOR))) TIMER4_A1_ISR(void)
+{
+    if (TA4IV & TAIV_TAIFG) // Check for Timer A4 overflow
+    {
+        MANRX_ISR(); // Call the Manchester RX ISR
+    }
+}
+#endif
+void MANRX_ISR(void)
+{
+    if (rx_mode < RX_MODE_MSG) // receiving something
+    {
+        // Increment counter
+        rx_count += 8;
+
+        // Check for value change
+        // rx_sample = digitalRead(RxPin);
+        // caoxp@github,
+        // add filter.
+        // sample twice, only the same means a change.
+        static uint8_t rx_sample_0 = 0;
+        static uint8_t rx_sample_1 = 0;
+        rx_sample_1 = gpio_read(RxPin);
+        if (rx_sample_1 == rx_sample_0)
+        {
+            rx_sample = rx_sample_1;
+        }
+        rx_sample_0 = rx_sample_1;
+
+        // check sample transition
+        uint8_t transition = (rx_sample != rx_last_sample);
+
+        if (rx_mode == RX_MODE_PRE)
+        {
+            // Wait for first transition to HIGH
+            if (transition && (rx_sample == 1))
             {
-                printf("Timeout waiting for sync edge\n");
-                decode_active = false;
-                return false;
+                rx_count = 0;
+                rx_sync_count = 0;
+                rx_mode = RX_MODE_SYNC;
             }
         }
-
-        uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
-        //    printf("Sync diff: %luus (expected ~%luus)\n", time_diff, T2_TIME_US);
-
-        // Check if this is a 2T period (synchronization)
-        if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US))
+        else if (rx_mode == RX_MODE_SYNC)
         {
-            synchronized = true;
-            // 6. Read current logic level and save as current bit value
-            current_bit_value = gpio_read(rx_pin_num);
-            //  printf("Synchronized! Current level: %d\n", current_bit_value);
-        }
-
-        last_edge_timestamp = edge_timestamp;
-        edge_detected = false;
-    }
-
-    if (!synchronized)
-    {
-        printf("Synchronization failed\n");
-        decode_active = false;
-        return false;
-    }
-
-    // Main decode loop
-    while (decode_bit_count < target_bit_count && !decode_error)
-    {
-        edge_detected = false;
-        timeout_start = get_timer_ticks(TIMER_A);
-
-        while (!edge_detected)
-        {
-            if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3)
+            // Initial sync block
+            if (transition)
             {
-                printf("Timeout waiting for data edge\n");
-                decode_error = true;
-                break;
-            }
-        }
-        if (decode_error)
-            break;
-
-        uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
-        bool next_bit;
-        bool valid_edge = false;
-
-        // printf("Edge diff: %luus (T=%lu, 2T=%lu)\n", time_diff, T_TIME_US, T2_TIME_US);
-
-        // 7a-c. Compare stored count value with T and 2T
-        if (is_timing_within_window(time_diff, T_TIME_US, T_WINDOW_US))
-        {
-            // 7b. Value = T: need to capture next edge to confirm
-            last_edge_timestamp = edge_timestamp;
-            edge_detected = false;
-            timeout_start = get_timer_ticks(TIMER_A);
-
-            while (!edge_detected)
-            {
-                if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3)
+                if (((rx_sync_count < (SYNC_PULSE_MIN * 2)) || (rx_last_sample == 1)) &&
+                    ((rx_count < MinCount) || (rx_count > MaxCount)))
                 {
-                    printf("Timeout waiting for confirm edge\n");
-                    decode_error = true;
-                    break;
+                    // First 20 bits and all 1 bits are expected to be regular
+                    // Transition was too slow/fast
+                    rx_mode = RX_MODE_PRE;
+                }
+                else if ((rx_last_sample == 0) &&
+                         ((rx_count < MinCount) || (rx_count > MaxLongCount)))
+                {
+                    // 0 bits after the 20th bit are allowed to be a double bit
+                    // Transition was too slow/fast
+                    rx_mode = RX_MODE_PRE;
+                }
+                else
+                {
+                    rx_sync_count++;
+
+                    if ((rx_last_sample == 0) &&
+                        (rx_sync_count >= (SYNC_PULSE_MIN * 2)) &&
+                        (rx_count >= MinLongCount))
+                    {
+                        // We have seen at least 10 regular transitions
+                        // Lock sequence ends with unencoded bits 01
+                        // This is encoded and TX as HI,LO,LO,HI
+                        // We have seen a long low - we are now locked!
+                        rx_mode = RX_MODE_DATA;
+                        rx_manBits = 0;
+                        rx_numMB = 0;
+                        rx_curByte = 0;
+                    }
+                    else if (rx_sync_count >= (SYNC_PULSE_MAX * 2))
+                    {
+                        rx_mode = RX_MODE_PRE;
+                    }
+                    rx_count = 0;
                 }
             }
-            if (decode_error)
-                break;
-
-            uint32_t second_time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
-            // printf("Confirm diff: %luus (expected ~%luus)\n", second_time_diff, T_TIME_US);
-
-            if (is_timing_within_window(second_time_diff, T_TIME_US, T_WINDOW_US))
-            {
-                next_bit = current_bit_value;
-                valid_edge = true;
-            }
-            else
-            {
-                printf("Invalid confirm timing\n");
-                decode_error = true;
-            }
         }
-        else if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US))
+        else if (rx_mode == RX_MODE_DATA)
         {
-            // 7c. Value = 2T: transition in middle
-            next_bit = !current_bit_value;
-            valid_edge = true;
-        }
-        else
-        {
-            printf("Invalid timing\n");
-            decode_error = true;
-        }
-
-        if (valid_edge && !decode_error)
-        {
-            // 8. Store next bit in buffer
-            uint8_t byte_index = decode_bit_count / 8;
-            uint8_t bit_index = 7 - (decode_bit_count % 8);
-
-            if (next_bit)
+            // Receive data
+            if (transition)
             {
-                data[byte_index] |= (1 << bit_index);
+                if ((rx_count < MinCount) ||
+                    (rx_count > MaxLongCount))
+                {
+                    // wrong signal lenght, discard the message
+                    rx_mode = RX_MODE_PRE;
+                }
+                else
+                {
+                    if (rx_count >= MinLongCount) // was the previous bit a double bit?
+                    {
+                        AddManBit(&rx_manBits, &rx_numMB, &rx_curByte, rx_data, rx_last_sample);
+                    }
+                    if ((rx_sample == 1) &&
+                        (rx_curByte >= rx_maxBytes))
+                    {
+                        rx_mode = RX_MODE_MSG;
+                    }
+                    else
+                    {
+                        // Add the current bit
+                        AddManBit(&rx_manBits, &rx_numMB, &rx_curByte, rx_data, rx_sample);
+                        rx_count = 0;
+                    }
+                }
             }
-
-            decode_bit_count++;
-            //  printf("Decoded bit %d: %d\n", decode_bit_count, next_bit);
-
-            // 10. Set current bit to next bit for next iteration
-            current_bit_value = next_bit;
-            last_edge_timestamp = edge_timestamp;
         }
 
-        edge_detected = false;
+        // Get ready for next loop
+        rx_last_sample = rx_sample;
     }
-
-    decode_active = false;
-
-    bool success = (decode_bit_count == target_bit_count) && !decode_error;
-    printf("Decode %s, bits: %d/%d\n", success ? "success" : "fail", decode_bit_count, target_bit_count);
-    return success;
 }
