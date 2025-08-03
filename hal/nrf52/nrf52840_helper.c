@@ -16,6 +16,7 @@ uint64_t gpio_blacklist_intern_mask = 0; // Global blacklist for GPIO pins
 gpio_interrupt_handler_t rising_handler_global = NULL;
 gpio_interrupt_handler_t falling_handler_global = NULL;
 
+
 static volatile uint32_t prev_input_state_p0 = 0;
 static volatile uint32_t prev_input_state_p1 = 0;
 
@@ -248,6 +249,20 @@ void configure_pin_sense(uint8_t abs_pin, bool sense_low)
         port->PIN_CNF[pin] |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, High);
 }
 
+
+/**
+ * @brief Listen on a specific GPIO pin for rising and falling edges
+ * @param abs_pin Absolute pin number (0-47)
+ * @param falling_handler Handler for falling edges
+ * @param rising_handler Handler for rising edges
+ */
+void gpio_listen_on_pin_interrupt(uint8_t abs_pin,
+                                   gpio_interrupt_handler_t falling_handler,
+                                   gpio_interrupt_handler_t rising_handler)
+{
+    
+}
+
 /**
  * @brief Function to listen for GPIO interrupts on all pins, excluding blacklisted ones
  *
@@ -287,6 +302,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
     NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
     NVIC_EnableIRQ(GPIOTE_IRQn);
 }
+
 
 void GPIOTE_IRQHandler(void)
 {

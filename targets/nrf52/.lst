@@ -12,1297 +12,2006 @@
   12              		.eabi_attribute 30, 2
   13              		.eabi_attribute 34, 1
   14              		.eabi_attribute 18, 4
-  15              		.file	"main.c"
+  15              		.file	"machester.c"
   16              		.text
   17              	.Ltext0:
   18              		.cfi_sections	.debug_frame
-  19              		.file 1 "/Users/timcarlo/Desktop/testsoftware/core/main.c"
-  20              		.section	.text.rising_handler,"ax",%progbits
+  19              		.file 1 "/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c"
+  20              		.section	.text.manchester_falling_handler,"ax",%progbits
   21              		.align	1
   22              		.p2align 2,,3
-  23              		.global	rising_handler
-  24              		.syntax unified
-  25              		.thumb
-  26              		.thumb_func
-  28              	rising_handler:
-  29              	.LVL0:
-  30              	.LFB135:
-   1:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Include necessary headers depending on the platform
-   2:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(PICO_RP2040)
-   3:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "rp2040_helper.h"
-   4:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "pico/stdlib.h"
-   5:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdio.h>
-   6:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "pico/stdio.h"
-   7:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdint.h>
-   8:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdbool.h>
-   9:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  10:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Define pin mappings for the RP2040
-  11:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT 0
-  12:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 0
-  13:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT 0
-  14:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 1
-  15:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT 0
-  16:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 2
-  17:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  18:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Replace printf to include chip family in the output
-  19:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #undef printf
-  20:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define printf(fmt, ...) \
-  21:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     ((void)fprintf(stdout, "[%s] " fmt, get_chip_family_name(), ##__VA_ARGS__))
-  22:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  23:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  24:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
-  25:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_helper.h"
-  26:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-  27:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdbool.h>
-  28:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdint.h>
-  29:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  30:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Define pin mappings for MSP430
-  31:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT 1
-  32:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 0
-  33:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT 1
-  34:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 1
-  35:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT 3
-  36:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 7
-  37:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
-  38:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
-  39:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  40:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_A TIMER_A4
-  41:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_B TIMER_B0
-  42:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  43:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
-  45:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840.h"
-  46:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_helper.h"
-  47:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "manchester_nrf_helper.h"
-  48:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  49:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-  50:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 3
-  51:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT NRF_P1
-  52:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  53:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 3
-  54:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT NRF_P0
-  55:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 4
-  56:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT NRF_P0
-  57:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  58:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
-  59:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
-  60:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  61:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  62:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  63:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "stack.h"
-  64:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "pindata.h"
-  65:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "check_initial_state.h"
-  66:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  67:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Handshake timing constants
-  68:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIAL_DELAY_MAX_MS 10000
-  69:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  70:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MINIMUM_SIGNAL_DURATION_MS 90     // Minimum duration for a valid signal
-  71:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_SIGNAL_DURATION_MS 100        // Duration of SYN signal in ms
-  72:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ACK_SIGNAL_DURATION_MS 500        // Duration of ACK signal in ms
-  73:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_ACK_SIGNAL_DURATION_MS 1000   // Duration of SYN-ACK signal in ms
-  74:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SIGNAL_DURATION_TIME_INACURACY 10 // Allowed inaccuracy in signal duration in ms
-  75:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  76:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
-  77:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_SYN_ACK_MS 100         // Duration of ACK signal in ms
-  78:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_ACK_MS 1000            // Duration of SYN-ACK signal in ms
-  79:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  80:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBOUNCE_DELAY_US 20
-  81:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  82:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklistin
-  83:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_TRIES 5           // Maximum number of tries for a pin before giving up
-  84:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  85:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIATOR_ROLE 0
-  86:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define RESPONDER_ROLE 1
-  87:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  88:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PIN_EVENT_QUEUE_SIZE 32
-  89:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  90:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef struct
-  91:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  92:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint8_t pin;     // Pin number
-  93:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_ack;     // True if this is an ACK signal, false otherwise
-  94:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_syn_ack; // True if this is a SYN-ACK signal, false otherwise
-  95:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_syn;     // True if this is a SYN signal, false otherwise
-  96:/Users/timcarlo/Desktop/testsoftware/core/main.c **** } PinEvent;
-  97:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  98:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Global variables
-  99:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
- 100:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 101:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State tracking
- 102:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool red_led_on = false;
- 103:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool green_led_on = false;
- 104:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 105:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile PinEvent last_event;
- 106:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile bool last_event_valid = false;
- 107:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 108:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State machine enum
- 109:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef enum
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 111:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     INIT,
- 112:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     MAYBE_RESPONDER,
- 113:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     INITIATOR,
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     RESPONDER,
- 115:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     SUCCESS,
- 116:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     FAILED,
- 117:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     SCANNED_ALL_PINS
- 118:/Users/timcarlo/Desktop/testsoftware/core/main.c **** } State;
- 119:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 120:/Users/timcarlo/Desktop/testsoftware/core/main.c **** State state = INIT;
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Flags controlled via interrupts
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 124:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Pin that is currently being drive
- 125:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t selected_pin = 0;
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData *selected_pin_data = NULL;     // Pointer to the currently selected pin data
- 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
- 128:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 129:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Interrupt handler for rising/falling edges on test pin
- 130:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void rising_handler(uint32_t pin)
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  31              		.loc 1 131 1 view -0
-  32              		.cfi_startproc
-  33              		@ args = 0, pretend = 0, frame = 8
-  34              		@ frame_needed = 0, uses_anonymous_args = 0
- 132:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == -1)
-  35              		.loc 1 132 5 view .LVU1
-  36              		.loc 1 132 13 is_stmt 0 view .LVU2
-  37 0000 2D4B     		ldr	r3, .L16
-  38 0002 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
-  39              		.loc 1 132 8 view .LVU3
-  40 0004 8342     		cmp	r3, r0
-  41 0006 30D0     		beq	.L11
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == -1)
-  42              		.loc 1 131 1 view .LVU4
-  43 0008 30B5     		push	{r4, r5, lr}
-  44              		.cfi_def_cfa_offset 12
-  45              		.cfi_offset 4, -12
-  46              		.cfi_offset 5, -8
-  47              		.cfi_offset 14, -4
-  48              		.loc 1 132 51 discriminator 1 view .LVU5
-  49 000a 2C4D     		ldr	r5, .L16+4
-  50 000c 00EB4003 		add	r3, r0, r0, lsl #1
-  51 0010 05EB8305 		add	r5, r5, r3, lsl #2
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == -1)
-  52              		.loc 1 131 1 view .LVU6
-  53 0014 83B0     		sub	sp, sp, #12
-  54              		.cfi_def_cfa_offset 24
-  55              		.loc 1 132 35 discriminator 1 view .LVU7
-  56 0016 AB68     		ldr	r3, [r5, #8]
-  57 0018 0133     		adds	r3, r3, #1
-  58 001a 0446     		mov	r4, r0
-  59 001c 23D0     		beq	.L1
- 133:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 134:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t current_ticks = get_timer_ticks(TIMER_B);
-  60              		.loc 1 135 5 is_stmt 1 view .LVU8
-  61              		.loc 1 135 30 is_stmt 0 view .LVU9
-  62 001e 2848     		ldr	r0, .L16+8
-  63              	.LVL1:
-  64              		.loc 1 135 30 view .LVU10
-  65 0020 FFF7FEFF 		bl	get_timer_ticks
-  66              	.LVL2:
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
-  67              		.loc 1 136 32 view .LVU11
-  68 0024 0023     		movs	r3, #0
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
-  69              		.loc 1 135 30 view .LVU12
-  70 0026 0246     		mov	r2, r0
-  71              	.LVL3:
-  72              		.loc 1 136 5 is_stmt 1 view .LVU13
-  73              		.loc 1 136 32 is_stmt 0 view .LVU14
-  74 0028 1946     		mov	r1, r3
-  75 002a A868     		ldr	r0, [r5, #8]
-  76              	.LVL4:
-  77              		.loc 1 136 32 view .LVU15
-  78 002c FFF7FEFF 		bl	timer_diff_ms
-  79              	.LVL5:
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = -1;
-  80              		.loc 1 137 37 view .LVU16
-  81 0030 4FF0FF33 		mov	r3, #-1
-  82              	.LVL6:
-  83              		.loc 1 137 5 is_stmt 1 view .LVU17
- 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (signal_duration < MINIMUM_SIGNAL_DURATION_MS)
-  84              		.loc 1 139 8 is_stmt 0 view .LVU18
-  85 0034 5928     		cmp	r0, #89
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = -1;
-  86              		.loc 1 137 37 view .LVU19
-  87 0036 AB60     		str	r3, [r5, #8]
-  88              		.loc 1 139 5 is_stmt 1 view .LVU20
-  89              		.loc 1 139 8 is_stmt 0 view .LVU21
-  90 0038 15D9     		bls	.L1
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     PinEvent event = {0};
-  91              		.loc 1 142 5 is_stmt 1 view .LVU22
-  92              	.LVL7:
- 143:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (signal_duration >= SYN_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
-  93              		.loc 1 144 5 view .LVU23
-  94              		.loc 1 144 84 is_stmt 0 view .LVU24
-  95 003a A0F15A03 		sub	r3, r0, #90
-  96              		.loc 1 144 8 view .LVU25
-  97 003e 142B     		cmp	r3, #20
-  98 0040 14D9     		bls	.L15
- 145:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         signal_duration <= SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 146:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, false, true};
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 150:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else if (signal_duration >= SYN_ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
-  99              		.loc 1 151 10 is_stmt 1 view .LVU26
- 100              		.loc 1 151 93 is_stmt 0 view .LVU27
- 101 0042 A0F2DE33 		subw	r3, r0, #990
- 102              		.loc 1 151 13 view .LVU28
- 103 0046 142B     		cmp	r3, #20
- 104 0048 22D8     		bhi	.L6
- 105              	.LBB2:
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 106              		.loc 1 154 9 is_stmt 1 view .LVU29
- 107              		.loc 1 154 26 is_stmt 0 view .LVU30
- 108 004a 0123     		movs	r3, #1
- 155:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 156:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 109              		.loc 1 156 20 view .LVU31
- 110 004c 4FF00001 		mov	r1, #0
- 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 111              		.loc 1 154 26 view .LVU32
- 112 0050 1C48     		ldr	r0, .L16+12
- 113              	.LVL8:
- 114              		.loc 1 156 20 view .LVU33
- 115 0052 1D4A     		ldr	r2, .L16+16
- 155:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 116              		.loc 1 155 15 view .LVU34
- 117 0054 8DF80440 		strb	r4, [sp, #4]
- 118              		.loc 1 156 20 view .LVU35
- 119 0058 8DF80510 		strb	r1, [sp, #5]
- 120 005c ADF80630 		strh	r3, [sp, #6]	@ movhi
- 121 0060 0199     		ldr	r1, [sp, #4]
- 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 122              		.loc 1 154 26 view .LVU36
- 123 0062 0370     		strb	r3, [r0]
- 155:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 124              		.loc 1 155 9 is_stmt 1 view .LVU37
- 125              	.LVL9:
- 126              		.loc 1 156 9 view .LVU38
- 127              		.loc 1 156 20 is_stmt 0 view .LVU39
- 128 0064 1160     		str	r1, [r2]
- 129              	.LVL10:
- 130              	.L1:
- 131              		.loc 1 156 20 view .LVU40
- 132              	.LBE2:
- 157:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else if (signal_duration >= ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
- 159:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 161:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, true, false, false};
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 164:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 165:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 133              		.loc 1 165 1 view .LVU41
- 134 0066 03B0     		add	sp, sp, #12
- 135              		.cfi_def_cfa_offset 12
- 136              		@ sp needed
- 137 0068 30BD     		pop	{r4, r5, pc}
- 138              	.LVL11:
- 139              	.L11:
- 140              		.cfi_def_cfa_offset 0
- 141              		.cfi_restore 4
- 142              		.cfi_restore 5
- 143              		.cfi_restore 14
- 144              		.loc 1 165 1 view .LVU42
- 145 006a 7047     		bx	lr
- 146              	.LVL12:
- 147              	.L15:
- 148              		.cfi_def_cfa_offset 24
- 149              		.cfi_offset 4, -12
- 150              		.cfi_offset 5, -8
- 151              		.cfi_offset 14, -4
- 152              	.LBB3:
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 153              		.loc 1 147 9 is_stmt 1 view .LVU43
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 154              		.loc 1 148 9 view .LVU44
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 155              		.loc 1 149 20 is_stmt 0 view .LVU45
- 156 006c 4FF48072 		mov	r2, #256
- 157 0070 4FF00000 		mov	r0, #0
- 158              	.LVL13:
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 159              		.loc 1 149 20 view .LVU46
- 160 0074 8DF80500 		strb	r0, [sp, #5]
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 161              		.loc 1 147 15 view .LVU47
- 162 0078 8DF80440 		strb	r4, [sp, #4]
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 163              		.loc 1 149 20 view .LVU48
- 164 007c ADF80620 		strh	r2, [sp, #6]	@ movhi
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 165              		.loc 1 148 26 view .LVU49
- 166 0080 1049     		ldr	r1, .L16+12
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 167              		.loc 1 149 20 view .LVU50
- 168 0082 114B     		ldr	r3, .L16+16
- 169              	.LVL14:
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 170              		.loc 1 149 20 view .LVU51
- 171 0084 019A     		ldr	r2, [sp, #4]
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 172              		.loc 1 148 26 view .LVU52
- 173 0086 0120     		movs	r0, #1
- 174 0088 0870     		strb	r0, [r1]
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 175              		.loc 1 149 9 is_stmt 1 view .LVU53
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 176              		.loc 1 149 20 is_stmt 0 view .LVU54
- 177 008a 1A60     		str	r2, [r3]
- 178              	.LBE3:
- 179              		.loc 1 165 1 view .LVU55
- 180 008c 03B0     		add	sp, sp, #12
- 181              		.cfi_remember_state
- 182              		.cfi_def_cfa_offset 12
- 183              		@ sp needed
- 184 008e 30BD     		pop	{r4, r5, pc}
- 185              	.LVL15:
- 186              	.L6:
- 187              		.cfi_restore_state
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 188              		.loc 1 158 10 is_stmt 1 view .LVU56
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 189              		.loc 1 158 89 is_stmt 0 view .LVU57
- 190 0090 A0F5F570 		sub	r0, r0, #490
- 191              	.LVL16:
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 192              		.loc 1 158 13 view .LVU58
- 193 0094 1428     		cmp	r0, #20
- 194 0096 E6D8     		bhi	.L1
- 195              	.LBB4:
- 161:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 196              		.loc 1 161 9 is_stmt 1 view .LVU59
- 197              	.LVL17:
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 198              		.loc 1 162 9 view .LVU60
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 199              		.loc 1 162 26 is_stmt 0 view .LVU61
- 200 0098 0123     		movs	r3, #1
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 201              		.loc 1 163 20 view .LVU62
- 202 009a 4FF00001 		mov	r1, #0	@ movhi
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 203              		.loc 1 162 26 view .LVU63
- 204 009e 0948     		ldr	r0, .L16+12
- 205              	.LVL18:
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 206              		.loc 1 163 20 view .LVU64
- 207 00a0 094A     		ldr	r2, .L16+16
- 161:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 208              		.loc 1 161 15 view .LVU65
- 209 00a2 8DF80440 		strb	r4, [sp, #4]
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 210              		.loc 1 163 20 view .LVU66
- 211 00a6 8DF80530 		strb	r3, [sp, #5]
- 212 00aa ADF80610 		strh	r1, [sp, #6]	@ movhi
- 213 00ae 0199     		ldr	r1, [sp, #4]
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 214              		.loc 1 162 26 view .LVU67
- 215 00b0 0370     		strb	r3, [r0]
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 216              		.loc 1 163 9 is_stmt 1 view .LVU68
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 217              		.loc 1 163 20 is_stmt 0 view .LVU69
- 218 00b2 1160     		str	r1, [r2]
- 219              	.LVL19:
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 220              		.loc 1 163 20 view .LVU70
- 221 00b4 D7E7     		b	.L1
- 222              	.L17:
- 223 00b6 00BF     		.align	2
- 224              	.L16:
- 225 00b8 00000000 		.word	current_driven_pin
- 226 00bc 00000000 		.word	pin_data
- 227 00c0 00900040 		.word	1073778688
- 228 00c4 00000000 		.word	last_event_valid
- 229 00c8 00000000 		.word	last_event
- 230              	.LBE4:
- 231              		.cfi_endproc
- 232              	.LFE135:
- 234              		.section	.text.falling_handler,"ax",%progbits
- 235              		.align	1
- 236              		.p2align 2,,3
- 237              		.global	falling_handler
- 238              		.syntax unified
- 239              		.thumb
- 240              		.thumb_func
- 242              	falling_handler:
- 243              	.LVL20:
- 244              	.LFB136:
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void falling_handler(uint32_t pin)
- 168:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 245              		.loc 1 168 1 is_stmt 1 view -0
- 246              		.cfi_startproc
- 247              		@ args = 0, pretend = 0, frame = 0
- 248              		@ frame_needed = 0, uses_anonymous_args = 0
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin)
- 249              		.loc 1 169 5 view .LVU72
- 250              		.loc 1 169 13 is_stmt 0 view .LVU73
- 251 0000 084B     		ldr	r3, .L24
- 252 0002 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
- 253              		.loc 1 169 8 view .LVU74
- 254 0004 8342     		cmp	r3, r0
- 255 0006 0BD0     		beq	.L21
- 170:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 171:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 172:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t current_ticks = get_timer_ticks(TIMER_B);
- 256              		.loc 1 172 5 is_stmt 1 view .LVU75
- 168:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin)
- 257              		.loc 1 168 1 is_stmt 0 view .LVU76
- 258 0008 10B5     		push	{r4, lr}
- 259              		.cfi_def_cfa_offset 8
- 260              		.cfi_offset 4, -8
- 261              		.cfi_offset 14, -4
- 262 000a 0446     		mov	r4, r0
- 263              		.loc 1 172 30 view .LVU77
- 264 000c 0648     		ldr	r0, .L24+4
- 265              	.LVL21:
- 266              		.loc 1 172 30 view .LVU78
- 267 000e FFF7FEFF 		bl	get_timer_ticks
- 268              	.LVL22:
- 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = current_ticks;
- 269              		.loc 1 173 5 is_stmt 1 view .LVU79
- 270              		.loc 1 173 37 is_stmt 0 view .LVU80
- 271 0012 064B     		ldr	r3, .L24+8
- 272 0014 04EB4404 		add	r4, r4, r4, lsl #1
- 273              	.LVL23:
- 274              		.loc 1 173 37 view .LVU81
- 275 0018 03EB8403 		add	r3, r3, r4, lsl #2
- 276 001c 9860     		str	r0, [r3, #8]
- 174:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 277              		.loc 1 174 1 view .LVU82
- 278 001e 10BD     		pop	{r4, pc}
- 279              	.LVL24:
- 280              	.L21:
- 281              		.cfi_def_cfa_offset 0
- 282              		.cfi_restore 4
- 283              		.cfi_restore 14
- 284              		.loc 1 174 1 view .LVU83
- 285 0020 7047     		bx	lr
- 286              	.L25:
- 287 0022 00BF     		.align	2
- 288              	.L24:
- 289 0024 00000000 		.word	current_driven_pin
- 290 0028 00900040 		.word	1073778688
- 291 002c 00000000 		.word	pin_data
- 292              		.cfi_endproc
- 293              	.LFE136:
- 295              		.section	.text.turn_off_leds,"ax",%progbits
- 296              		.align	1
- 297              		.p2align 2,,3
- 298              		.global	turn_off_leds
- 299              		.syntax unified
- 300              		.thumb
- 301              		.thumb_func
- 303              	turn_off_leds:
- 304              	.LFB137:
- 175:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 176:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void turn_off_leds(void)
- 177:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 305              		.loc 1 177 1 is_stmt 1 view -0
- 306              		.cfi_startproc
- 307              		@ args = 0, pretend = 0, frame = 0
- 308              		@ frame_needed = 0, uses_anonymous_args = 0
- 178:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (red_led_on)
- 309              		.loc 1 178 5 view .LVU85
- 177:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (red_led_on)
- 310              		.loc 1 177 1 is_stmt 0 view .LVU86
- 311 0000 10B5     		push	{r4, lr}
- 312              		.cfi_def_cfa_offset 8
- 313              		.cfi_offset 4, -8
- 314              		.cfi_offset 14, -4
- 315              		.loc 1 178 9 view .LVU87
- 316 0002 094C     		ldr	r4, .L38
- 317              		.loc 1 178 8 view .LVU88
- 318 0004 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
- 319 0006 4BB9     		cbnz	r3, .L36
- 320              	.L27:
- 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 180:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(ABSOLUTE_PIN_RED);
- 181:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         red_led_on = false;
- 182:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 183:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (green_led_on)
- 321              		.loc 1 183 5 is_stmt 1 view .LVU89
- 322              		.loc 1 183 9 is_stmt 0 view .LVU90
- 323 0008 084C     		ldr	r4, .L38+4
- 324              		.loc 1 183 8 view .LVU91
- 325 000a 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
- 326 000c 03B9     		cbnz	r3, .L37
- 184:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 185:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(ABSOLUTE_PIN_GREEN);
- 186:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         green_led_on = false;
- 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 188:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 327              		.loc 1 188 1 view .LVU92
- 328 000e 10BD     		pop	{r4, pc}
- 329              	.L37:
- 185:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         green_led_on = false;
- 330              		.loc 1 185 9 is_stmt 1 view .LVU93
- 331 0010 0420     		movs	r0, #4
- 332 0012 FFF7FEFF 		bl	gpio_drive_low
- 333              	.LVL25:
- 186:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 334              		.loc 1 186 9 view .LVU94
- 186:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 335              		.loc 1 186 22 is_stmt 0 view .LVU95
- 336 0016 0023     		movs	r3, #0
- 337 0018 2370     		strb	r3, [r4]
- 338              		.loc 1 188 1 view .LVU96
- 339 001a 10BD     		pop	{r4, pc}
- 340              	.L36:
- 180:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         red_led_on = false;
- 341              		.loc 1 180 9 is_stmt 1 view .LVU97
- 342 001c 0320     		movs	r0, #3
- 343 001e FFF7FEFF 		bl	gpio_drive_low
- 344              	.LVL26:
- 181:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 345              		.loc 1 181 9 view .LVU98
- 181:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 346              		.loc 1 181 20 is_stmt 0 view .LVU99
- 347 0022 0023     		movs	r3, #0
- 348 0024 2370     		strb	r3, [r4]
- 349 0026 EFE7     		b	.L27
- 350              	.L39:
- 351              		.align	2
- 352              	.L38:
- 353 0028 00000000 		.word	red_led_on
- 354 002c 00000000 		.word	green_led_on
- 355              		.cfi_endproc
- 356              	.LFE137:
- 358              		.section	.rodata.led_test_routine.str1.4,"aMS",%progbits,1
- 359              		.align	2
- 360              	.LC0:
- 361 0000 53746172 		.ascii	"Starting LED test...\012\000"
- 361      74696E67 
- 361      204C4544 
- 361      20746573 
- 361      742E2E2E 
- 362 0016 0000     		.align	2
- 363              	.LC1:
- 364 0018 4C454420 		.ascii	"LED test complete.\012\000"
- 364      74657374 
- 364      20636F6D 
- 364      706C6574 
- 364      652E0A00 
- 365              		.section	.text.led_test_routine,"ax",%progbits
- 366              		.align	1
- 367              		.p2align 2,,3
- 368              		.global	led_test_routine
- 369              		.syntax unified
- 370              		.thumb
- 371              		.thumb_func
- 373              	led_test_routine:
- 374              	.LFB138:
- 189:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 190:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void led_test_routine(void)
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 375              		.loc 1 191 1 is_stmt 1 view -0
- 376              		.cfi_startproc
- 377              		@ args = 0, pretend = 0, frame = 0
- 378              		@ frame_needed = 0, uses_anonymous_args = 0
- 192:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Starting LED test...\n");
- 379              		.loc 1 192 5 view .LVU101
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Starting LED test...\n");
- 380              		.loc 1 191 1 is_stmt 0 view .LVU102
- 381 0000 10B5     		push	{r4, lr}
- 382              		.cfi_def_cfa_offset 8
- 383              		.cfi_offset 4, -8
- 384              		.cfi_offset 14, -4
- 385              		.loc 1 192 5 view .LVU103
- 386 0002 1348     		ldr	r0, .L46
- 387 0004 FFF7FEFF 		bl	printf_
- 388              	.LVL27:
- 193:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 194:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Blink red LED 5 times
- 195:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint32_t i = 0; i < 5; i++)
- 389              		.loc 1 195 5 is_stmt 1 view .LVU104
- 390              	.LBB5:
- 391              		.loc 1 195 10 view .LVU105
- 392              		.loc 1 195 28 discriminator 1 view .LVU106
- 393              	.LBE5:
- 192:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 394              		.loc 1 192 5 is_stmt 0 view .LVU107
- 395 0008 0524     		movs	r4, #5
- 396              	.LVL28:
- 397              	.L41:
- 398              	.LBB6:
- 196:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 197:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(ABSOLUTE_PIN_GREEN);
- 399              		.loc 1 197 9 is_stmt 1 view .LVU108
- 400 000a 0420     		movs	r0, #4
- 401 000c FFF7FEFF 		bl	gpio_drive_high
- 402              	.LVL29:
- 198:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(200);
- 403              		.loc 1 198 9 view .LVU109
- 404 0010 C820     		movs	r0, #200
- 405 0012 FFF7FEFF 		bl	delay_ms
- 406              	.LVL30:
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(ABSOLUTE_PIN_GREEN);
- 407              		.loc 1 199 9 view .LVU110
- 408 0016 0420     		movs	r0, #4
- 409 0018 FFF7FEFF 		bl	gpio_drive_low
- 410              	.LVL31:
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(200);
- 411              		.loc 1 200 9 view .LVU111
- 412 001c C820     		movs	r0, #200
- 413 001e FFF7FEFF 		bl	delay_ms
- 414              	.LVL32:
- 195:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 415              		.loc 1 195 34 discriminator 3 view .LVU112
- 195:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 416              		.loc 1 195 28 discriminator 1 view .LVU113
- 417 0022 013C     		subs	r4, r4, #1
- 418 0024 F1D1     		bne	.L41
- 419 0026 0524     		movs	r4, #5
- 420              	.L42:
- 421              	.LBE6:
- 422              	.LBB7:
- 201:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 202:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Blink green LED 5 times
- 204:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint32_t i = 0; i < 5; i++)
- 205:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(ABSOLUTE_PIN_RED);
- 423              		.loc 1 206 9 view .LVU114
- 424 0028 0320     		movs	r0, #3
- 425 002a FFF7FEFF 		bl	gpio_drive_high
- 426              	.LVL33:
- 207:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(200);
- 427              		.loc 1 207 9 view .LVU115
- 428 002e C820     		movs	r0, #200
- 429 0030 FFF7FEFF 		bl	delay_ms
- 430              	.LVL34:
- 208:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(ABSOLUTE_PIN_RED);
- 431              		.loc 1 208 9 view .LVU116
- 432 0034 0320     		movs	r0, #3
- 433 0036 FFF7FEFF 		bl	gpio_drive_low
- 434              	.LVL35:
- 209:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(200);
- 435              		.loc 1 209 9 view .LVU117
- 436 003a C820     		movs	r0, #200
- 437 003c FFF7FEFF 		bl	delay_ms
- 438              	.LVL36:
- 204:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 439              		.loc 1 204 34 discriminator 3 view .LVU118
- 204:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 440              		.loc 1 204 28 discriminator 1 view .LVU119
- 441 0040 013C     		subs	r4, r4, #1
- 442 0042 F1D1     		bne	.L42
- 443              	.LBE7:
- 210:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 211:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("LED test complete.\n");
- 444              		.loc 1 212 5 view .LVU120
- 213:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 445              		.loc 1 213 1 is_stmt 0 view .LVU121
- 446 0044 BDE81040 		pop	{r4, lr}
- 447              		.cfi_restore 14
- 448              		.cfi_restore 4
- 449              		.cfi_def_cfa_offset 0
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 450              		.loc 1 212 5 view .LVU122
- 451 0048 0248     		ldr	r0, .L46+4
- 452 004a FFF7FEBF 		b	printf_
- 453              	.LVL37:
- 454              	.L47:
- 455 004e 00BF     		.align	2
- 456              	.L46:
- 457 0050 00000000 		.word	.LC0
- 458 0054 18000000 		.word	.LC1
- 459              		.cfi_endproc
- 460              	.LFE138:
- 462              		.section	.text.send_signal,"ax",%progbits
- 463              		.align	1
- 464              		.p2align 2,,3
- 465              		.global	send_signal
- 466              		.syntax unified
- 467              		.thumb
- 468              		.thumb_func
- 470              	send_signal:
- 471              	.LVL38:
- 472              	.LFB139:
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 215:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void send_signal(uint8_t pin, uint32_t duration_ms)
- 216:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 473              		.loc 1 216 1 is_stmt 1 view -0
- 474              		.cfi_startproc
- 475              		@ args = 0, pretend = 0, frame = 0
- 476              		@ frame_needed = 0, uses_anonymous_args = 0
- 217:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = pin; // Set the flag to indicate self-driven signal
- 477              		.loc 1 217 5 view .LVU124
- 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = pin; // Set the flag to indicate self-driven signal
- 478              		.loc 1 216 1 is_stmt 0 view .LVU125
- 479 0000 70B5     		push	{r4, r5, r6, lr}
- 480              		.cfi_def_cfa_offset 16
- 481              		.cfi_offset 4, -16
- 482              		.cfi_offset 5, -12
- 483              		.cfi_offset 6, -8
- 484              		.cfi_offset 14, -4
- 485              		.loc 1 217 24 view .LVU126
- 486 0002 074E     		ldr	r6, .L50
- 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = pin; // Set the flag to indicate self-driven signal
- 487              		.loc 1 216 1 view .LVU127
- 488 0004 0D46     		mov	r5, r1
- 489 0006 0446     		mov	r4, r0
- 490              		.loc 1 217 24 view .LVU128
- 491 0008 3070     		strb	r0, [r6]
- 218:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_open_drain_drive(pin);
- 492              		.loc 1 218 5 is_stmt 1 view .LVU129
- 493 000a FFF7FEFF 		bl	gpio_open_drain_drive
- 494              	.LVL39:
- 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     delay_ms(duration_ms);
- 495              		.loc 1 219 5 view .LVU130
- 496 000e 2846     		mov	r0, r5
- 497 0010 FFF7FEFF 		bl	delay_ms
- 498              	.LVL40:
- 220:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     release_gpio_open_drain(pin); // Release the pin after sending the signal
- 499              		.loc 1 220 5 view .LVU131
- 500 0014 2046     		mov	r0, r4
- 501 0016 FFF7FEFF 		bl	release_gpio_open_drain
- 502              	.LVL41:
- 221:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 222:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
- 503              		.loc 1 222 5 view .LVU132
- 504              		.loc 1 222 24 is_stmt 0 view .LVU133
- 505 001a 3123     		movs	r3, #49
- 506 001c 3370     		strb	r3, [r6]
- 223:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 507              		.loc 1 223 1 view .LVU134
- 508 001e 70BD     		pop	{r4, r5, r6, pc}
- 509              	.LVL42:
- 510              	.L51:
- 511              		.loc 1 223 1 view .LVU135
- 512              		.align	2
- 513              	.L50:
- 514 0020 00000000 		.word	current_driven_pin
- 515              		.cfi_endproc
- 516              	.LFE139:
- 518              		.section	.text.set_selected_pin,"ax",%progbits
- 519              		.align	1
- 520              		.p2align 2,,3
- 521              		.global	set_selected_pin
- 522              		.syntax unified
- 523              		.thumb
- 524              		.thumb_func
- 526              	set_selected_pin:
- 527              	.LVL43:
- 528              	.LFB140:
- 224:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 225:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_selected_pin(uint8_t pin)
- 226:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 529              		.loc 1 226 1 is_stmt 1 view -0
- 530              		.cfi_startproc
- 531              		@ args = 0, pretend = 0, frame = 0
- 532              		@ frame_needed = 0, uses_anonymous_args = 0
- 533              		@ link register save eliminated.
- 227:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin >= NUMBER_OF_GPIO_PINS)
- 534              		.loc 1 227 5 view .LVU137
- 535              		.loc 1 227 8 is_stmt 0 view .LVU138
- 536 0000 2F28     		cmp	r0, #47
- 537 0002 08D8     		bhi	.L52
- 228:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return; // Invalid pin number, do nothing
- 230:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 231:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin = pin;
- 538              		.loc 1 231 5 is_stmt 1 view .LVU139
- 232:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 539              		.loc 1 232 25 is_stmt 0 view .LVU140
- 540 0004 044B     		ldr	r3, .L54
- 231:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 541              		.loc 1 231 18 view .LVU141
- 542 0006 0549     		ldr	r1, .L54+4
- 543              		.loc 1 232 23 view .LVU142
- 544 0008 054A     		ldr	r2, .L54+8
- 231:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 545              		.loc 1 231 18 view .LVU143
- 546 000a 0870     		strb	r0, [r1]
- 547              		.loc 1 232 5 is_stmt 1 view .LVU144
- 548              		.loc 1 232 25 is_stmt 0 view .LVU145
- 549 000c 00EB400C 		add	ip, r0, r0, lsl #1
- 550 0010 03EB8C03 		add	r3, r3, ip, lsl #2
- 551              		.loc 1 232 23 view .LVU146
- 552 0014 1360     		str	r3, [r2]
- 553              	.L52:
- 233:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 554              		.loc 1 233 1 view .LVU147
- 555 0016 7047     		bx	lr
- 556              	.L55:
- 557              		.align	2
- 558              	.L54:
- 559 0018 00000000 		.word	pin_data
- 560 001c 00000000 		.word	selected_pin
- 561 0020 00000000 		.word	selected_pin_data
- 562              		.cfi_endproc
- 563              	.LFE140:
- 565              		.section	.text.set_standart_blacklist_pins,"ax",%progbits
- 566              		.align	1
- 567              		.p2align 2,,3
- 568              		.global	set_standart_blacklist_pins
- 569              		.syntax unified
- 570              		.thumb
- 571              		.thumb_func
- 573              	set_standart_blacklist_pins:
- 574              	.LVL44:
- 575              	.LFB141:
- 234:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_standart_blacklist_pins(uint64_t *mask)
- 235:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 576              		.loc 1 235 1 is_stmt 1 view -0
- 577              		.cfi_startproc
- 578              		@ args = 0, pretend = 0, frame = 0
- 579              		@ frame_needed = 0, uses_anonymous_args = 0
- 580              		@ link register save eliminated.
- 236:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
- 581              		.loc 1 236 5 view .LVU149
- 237:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 238:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11);
- 582              		.loc 1 238 5 view .LVU150
- 239:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 12);
- 583              		.loc 1 239 5 view .LVU151
- 240:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 13);
- 584              		.loc 1 240 5 view .LVU152
- 241:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 14);
- 585              		.loc 1 241 5 view .LVU153
- 586              		.loc 1 241 11 is_stmt 0 view .LVU154
- 587 0000 6FF4F042 		mvn	r2, #30720
- 588 0004 4FF0FF33 		mov	r3, #-1
- 589 0008 C0E90023 		strd	r2, [r0]
- 242:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
- 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 0));
- 244:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 1));
- 245:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 2));
- 246:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 3));
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 248:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     /*
- 250:/Users/timcarlo/Desktop/testsoftware/core/main.c ****      *mask |= (1ULL << ABSOLUTE_PIN_RED);   // Add the red LED pin to the blacklist
- 251:/Users/timcarlo/Desktop/testsoftware/core/main.c ****      *mask |= (1ULL << ABSOLUTE_PIN_GREEN); // Add the green LED pin to the blacklist
- 252:/Users/timcarlo/Desktop/testsoftware/core/main.c ****      *mask |= (1ULL << UART_PIN_TX);        // Add the UART TX pin to the blacklist */
- 253:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 590              		.loc 1 253 1 view .LVU155
- 591 000c 7047     		bx	lr
- 592              		.cfi_endproc
- 593              	.LFE141:
- 595 000e 00BF     		.section	.rodata.print_active_pins_from_mask.str1.4,"aMS",%progbits,1
- 596              		.align	2
- 597              	.LC2:
- 598 0000 426C6163 		.ascii	"Blacklist mask: \000"
- 598      6B6C6973 
- 598      74206D61 
- 598      736B3A20 
- 598      00
- 599 0011 000000   		.align	2
- 600              	.LC3:
- 601 0014 25752000 		.ascii	"%u \000"
- 602              		.align	2
- 603              	.LC4:
- 604 0018 0A00     		.ascii	"\012\000"
- 605              		.section	.text.print_active_pins_from_mask,"ax",%progbits
- 606              		.align	1
- 607              		.p2align 2,,3
- 608              		.global	print_active_pins_from_mask
- 609              		.syntax unified
- 610              		.thumb
- 611              		.thumb_func
- 613              	print_active_pins_from_mask:
+  23              		.syntax unified
+  24              		.thumb
+  25              		.thumb_func
+  27              	manchester_falling_handler:
+  28              	.LVL0:
+  29              	.LFB138:
+   1:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #include "manchester.h"
+   2:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #include "nrf52840_helper.h"
+   3:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #include <string.h>
+   4:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+   5:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // The clock speed on the MSP is to inacurate to go higher than 2000 baud
+   6:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define BAUD_RATE 100
+   7:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define LONG_BIT_US (1000000UL / BAUD_RATE)  // 500 us
+   8:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define MID_BIT_US (LONG_BIT_US / 2)         // 250 us
+   9:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define T_TIME_US MID_BIT_US                  // 250 us
+  10:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define T2_TIME_US LONG_BIT_US                // 500 us
+  11:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  12:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define T_WINDOW_US (T_TIME_US / 2) // ±50 % Toleranz (125 us)
+  13:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** #define FRAME_TIMEOUT_US (64UL * LONG_BIT_US * 3UL)
+  14:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  15:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Static variables to store pin configurations
+  16:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint8_t tx_pin_num = 0;
+  17:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint8_t rx_pin_num = 0;
+  18:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  19:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Manchester decode state variables
+  20:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool edge_detected = false;
+  21:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool last_edge_was_rising = false;
+  22:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint32_t edge_timestamp = 0;
+  23:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint32_t last_edge_timestamp = 0;
+  24:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool decode_active = false;
+  25:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool current_bit_value = false;
+  26:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool synchronized = false;
+  27:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static uint8_t *decode_buffer = NULL;
+  28:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint16_t decode_bit_count = 0;
+  29:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile uint16_t target_bit_count = 0;
+  30:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static volatile bool decode_error = false;
+  31:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  32:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Helper function to check if timing is within acceptable window
+  33:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window
+  34:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+  36:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  37:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  38:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Use existing get_elapsed_time function for time difference calculation
+  39:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static uint32_t get_time_diff(uint32_t start, uint32_t end)
+  40:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  41:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return get_elapsed_time(start, end);
+  42:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  43:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  44:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Rising edge handler
+  45:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static void manchester_rising_handler(uint32_t pin)
+  46:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (pin != rx_pin_num || !decode_active)
+  48:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+  49:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = true;
+  50:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = true;
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  52:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  53:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  54:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** // Falling edge handler
+  55:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static void manchester_falling_handler(uint32_t pin)
+  56:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  30              		.loc 1 56 1 view -0
+  31              		.cfi_startproc
+  32              		@ args = 0, pretend = 0, frame = 0
+  33              		@ frame_needed = 0, uses_anonymous_args = 0
+  57:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (pin != rx_pin_num || !decode_active)
+  34              		.loc 1 57 5 view .LVU1
+  56:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (pin != rx_pin_num || !decode_active)
+  35              		.loc 1 56 1 is_stmt 0 view .LVU2
+  36 0000 08B5     		push	{r3, lr}
+  37              		.cfi_def_cfa_offset 8
+  38              		.cfi_offset 3, -8
+  39              		.cfi_offset 14, -4
+  40              		.loc 1 57 13 view .LVU3
+  41 0002 0B4B     		ldr	r3, .L9
+  42 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  43              		.loc 1 57 8 view .LVU4
+  44 0006 8342     		cmp	r3, r0
+  45 0008 02D1     		bne	.L1
+  46              		.loc 1 57 30 discriminator 1 view .LVU5
+  47 000a 0A4B     		ldr	r3, .L9+4
+  48 000c 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  49              		.loc 1 57 27 discriminator 1 view .LVU6
+  50 000e 03B9     		cbnz	r3, .L8
+  51              	.L1:
+  58:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+  59:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = true;
+  60:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = false;
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  62:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  52              		.loc 1 62 1 view .LVU7
+  53 0010 08BD     		pop	{r3, pc}
+  54              	.L8:
+  55              	.LBB24:
+  56              	.LBI24:
+  55:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  57              		.loc 1 55 13 is_stmt 1 view .LVU8
+  58              	.LVL1:
+  59              	.LBB25:
+  59:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = false;
+  60              		.loc 1 59 5 view .LVU9
+  60:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  61              		.loc 1 60 26 is_stmt 0 view .LVU10
+  62 0012 094B     		ldr	r3, .L9+8
+  59:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = false;
+  63              		.loc 1 59 19 view .LVU11
+  64 0014 0949     		ldr	r1, .L9+12
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  65              		.loc 1 61 22 view .LVU12
+  66 0016 0A48     		ldr	r0, .L9+16
+  67              	.LVL2:
+  59:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = false;
+  68              		.loc 1 59 19 view .LVU13
+  69 0018 4FF0010C 		mov	ip, #1
+  60:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  70              		.loc 1 60 26 view .LVU14
+  71 001c 0022     		movs	r2, #0
+  59:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = false;
+  72              		.loc 1 59 19 view .LVU15
+  73 001e 81F800C0 		strb	ip, [r1]
+  60:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  74              		.loc 1 60 5 is_stmt 1 view .LVU16
+  60:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+  75              		.loc 1 60 26 is_stmt 0 view .LVU17
+  76 0022 1A70     		strb	r2, [r3]
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  77              		.loc 1 61 5 is_stmt 1 view .LVU18
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  78              		.loc 1 61 22 is_stmt 0 view .LVU19
+  79 0024 FFF7FEFF 		bl	get_timer_ticks
+  80              	.LVL3:
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  81              		.loc 1 61 20 discriminator 1 view .LVU20
+  82 0028 064B     		ldr	r3, .L9+20
+  83 002a 1860     		str	r0, [r3]
+  84              	.LVL4:
+  61:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  85              		.loc 1 61 20 discriminator 1 view .LVU21
+  86              	.LBE25:
+  87              	.LBE24:
+  88              		.loc 1 62 1 view .LVU22
+  89 002c 08BD     		pop	{r3, pc}
+  90              	.L10:
+  91 002e 00BF     		.align	2
+  92              	.L9:
+  93 0030 00000000 		.word	rx_pin_num
+  94 0034 00000000 		.word	decode_active
+  95 0038 00000000 		.word	last_edge_was_rising
+  96 003c 00000000 		.word	edge_detected
+  97 0040 00800040 		.word	1073774592
+  98 0044 00000000 		.word	edge_timestamp
+  99              		.cfi_endproc
+ 100              	.LFE138:
+ 102              		.section	.text.manchester_rising_handler,"ax",%progbits
+ 103              		.align	1
+ 104              		.p2align 2,,3
+ 105              		.syntax unified
+ 106              		.thumb
+ 107              		.thumb_func
+ 109              	manchester_rising_handler:
+ 110              	.LVL5:
+ 111              	.LFB137:
+  46:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (pin != rx_pin_num || !decode_active)
+ 112              		.loc 1 46 1 is_stmt 1 view -0
+ 113              		.cfi_startproc
+ 114              		@ args = 0, pretend = 0, frame = 0
+ 115              		@ frame_needed = 0, uses_anonymous_args = 0
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+ 116              		.loc 1 47 5 view .LVU24
+  46:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (pin != rx_pin_num || !decode_active)
+ 117              		.loc 1 46 1 is_stmt 0 view .LVU25
+ 118 0000 08B5     		push	{r3, lr}
+ 119              		.cfi_def_cfa_offset 8
+ 120              		.cfi_offset 3, -8
+ 121              		.cfi_offset 14, -4
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+ 122              		.loc 1 47 13 view .LVU26
+ 123 0002 094B     		ldr	r3, .L18
+ 124 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+ 125              		.loc 1 47 8 view .LVU27
+ 126 0006 8342     		cmp	r3, r0
+ 127 0008 02D1     		bne	.L11
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+ 128              		.loc 1 47 30 discriminator 1 view .LVU28
+ 129 000a 084B     		ldr	r3, .L18+4
+ 130 000c 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  47:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return;
+ 131              		.loc 1 47 27 discriminator 1 view .LVU29
+ 132 000e 03B9     		cbnz	r3, .L17
+ 133              	.L11:
+  52:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 134              		.loc 1 52 1 view .LVU30
+ 135 0010 08BD     		pop	{r3, pc}
+ 136              	.L17:
+ 137              	.LBB28:
+ 138              	.LBI28:
+  45:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 139              		.loc 1 45 13 is_stmt 1 view .LVU31
+ 140              	.LVL6:
+ 141              	.LBB29:
+  49:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = true;
+ 142              		.loc 1 49 5 view .LVU32
+  49:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = true;
+ 143              		.loc 1 49 19 is_stmt 0 view .LVU33
+ 144 0012 0749     		ldr	r1, .L18+8
+  50:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+ 145              		.loc 1 50 26 view .LVU34
+ 146 0014 074A     		ldr	r2, .L18+12
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 147              		.loc 1 51 22 view .LVU35
+ 148 0016 0848     		ldr	r0, .L18+16
+ 149              	.LVL7:
+  49:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_was_rising = true;
+ 150              		.loc 1 49 19 view .LVU36
+ 151 0018 0123     		movs	r3, #1
+ 152 001a 0B70     		strb	r3, [r1]
+  50:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+ 153              		.loc 1 50 5 is_stmt 1 view .LVU37
+  50:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_timestamp = get_timer_ticks(TIMER_A);
+ 154              		.loc 1 50 26 is_stmt 0 view .LVU38
+ 155 001c 1370     		strb	r3, [r2]
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 156              		.loc 1 51 5 is_stmt 1 view .LVU39
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 157              		.loc 1 51 22 is_stmt 0 view .LVU40
+ 158 001e FFF7FEFF 		bl	get_timer_ticks
+ 159              	.LVL8:
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 160              		.loc 1 51 20 discriminator 1 view .LVU41
+ 161 0022 064B     		ldr	r3, .L18+20
+ 162 0024 1860     		str	r0, [r3]
+ 163              	.LVL9:
+  51:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 164              		.loc 1 51 20 discriminator 1 view .LVU42
+ 165              	.LBE29:
+ 166              	.LBE28:
+  52:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 167              		.loc 1 52 1 view .LVU43
+ 168 0026 08BD     		pop	{r3, pc}
+ 169              	.L19:
+ 170              		.align	2
+ 171              	.L18:
+ 172 0028 00000000 		.word	rx_pin_num
+ 173 002c 00000000 		.word	decode_active
+ 174 0030 00000000 		.word	edge_detected
+ 175 0034 00000000 		.word	last_edge_was_rising
+ 176 0038 00800040 		.word	1073774592
+ 177 003c 00000000 		.word	edge_timestamp
+ 178              		.cfi_endproc
+ 179              	.LFE137:
+ 181              		.section	.text.manchester_init,"ax",%progbits
+ 182              		.align	1
+ 183              		.p2align 2,,3
+ 184              		.global	manchester_init
+ 185              		.syntax unified
+ 186              		.thumb
+ 187              		.thumb_func
+ 189              	manchester_init:
+ 190              	.LVL10:
+ 191              	.LFB142:
+  63:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  64:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static void mid_bit_duration(void)
+  65:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  66:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     delay_us(MID_BIT_US);
+  67:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  68:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  69:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static void send_zero(void)
+  70:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  71:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_open_drain_drive(tx_pin_num);
+  72:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+  73:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+  74:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+  75:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  76:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  77:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static void send_one(void)
+  78:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+  79:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+  80:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+  81:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_open_drain_drive(tx_pin_num);
+  82:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+  83:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+  84:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  85:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** void manchester_init(uint8_t tx_pin, uint8_t rx_pin)
+  86:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 192              		.loc 1 86 1 is_stmt 1 view -0
+ 193              		.cfi_startproc
+ 194              		@ args = 0, pretend = 0, frame = 0
+ 195              		@ frame_needed = 0, uses_anonymous_args = 0
+ 196              		@ link register save eliminated.
+  87:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     tx_pin_num = tx_pin;
+ 197              		.loc 1 87 5 view .LVU45
+  86:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     tx_pin_num = tx_pin;
+ 198              		.loc 1 86 1 is_stmt 0 view .LVU46
+ 199 0000 10B4     		push	{r4}
+ 200              		.cfi_def_cfa_offset 4
+ 201              		.cfi_offset 4, -4
+  88:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     rx_pin_num = rx_pin;
+ 202              		.loc 1 88 16 view .LVU47
+ 203 0002 044A     		ldr	r2, .L22
+  87:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     tx_pin_num = tx_pin;
+ 204              		.loc 1 87 16 view .LVU48
+ 205 0004 044C     		ldr	r4, .L22+4
+ 206 0006 2070     		strb	r0, [r4]
+ 207              		.loc 1 88 5 is_stmt 1 view .LVU49
+ 208              		.loc 1 88 16 is_stmt 0 view .LVU50
+ 209 0008 1170     		strb	r1, [r2]
+  89:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin);
+ 210              		.loc 1 89 5 is_stmt 1 view .LVU51
+  90:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 211              		.loc 1 90 1 is_stmt 0 view .LVU52
+ 212 000a 5DF8044B 		ldr	r4, [sp], #4
+ 213              		.cfi_restore 4
+ 214              		.cfi_def_cfa_offset 0
+  89:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin);
+ 215              		.loc 1 89 5 view .LVU53
+ 216 000e FFF7FEBF 		b	release_gpio_open_drain
+ 217              	.LVL11:
+ 218              	.L23:
+  89:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin);
+ 219              		.loc 1 89 5 view .LVU54
+ 220 0012 00BF     		.align	2
+ 221              	.L22:
+ 222 0014 00000000 		.word	rx_pin_num
+ 223 0018 00000000 		.word	tx_pin_num
+ 224              		.cfi_endproc
+ 225              	.LFE142:
+ 227              		.section	.text.manchester_transmit_byte,"ax",%progbits
+ 228              		.align	1
+ 229              		.p2align 2,,3
+ 230              		.global	manchester_transmit_byte
+ 231              		.syntax unified
+ 232              		.thumb
+ 233              		.thumb_func
+ 235              	manchester_transmit_byte:
+ 236              	.LVL12:
+ 237              	.LFB143:
+  91:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+  92:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** void manchester_transmit_byte(uint8_t byte)
+  93:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 238              		.loc 1 93 1 is_stmt 1 view -0
+ 239              		.cfi_startproc
+ 240              		@ args = 0, pretend = 0, frame = 0
+ 241              		@ frame_needed = 0, uses_anonymous_args = 0
+  94:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+ 242              		.loc 1 94 5 view .LVU56
+  93:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+ 243              		.loc 1 93 1 is_stmt 0 view .LVU57
+ 244 0000 70B5     		push	{r4, r5, r6, lr}
+ 245              		.cfi_def_cfa_offset 16
+ 246              		.cfi_offset 4, -16
+ 247              		.cfi_offset 5, -12
+ 248              		.cfi_offset 6, -8
+ 249              		.cfi_offset 14, -4
+ 250              		.loc 1 94 5 view .LVU58
+ 251 0002 184D     		ldr	r5, .L32
+ 252 0004 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+  93:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+ 253              		.loc 1 93 1 view .LVU59
+ 254 0006 0646     		mov	r6, r0
+ 255              		.loc 1 94 5 view .LVU60
+ 256 0008 1846     		mov	r0, r3
+ 257              	.LVL13:
+ 258              		.loc 1 94 5 view .LVU61
+ 259 000a FFF7FEFF 		bl	release_gpio_open_drain
+ 260              	.LVL14:
+  95:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     for (int i = 7; i >= 0; i--) {
+ 261              		.loc 1 95 5 is_stmt 1 view .LVU62
+ 262              	.LBB43:
+ 263              		.loc 1 95 10 view .LVU63
+ 264              		.loc 1 95 23 discriminator 1 view .LVU64
+ 265              		.loc 1 95 14 is_stmt 0 view .LVU65
+ 266 000e 0724     		movs	r4, #7
+ 267 0010 0EE0     		b	.L27
+ 268              	.LVL15:
+ 269              	.L31:
+ 270              	.LBB44:
+ 271              	.LBB45:
+  79:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 272              		.loc 1 79 5 view .LVU66
+ 273 0012 FFF7FEFF 		bl	release_gpio_open_drain
+ 274              	.LVL16:
+  80:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_open_drain_drive(tx_pin_num);
+ 275              		.loc 1 80 5 is_stmt 1 view .LVU67
+ 276              	.LBB46:
+ 277              	.LBI46:
+  64:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 278              		.loc 1 64 13 view .LVU68
+ 279              	.LBB47:
+  66:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 280              		.loc 1 66 5 view .LVU69
+ 281 0016 41F28830 		movw	r0, #5000
+ 282 001a FFF7FEFF 		bl	delay_us
+ 283              	.LVL17:
+ 284              	.LBE47:
+ 285              	.LBE46:
+  81:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 286              		.loc 1 81 5 view .LVU70
+ 287 001e 2878     		ldrb	r0, [r5]	@ zero_extendqisi2
+ 288 0020 FFF7FEFF 		bl	gpio_open_drain_drive
+ 289              	.LVL18:
+  82:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 290              		.loc 1 82 5 view .LVU71
+ 291              	.LBB48:
+ 292              	.LBI48:
+  64:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 293              		.loc 1 64 13 view .LVU72
+ 294              	.LBB49:
+  66:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 295              		.loc 1 66 5 view .LVU73
+ 296 0024 41F28830 		movw	r0, #5000
+ 297 0028 FFF7FEFF 		bl	delay_us
+ 298              	.LVL19:
+ 299              	.LBE49:
+ 300              	.LBE48:
+ 301              	.LBE45:
+ 302              	.LBE44:
+ 303              		.loc 1 95 30 discriminator 2 view .LVU74
+ 304              		.loc 1 95 23 is_stmt 0 discriminator 1 view .LVU75
+ 305 002c 013C     		subs	r4, r4, #1
+ 306              	.LVL20:
+ 307              		.loc 1 95 23 discriminator 1 view .LVU76
+ 308 002e 13D3     		bcc	.L30
+ 309              	.LVL21:
+ 310              	.L27:
+  96:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (byte & (1 << i)) send_one();
+ 311              		.loc 1 96 9 is_stmt 1 view .LVU77
+ 312              		.loc 1 96 30 discriminator 1 view .LVU78
+ 313              	.LBB52:
+ 314              	.LBI44:
+  77:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 315              		.loc 1 77 13 view .LVU79
+ 316              	.LBB50:
+  79:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 317              		.loc 1 79 5 view .LVU80
+ 318              	.LBE50:
+ 319              	.LBE52:
+  97:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else send_zero();
+ 320              		.loc 1 97 14 view .LVU81
+ 321              	.LBB53:
+ 322              	.LBI53:
+  69:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 323              		.loc 1 69 13 view .LVU82
+ 324              	.LBB54:
+  71:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 325              		.loc 1 71 5 view .LVU83
+ 326              	.LBE54:
+ 327              	.LBE53:
+  96:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else send_zero();
+ 328              		.loc 1 96 13 is_stmt 0 view .LVU84
+ 329 0030 46FA04F3 		asr	r3, r6, r4
+  96:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else send_zero();
+ 330              		.loc 1 96 12 view .LVU85
+ 331 0034 DB07     		lsls	r3, r3, #31
+ 332              	.LBB60:
+ 333              	.LBB51:
+  79:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 334              		.loc 1 79 5 view .LVU86
+ 335 0036 2878     		ldrb	r0, [r5]	@ zero_extendqisi2
+ 336              	.LBE51:
+ 337              	.LBE60:
+  96:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else send_zero();
+ 338              		.loc 1 96 12 view .LVU87
+ 339 0038 EBD4     		bmi	.L31
+ 340              	.LBB61:
+ 341              	.LBB59:
+  71:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 342              		.loc 1 71 5 view .LVU88
+ 343 003a FFF7FEFF 		bl	gpio_open_drain_drive
+ 344              	.LVL22:
+  72:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+ 345              		.loc 1 72 5 is_stmt 1 view .LVU89
+ 346              	.LBB55:
+ 347              	.LBI55:
+  64:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 348              		.loc 1 64 13 view .LVU90
+ 349              	.LBB56:
+  66:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 350              		.loc 1 66 5 view .LVU91
+ 351 003e 41F28830 		movw	r0, #5000
+ 352 0042 FFF7FEFF 		bl	delay_us
+ 353              	.LVL23:
+ 354              	.LBE56:
+ 355              	.LBE55:
+  73:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     mid_bit_duration();
+ 356              		.loc 1 73 5 view .LVU92
+ 357 0046 2878     		ldrb	r0, [r5]	@ zero_extendqisi2
+ 358 0048 FFF7FEFF 		bl	release_gpio_open_drain
+ 359              	.LVL24:
+  74:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 360              		.loc 1 74 5 view .LVU93
+ 361              	.LBB57:
+ 362              	.LBI57:
+  64:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 363              		.loc 1 64 13 view .LVU94
+ 364              	.LBB58:
+  66:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 365              		.loc 1 66 5 view .LVU95
+ 366 004c 41F28830 		movw	r0, #5000
+ 367 0050 FFF7FEFF 		bl	delay_us
+ 368              	.LVL25:
+ 369              	.LBE58:
+ 370              	.LBE57:
+ 371              	.LBE59:
+ 372              	.LBE61:
+  95:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (byte & (1 << i)) send_one();
+ 373              		.loc 1 95 30 discriminator 2 view .LVU96
+  95:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (byte & (1 << i)) send_one();
+ 374              		.loc 1 95 23 is_stmt 0 discriminator 1 view .LVU97
+ 375 0054 013C     		subs	r4, r4, #1
+ 376              	.LVL26:
+  95:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (byte & (1 << i)) send_one();
+ 377              		.loc 1 95 23 discriminator 1 view .LVU98
+ 378 0056 EBD2     		bcs	.L27
+ 379              	.LVL27:
+ 380              	.L30:
+  95:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (byte & (1 << i)) send_one();
+ 381              		.loc 1 95 23 discriminator 1 view .LVU99
+ 382              	.LBE43:
+  98:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+  99:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     release_gpio_open_drain(tx_pin_num);
+ 383              		.loc 1 99 5 is_stmt 1 view .LVU100
+ 384 0058 2878     		ldrb	r0, [r5]	@ zero_extendqisi2
+ 100:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 385              		.loc 1 100 1 is_stmt 0 view .LVU101
+ 386 005a BDE87040 		pop	{r4, r5, r6, lr}
+ 387              		.cfi_restore 14
+ 388              		.cfi_restore 6
+ 389              		.cfi_restore 5
+ 390              		.cfi_restore 4
+ 391              		.cfi_def_cfa_offset 0
+ 392              	.LVL28:
+  99:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 393              		.loc 1 99 5 view .LVU102
+ 394 005e FFF7FEBF 		b	release_gpio_open_drain
+ 395              	.LVL29:
+ 396              	.L33:
+ 397 0062 00BF     		.align	2
+ 398              	.L32:
+ 399 0064 00000000 		.word	tx_pin_num
+ 400              		.cfi_endproc
+ 401              	.LFE143:
+ 403              		.section	.text.manchester_transmit_array,"ax",%progbits
+ 404              		.align	1
+ 405              		.p2align 2,,3
+ 406              		.global	manchester_transmit_array
+ 407              		.syntax unified
+ 408              		.thumb
+ 409              		.thumb_func
+ 411              	manchester_transmit_array:
+ 412              	.LVL30:
+ 413              	.LFB144:
+ 101:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 102:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** void manchester_transmit_array(uint8_t length, uint8_t *data)
+ 103:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 414              		.loc 1 103 1 is_stmt 1 view -0
+ 415              		.cfi_startproc
+ 416              		@ args = 0, pretend = 0, frame = 0
+ 417              		@ frame_needed = 0, uses_anonymous_args = 0
+ 104:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     for (uint8_t i = 0; i < length; i++) {
+ 418              		.loc 1 104 5 view .LVU104
+ 419              	.LBB62:
+ 420              		.loc 1 104 10 view .LVU105
+ 421              		.loc 1 104 27 discriminator 1 view .LVU106
+ 422 0000 48B1     		cbz	r0, .L42
+ 423              	.LBE62:
+ 103:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     for (uint8_t i = 0; i < length; i++) {
+ 424              		.loc 1 103 1 is_stmt 0 view .LVU107
+ 425 0002 38B5     		push	{r3, r4, r5, lr}
+ 426              		.cfi_def_cfa_offset 16
+ 427              		.cfi_offset 3, -16
+ 428              		.cfi_offset 4, -12
+ 429              		.cfi_offset 5, -8
+ 430              		.cfi_offset 14, -4
+ 431 0004 0C46     		mov	r4, r1
+ 432 0006 0D18     		adds	r5, r1, r0
+ 433              	.LVL31:
+ 434              	.L36:
+ 435              	.LBB63:
+ 105:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         manchester_transmit_byte(data[i]);
+ 436              		.loc 1 105 9 is_stmt 1 view .LVU108
+ 437 0008 14F8010B 		ldrb	r0, [r4], #1	@ zero_extendqisi2
+ 438              	.LVL32:
+ 439              		.loc 1 105 9 is_stmt 0 view .LVU109
+ 440 000c FFF7FEFF 		bl	manchester_transmit_byte
+ 441              	.LVL33:
+ 104:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     for (uint8_t i = 0; i < length; i++) {
+ 442              		.loc 1 104 38 is_stmt 1 discriminator 3 view .LVU110
+ 104:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     for (uint8_t i = 0; i < length; i++) {
+ 443              		.loc 1 104 27 discriminator 1 view .LVU111
+ 444 0010 AC42     		cmp	r4, r5
+ 445 0012 F9D1     		bne	.L36
+ 446              	.LBE63:
+ 106:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+ 107:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }
+ 447              		.loc 1 107 1 is_stmt 0 view .LVU112
+ 448 0014 38BD     		pop	{r3, r4, r5, pc}
+ 449              	.LVL34:
+ 450              	.L42:
+ 451              		.cfi_def_cfa_offset 0
+ 452              		.cfi_restore 3
+ 453              		.cfi_restore 4
+ 454              		.cfi_restore 5
+ 455              		.cfi_restore 14
+ 456              		.loc 1 107 1 view .LVU113
+ 457 0016 7047     		bx	lr
+ 458              		.cfi_endproc
+ 459              	.LFE144:
+ 461              		.section	.rodata.manchester_receive_array.str1.4,"aMS",%progbits,1
+ 462              		.align	2
+ 463              	.LC0:
+ 464 0000 73756363 		.ascii	"success\000"
+ 464      65737300 
+ 465              		.align	2
+ 466              	.LC1:
+ 467 0008 6661696C 		.ascii	"fail\000"
+ 467      00
+ 468 000d 000000   		.align	2
+ 469              	.LC2:
+ 470 0010 53746172 		.ascii	"Starting Manchester decode for %d bytes\012\000"
+ 470      74696E67 
+ 470      204D616E 
+ 470      63686573 
+ 470      74657220 
+ 471 0039 000000   		.align	2
+ 472              	.LC3:
+ 473 003c 54696D69 		.ascii	"Timing params: T=%luus, 2T=%luus, Window=%luus\012\000"
+ 473      6E672070 
+ 473      6172616D 
+ 473      733A2054 
+ 473      3D256C75 
+ 474              		.align	2
+ 475              	.LC4:
+ 476 006c 54696D65 		.ascii	"Timeout waiting for first edge\012\000"
+ 476      6F757420 
+ 476      77616974 
+ 476      696E6720 
+ 476      666F7220 
+ 477              		.align	2
+ 478              	.LC5:
+ 479 008c 54696D65 		.ascii	"Timeout waiting for sync edge\012\000"
+ 479      6F757420 
+ 479      77616974 
+ 479      696E6720 
+ 479      666F7220 
+ 480 00ab 00       		.align	2
+ 481              	.LC6:
+ 482 00ac 53796E63 		.ascii	"Synchronization failed\012\000"
+ 482      68726F6E 
+ 482      697A6174 
+ 482      696F6E20 
+ 482      6661696C 
+ 483              		.align	2
+ 484              	.LC7:
+ 485 00c4 54696D65 		.ascii	"Timeout waiting for data edge\012\000"
+ 485      6F757420 
+ 485      77616974 
+ 485      696E6720 
+ 485      666F7220 
+ 486 00e3 00       		.align	2
+ 487              	.LC8:
+ 488 00e4 54696D65 		.ascii	"Timeout waiting for confirm edge\012\000"
+ 488      6F757420 
+ 488      77616974 
+ 488      696E6720 
+ 488      666F7220 
+ 489 0106 0000     		.align	2
+ 490              	.LC9:
+ 491 0108 496E7661 		.ascii	"Invalid confirm timing\012\000"
+ 491      6C696420 
+ 491      636F6E66 
+ 491      69726D20 
+ 491      74696D69 
+ 492              		.align	2
+ 493              	.LC10:
+ 494 0120 496E7661 		.ascii	"Invalid timing\012\000"
+ 494      6C696420 
+ 494      74696D69 
+ 494      6E670A00 
+ 495              		.align	2
+ 496              	.LC11:
+ 497 0130 4465636F 		.ascii	"Decode %s, bits: %d/%d\012\000"
+ 497      64652025 
+ 497      732C2062 
+ 497      6974733A 
+ 497      2025642F 
+ 498              		.section	.text.manchester_receive_array,"ax",%progbits
+ 499              		.align	1
+ 500              		.p2align 2,,3
+ 501              		.global	manchester_receive_array
+ 502              		.syntax unified
+ 503              		.thumb
+ 504              		.thumb_func
+ 506              	manchester_receive_array:
+ 507              	.LVL35:
+ 508              	.LFB145:
+ 108:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 109:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** bool manchester_receive_array(uint8_t *data, uint8_t length)
+ 110:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** {
+ 509              		.loc 1 110 1 is_stmt 1 view -0
+ 510              		.cfi_startproc
+ 511              		@ args = 0, pretend = 0, frame = 0
+ 512              		@ frame_needed = 0, uses_anonymous_args = 0
+ 111:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (data == NULL || length == 0)
+ 513              		.loc 1 111 5 view .LVU115
+ 110:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (data == NULL || length == 0)
+ 514              		.loc 1 110 1 is_stmt 0 view .LVU116
+ 515 0000 2DE9F84F 		push	{r3, r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 516              		.cfi_def_cfa_offset 40
+ 517              		.cfi_offset 3, -40
+ 518              		.cfi_offset 4, -36
+ 519              		.cfi_offset 5, -32
+ 520              		.cfi_offset 6, -28
+ 521              		.cfi_offset 7, -24
+ 522              		.cfi_offset 8, -20
+ 523              		.cfi_offset 9, -16
+ 524              		.cfi_offset 10, -12
+ 525              		.cfi_offset 11, -8
+ 526              		.cfi_offset 14, -4
+ 527              		.loc 1 111 8 view .LVU117
+ 528 0004 08B1     		cbz	r0, .L46
+ 529 0006 0C46     		mov	r4, r1
+ 530              		.loc 1 111 22 discriminator 1 view .LVU118
+ 531 0008 19B9     		cbnz	r1, .L102
+ 532              	.LVL36:
+ 533              	.L46:
+ 112:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return false;
+ 534              		.loc 1 112 16 view .LVU119
+ 535 000a 0027     		movs	r7, #0
+ 536              	.L48:
+ 113:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 114:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Starting Manchester decode for %d bytes\n", length);
+ 115:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Timing params: T=%luus, 2T=%luus, Window=%luus\n", 
+ 116:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****            T_TIME_US, T2_TIME_US, T_WINDOW_US);
+ 117:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 118:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_buffer = data;
+ 119:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     target_bit_count = length * 8;
+ 120:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_bit_count = 0;
+ 121:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_error = false;
+ 122:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     synchronized = false;
+ 123:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = true;
+ 124:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 125:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     memset(data, 0, length);
+ 126:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     start_timer(TIMER_A);
+ 127:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 129:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_listen_on_all_pins_interrupt(blacklist, manchester_rising_handler, manchester_falling_hand
+ 130:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 131:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     // 3. Start timer, capture first edge and discard this
+ 132:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 133:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint32_t timeout_start = get_timer_ticks(TIMER_A);
+ 134:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     const uint32_t TIMEOUT_US = 1000000; // 1 second timeout
+ 135:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 136:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     // Wait for first edge (discard)
+ 137:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!edge_detected) {
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 139:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             printf("Timeout waiting for first edge\n");
+ 140:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_active = false;
+ 141:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             return false;
+ 142:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 143:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+ 144:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 145:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_timestamp = edge_timestamp;
+ 146:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 147:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     // 4-5. Synchronization phase: wait for 2T period
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 149:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 150:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 152:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Timeout waiting for sync edge\n");
+ 153:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_active = false;
+ 154:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 return false;
+ 155:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             }
+ 156:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 157:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 158:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 159:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     //    printf("Sync diff: %luus (expected ~%luus)\n", time_diff, T2_TIME_US);
+ 160:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 161:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         // Check if this is a 2T period (synchronization)
+ 162:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US)) {
+ 163:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             synchronized = true;
+ 164:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             // 6. Read current logic level and save as current bit value
+ 165:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = gpio_read(rx_pin_num);
+ 166:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****           //  printf("Synchronized! Current level: %d\n", current_bit_value);
+ 167:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 168:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 169:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         last_edge_timestamp = edge_timestamp;
+ 170:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 171:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+ 172:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 173:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (!synchronized) {
+ 174:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         printf("Synchronization failed\n");
+ 175:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         decode_active = false;
+ 176:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return false;
+ 177:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+ 178:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 179:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     // Main decode loop
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 181:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 182:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 183:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         
+ 184:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 186:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Timeout waiting for data edge\n");
+ 187:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 188:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 break;
+ 189:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             }
+ 190:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 191:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (decode_error) break;
+ 192:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 193:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 194:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         bool next_bit;
+ 195:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         bool valid_edge = false;
+ 196:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 197:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         //printf("Edge diff: %luus (T=%lu, 2T=%lu)\n", time_diff, T_TIME_US, T2_TIME_US);
+ 198:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 199:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         // 7a-c. Compare stored count value with T and 2T
+ 200:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (is_timing_within_window(time_diff, T_TIME_US, T_WINDOW_US)) {
+ 201:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             // 7b. Value = T: need to capture next edge to confirm
+ 202:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 203:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             edge_detected = false;
+ 204:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             timeout_start = get_timer_ticks(TIMER_A);
+ 205:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             
+ 206:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             while (!edge_detected) {
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 208:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     printf("Timeout waiting for confirm edge\n");
+ 209:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     decode_error = true;
+ 210:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     break;
+ 211:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 }
+ 212:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             }
+ 213:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (decode_error) break;
+ 214:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 215:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint32_t second_time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 216:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****            // printf("Confirm diff: %luus (expected ~%luus)\n", second_time_diff, T_TIME_US);
+ 217:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             
+ 218:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (is_timing_within_window(second_time_diff, T_TIME_US, T_WINDOW_US)) {
+ 219:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 next_bit = current_bit_value;
+ 220:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 valid_edge = true;
+ 221:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             } else {
+ 222:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Invalid confirm timing\n");
+ 223:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 224:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             }
+ 225:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 226:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US)) {
+ 227:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             // 7c. Value = 2T: transition in middle
+ 228:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             next_bit = !current_bit_value;
+ 229:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             valid_edge = true;
+ 230:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 231:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else {
+ 232:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             printf("Invalid timing\n");
+ 233:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_error = true;
+ 234:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 235:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 237:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             // 8. Store next bit in buffer
+ 238:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t byte_index = decode_bit_count / 8;
+ 239:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t bit_index = 7 - (decode_bit_count % 8);
+ 240:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 241:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (next_bit) {
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 243:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             }
+ 244:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 245:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_bit_count++;
+ 246:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****           //  printf("Decoded bit %d: %d\n", decode_bit_count, next_bit);
+ 247:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 248:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             // 10. Set current bit to next bit for next iteration
+ 249:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = next_bit;
+ 250:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 251:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         }
+ 252:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         
+ 253:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 254:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     }
+ 255:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 256:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = false;
+ 257:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** 
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 259:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Decode %s, bits: %d/%d\n", success ? "success" : "fail", decode_bit_count, target_bit_c
+ 260:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return success;
+ 261:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** }...
+ 537              		.loc 1 261 1 view .LVU120
+ 538 000c 3846     		mov	r0, r7
+ 539 000e BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 540              	.LVL37:
+ 541              	.L102:
+ 114:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Starting Manchester decode for %d bytes\n", length);
+ 542              		.loc 1 114 5 is_stmt 1 view .LVU121
+ 543 0012 0646     		mov	r6, r0
+ 544 0014 B348     		ldr	r0, .L109
+ 545              	.LVL38:
+ 121:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_error = false;
+ 546              		.loc 1 121 18 is_stmt 0 view .LVU122
+ 547 0016 DFF81083 		ldr	r8, .L109+68
+ 122:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     synchronized = false;
+ 548              		.loc 1 122 18 view .LVU123
+ 549 001a DFF81093 		ldr	r9, .L109+72
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 550              		.loc 1 128 33 view .LVU124
+ 551 001e DFF810A3 		ldr	r10, .L109+76
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 552              		.loc 1 138 12 discriminator 2 view .LVU125
+ 553 0022 DFF810B3 		ldr	fp, .L109+80
+ 114:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Starting Manchester decode for %d bytes\n", length);
+ 554              		.loc 1 114 5 view .LVU126
+ 555 0026 FFF7FEFF 		bl	printf_
+ 556              	.LVL39:
+ 115:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Timing params: T=%luus, 2T=%luus, Window=%luus\n", 
+ 557              		.loc 1 115 5 is_stmt 1 view .LVU127
+ 558 002a 40F6C413 		movw	r3, #2500
+ 559 002e 42F21072 		movw	r2, #10000
+ 560 0032 41F28831 		movw	r1, #5000
+ 561 0036 AC48     		ldr	r0, .L109+4
+ 562 0038 FFF7FEFF 		bl	printf_
+ 563              	.LVL40:
+ 118:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_buffer = data;
+ 564              		.loc 1 118 5 view .LVU128
+ 119:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     target_bit_count = length * 8;
+ 565              		.loc 1 119 5 view .LVU129
+ 119:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     target_bit_count = length * 8;
+ 566              		.loc 1 119 22 is_stmt 0 view .LVU130
+ 567 003c AB4A     		ldr	r2, .L109+8
+ 568 003e E300     		lsls	r3, r4, #3
+ 569 0040 1380     		strh	r3, [r2]	@ movhi
+ 120:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_bit_count = 0;
+ 570              		.loc 1 120 5 is_stmt 1 view .LVU131
+ 120:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_bit_count = 0;
+ 571              		.loc 1 120 22 is_stmt 0 view .LVU132
+ 572 0042 AB4B     		ldr	r3, .L109+12
+ 573 0044 0025     		movs	r5, #0
+ 574 0046 1D80     		strh	r5, [r3]	@ movhi
+ 121:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_error = false;
+ 575              		.loc 1 121 5 is_stmt 1 view .LVU133
+ 123:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = true;
+ 576              		.loc 1 123 19 is_stmt 0 view .LVU134
+ 577 0048 AA4B     		ldr	r3, .L109+16
+ 121:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_error = false;
+ 578              		.loc 1 121 18 view .LVU135
+ 579 004a 88F80050 		strb	r5, [r8]
+ 122:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     synchronized = false;
+ 580              		.loc 1 122 5 is_stmt 1 view .LVU136
+ 125:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     memset(data, 0, length);
+ 581              		.loc 1 125 5 is_stmt 0 view .LVU137
+ 582 004e 2246     		mov	r2, r4
+ 583 0050 2946     		mov	r1, r5
+ 123:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = true;
+ 584              		.loc 1 123 19 view .LVU138
+ 585 0052 0124     		movs	r4, #1
+ 586              	.LVL41:
+ 125:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     memset(data, 0, length);
+ 587              		.loc 1 125 5 view .LVU139
+ 588 0054 3046     		mov	r0, r6
+ 122:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     synchronized = false;
+ 589              		.loc 1 122 18 view .LVU140
+ 590 0056 89F80050 		strb	r5, [r9]
+ 123:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = true;
+ 591              		.loc 1 123 5 is_stmt 1 view .LVU141
+ 123:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = true;
+ 592              		.loc 1 123 19 is_stmt 0 view .LVU142
+ 593 005a 1C70     		strb	r4, [r3]
+ 125:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     memset(data, 0, length);
+ 594              		.loc 1 125 5 is_stmt 1 view .LVU143
+ 595 005c FFF7FEFF 		bl	memset
+ 596              	.LVL42:
+ 126:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     start_timer(TIMER_A);
+ 597              		.loc 1 126 5 view .LVU144
+ 598 0060 A548     		ldr	r0, .L109+20
+ 599 0062 FFF7FEFF 		bl	start_timer
+ 600              	.LVL43:
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 601              		.loc 1 128 5 view .LVU145
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 602              		.loc 1 128 33 is_stmt 0 view .LVU146
+ 603 0066 9AF80000 		ldrb	r0, [r10]	@ zero_extendqisi2
+ 604              	.LVL44:
+ 129:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_listen_on_all_pins_interrupt(blacklist, manchester_rising_handler, manchester_falling_hand
+ 605              		.loc 1 129 5 is_stmt 1 view .LVU147
+ 606 006a A44B     		ldr	r3, .L109+24
+ 607 006c A44A     		ldr	r2, .L109+28
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 608              		.loc 1 128 33 is_stmt 0 view .LVU148
+ 609 006e A0F12001 		sub	r1, r0, #32
+ 610 0072 C0F12007 		rsb	r7, r0, #32
+ 611 0076 04FA01F1 		lsl	r1, r4, r1
+ 612 007a 24FA07F7 		lsr	r7, r4, r7
+ 613 007e 04FA00F0 		lsl	r0, r4, r0
  614              	.LVL45:
- 615              	.LFB142:
- 254:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 255:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void print_active_pins_from_mask(uint64_t mask)
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 616              		.loc 1 256 1 is_stmt 1 view -0
- 617              		.cfi_startproc
- 618              		@ args = 0, pretend = 0, frame = 0
- 619              		@ frame_needed = 0, uses_anonymous_args = 0
- 257:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 620              		.loc 1 257 5 view .LVU157
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 621              		.loc 1 256 1 is_stmt 0 view .LVU158
- 622 0000 70B5     		push	{r4, r5, r6, lr}
- 623              		.cfi_def_cfa_offset 16
- 624              		.cfi_offset 4, -16
- 625              		.cfi_offset 5, -12
- 626              		.cfi_offset 6, -8
- 627              		.cfi_offset 14, -4
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 628              		.loc 1 256 1 view .LVU159
- 629 0002 0646     		mov	r6, r0
- 630              		.loc 1 257 5 view .LVU160
- 631 0004 1148     		ldr	r0, .L63
- 632              	.LVL46:
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 633              		.loc 1 256 1 view .LVU161
- 634 0006 0D46     		mov	r5, r1
- 635              	.LBB8:
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint32_t pin = 0; pin < 64; ++pin)
- 636              		.loc 1 258 19 view .LVU162
- 637 0008 0024     		movs	r4, #0
- 638              	.LBE8:
- 257:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 639              		.loc 1 257 5 view .LVU163
- 640 000a FFF7FEFF 		bl	printf_
- 641              	.LVL47:
- 642              		.loc 1 258 5 is_stmt 1 view .LVU164
- 643              	.LBB9:
- 644              		.loc 1 258 10 view .LVU165
- 645              		.loc 1 258 32 discriminator 1 view .LVU166
- 646 000e 02E0     		b	.L59
- 647              	.LVL48:
- 648              	.L58:
- 649              		.loc 1 258 38 discriminator 2 view .LVU167
- 650 0010 0134     		adds	r4, r4, #1
- 651              	.LVL49:
- 652              		.loc 1 258 32 discriminator 1 view .LVU168
- 653 0012 402C     		cmp	r4, #64
- 654 0014 15D0     		beq	.L62
- 655              	.LVL50:
- 656              	.L59:
- 259:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 260:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if ((mask >> pin) & 1)
- 657              		.loc 1 260 9 view .LVU169
- 658              		.loc 1 260 19 is_stmt 0 view .LVU170
- 659 0016 C4F1200C 		rsb	ip, r4, #32
- 660 001a A4F12002 		sub	r2, r4, #32
- 661 001e 26FA04F3 		lsr	r3, r6, r4
- 662 0022 05FA0CFC 		lsl	ip, r5, ip
- 663 0026 43EA0C03 		orr	r3, r3, ip
- 664 002a 25FA02F2 		lsr	r2, r5, r2
- 665 002e 1343     		orrs	r3, r3, r2
- 666              		.loc 1 260 12 view .LVU171
- 667 0030 DB07     		lsls	r3, r3, #31
- 668 0032 EDD5     		bpl	.L58
- 261:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
- 262:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             printf("%u ", pin);
- 669              		.loc 1 262 13 is_stmt 1 view .LVU172
- 670 0034 2146     		mov	r1, r4
- 671 0036 0648     		ldr	r0, .L63+4
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 672              		.loc 1 258 38 is_stmt 0 discriminator 2 view .LVU173
- 673 0038 0134     		adds	r4, r4, #1
- 674              	.LVL51:
- 675              		.loc 1 262 13 view .LVU174
- 676 003a FFF7FEFF 		bl	printf_
- 677              	.LVL52:
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 678              		.loc 1 258 38 is_stmt 1 discriminator 2 view .LVU175
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 679              		.loc 1 258 32 discriminator 1 view .LVU176
- 680 003e 402C     		cmp	r4, #64
- 681 0040 E9D1     		bne	.L59
- 682              	.L62:
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 683              		.loc 1 258 32 is_stmt 0 discriminator 1 view .LVU177
- 684              	.LBE9:
- 263:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
- 264:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 265:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("\n");
- 685              		.loc 1 265 5 is_stmt 1 view .LVU178
- 266:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 686              		.loc 1 266 1 is_stmt 0 view .LVU179
- 687 0042 BDE87040 		pop	{r4, r5, r6, lr}
- 688              		.cfi_restore 14
- 689              		.cfi_restore 6
- 690              		.cfi_restore 5
- 691              		.cfi_restore 4
- 692              		.cfi_def_cfa_offset 0
- 693              	.LVL53:
- 265:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 694              		.loc 1 265 5 view .LVU180
- 695 0046 0348     		ldr	r0, .L63+8
- 696 0048 FFF7FEBF 		b	printf_
- 697              	.LVL54:
- 698              	.L64:
- 699              		.align	2
- 700              	.L63:
- 701 004c 00000000 		.word	.LC2
- 702 0050 14000000 		.word	.LC3
- 703 0054 18000000 		.word	.LC4
- 704              		.cfi_endproc
- 705              	.LFE142:
- 707              		.section	.rodata.main.str1.4,"aMS",%progbits,1
- 708              		.align	2
- 709              	.LC5:
- 710 0000 52756E6E 		.ascii	"Running on %s\012\000"
- 710      696E6720 
- 710      6F6E2025 
- 710      730A00
- 711 000f 00       		.align	2
- 712              	.LC6:
- 713 0010 43686970 		.ascii	"Chip UID: %s\012\000"
- 713      20554944 
- 713      3A202573 
- 713      0A00
- 714 001e 0000     		.align	2
- 715              	.LC7:
- 716 0020 53656E64 		.ascii	"Sending test data via Manchester encoding...\012\000"
- 716      696E6720 
- 716      74657374 
- 716      20646174 
- 716      61207669 
- 717 004e 0000     		.align	2
- 718              	.LC8:
- 719 0050 68616C6C 		.ascii	"hallo welt!\012\000"
- 719      6F207765 
- 719      6C74210A 
- 719      00
- 720              		.section	.text.startup.main,"ax",%progbits
- 721              		.align	1
- 722              		.p2align 2,,3
- 723              		.global	main
- 724              		.syntax unified
- 725              		.thumb
- 726              		.thumb_func
- 728              	main:
- 729              	.LFB143:
- 267:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 268:/Users/timcarlo/Desktop/testsoftware/core/main.c **** int main(void)
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 730              		.loc 1 269 1 is_stmt 1 view -0
- 731              		.cfi_startproc
- 732              		@ args = 0, pretend = 0, frame = 16
- 733              		@ frame_needed = 0, uses_anonymous_args = 0
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 734              		.loc 1 270 5 view .LVU182
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 735              		.loc 1 269 1 is_stmt 0 view .LVU183
- 736 0000 10B5     		push	{r4, lr}
- 737              		.cfi_def_cfa_offset 8
- 738              		.cfi_offset 4, -8
- 739              		.cfi_offset 14, -4
- 740 0002 84B0     		sub	sp, sp, #16
- 741              		.cfi_def_cfa_offset 24
- 742              		.loc 1 270 5 view .LVU184
- 743 0004 FFF7FEFF 		bl	io_init
- 744              	.LVL55:
- 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS); // Initialize pin data array
- 745              		.loc 1 271 5 is_stmt 1 view .LVU185
- 746 0008 3021     		movs	r1, #48
- 747 000a 1548     		ldr	r0, .L68
- 748 000c 154C     		ldr	r4, .L68+4
- 749 000e FFF7FEFF 		bl	initialize_pin_data_array
- 750              	.LVL56:
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Start Timer B for Pin Time Measurements
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_timer(TIMER_B);
- 751              		.loc 1 274 5 view .LVU186
- 752 0012 1548     		ldr	r0, .L68+8
- 753 0014 FFF7FEFF 		bl	start_timer
- 754              	.LVL57:
- 275:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Running on %s\n", get_chip_family_name());
- 755              		.loc 1 276 5 view .LVU187
- 756 0018 FFF7FEFF 		bl	get_chip_family_name
- 757              	.LVL58:
- 758 001c 0146     		mov	r1, r0
- 759              		.loc 1 276 5 is_stmt 0 discriminator 1 view .LVU188
- 760 001e 1348     		ldr	r0, .L68+12
- 761 0020 FFF7FEFF 		bl	printf_
- 762              	.LVL59:
- 277:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Chip UID: %s\n", get_unique_id_str());
- 763              		.loc 1 277 5 is_stmt 1 view .LVU189
- 764 0024 FFF7FEFF 		bl	get_unique_id_str
- 765              	.LVL60:
- 766 0028 0146     		mov	r1, r0
- 767              		.loc 1 277 5 is_stmt 0 discriminator 1 view .LVU190
- 768 002a 1148     		ldr	r0, .L68+16
- 769 002c FFF7FEFF 		bl	printf_
- 770              	.LVL61:
- 278:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_init((uint8_t)11, (uint8_t)12); // Initialize Manchester encoding if needed
- 771              		.loc 1 279 5 is_stmt 1 view .LVU191
- 772 0030 0C21     		movs	r1, #12
- 773 0032 0B20     		movs	r0, #11
- 774 0034 FFF7FEFF 		bl	manchester_init
- 775              	.LVL62:
- 776              	.L66:
- 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 281:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     while (1)
- 777              		.loc 1 281 5 view .LVU192
- 778              	.LBB10:
- 282:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 283:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("Sending test data via Manchester encoding...\n");
- 779              		.loc 1 283 9 view .LVU193
- 780 0038 0E48     		ldr	r0, .L68+20
- 781 003a FFF7FEFF 		bl	printf_
- 782              	.LVL63:
- 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
- 783              		.loc 1 284 9 view .LVU194
- 784              		.loc 1 284 14 is_stmt 0 view .LVU195
- 785 003e 94E80F00 		ldm	r4, {r0, r1, r2, r3}
- 786 0042 EC46     		mov	ip, sp
- 787 0044 ACE80700 		stmia	ip!, {r0, r1, r2}
- 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         uint8_t bsp_length = 12;
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         manchester_transmit_array(
- 788              		.loc 1 286 9 view .LVU196
- 789 0048 6946     		mov	r1, sp
- 790 004a 0B20     		movs	r0, #11
- 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
- 791              		.loc 1 284 14 view .LVU197
- 792 004c 8CF80030 		strb	r3, [ip]
- 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         uint8_t bsp_length = 12;
- 793              		.loc 1 285 9 is_stmt 1 view .LVU198
- 794              	.LVL64:
- 795              		.loc 1 286 9 view .LVU199
- 796 0050 FFF7FEFF 		bl	manchester_transmit_array
- 797              	.LVL65:
- 287:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             11,            // Length of the data array
- 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             (uint8_t *)bsp // Example data to transmit
- 289:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         );
- 290:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(1000); // Delay to allow transmission to complete
- 798              		.loc 1 290 9 view .LVU200
- 799 0054 4FF47A70 		mov	r0, #1000
- 800 0058 FFF7FEFF 		bl	delay_ms
- 801              	.LVL66:
- 802              	.LBE10:
- 281:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 803              		.loc 1 281 11 view .LVU201
- 804 005c ECE7     		b	.L66
- 805              	.L69:
- 806 005e 00BF     		.align	2
- 807              	.L68:
- 808 0060 00000000 		.word	pin_data
- 809 0064 50000000 		.word	.LC8
- 810 0068 00900040 		.word	1073778688
- 811 006c 00000000 		.word	.LC5
- 812 0070 10000000 		.word	.LC6
- 813 0074 20000000 		.word	.LC7
- 814              		.cfi_endproc
- 815              	.LFE143:
- 817              		.global	black_list_mask
- 818              		.section	.bss.black_list_mask,"aw",%nobits
- 819              		.align	3
- 822              	black_list_mask:
- 823 0000 00000000 		.space	8
- 823      00000000 
- 824              		.global	selected_pin_data
- 825              		.section	.bss.selected_pin_data,"aw",%nobits
- 826              		.align	2
- 829              	selected_pin_data:
- 830 0000 00000000 		.space	4
- 831              		.global	selected_pin
- 832              		.section	.bss.selected_pin,"aw",%nobits
- 835              	selected_pin:
- 836 0000 00       		.space	1
- 837              		.global	current_driven_pin
- 838              		.section	.data.current_driven_pin,"aw"
- 841              	current_driven_pin:
- 842 0000 31       		.byte	49
- 843              		.global	state
- 844              		.section	.bss.state,"aw",%nobits
- 847              	state:
- 848 0000 00       		.space	1
- 849              		.global	last_event_valid
- 850              		.section	.bss.last_event_valid,"aw",%nobits
- 853              	last_event_valid:
- 854 0000 00       		.space	1
- 855              		.global	last_event
- 856              		.section	.bss.last_event,"aw",%nobits
- 857              		.align	2
- 860              	last_event:
- 861 0000 00000000 		.space	4
- 862              		.global	green_led_on
- 863              		.section	.bss.green_led_on,"aw",%nobits
- 866              	green_led_on:
- 867 0000 00       		.space	1
- 868              		.global	red_led_on
- 869              		.section	.bss.red_led_on,"aw",%nobits
- 872              	red_led_on:
- 873 0000 00       		.space	1
- 874              		.global	pin_data
- 875              		.section	.bss.pin_data,"aw",%nobits
- 876              		.align	2
- 879              	pin_data:
- 880 0000 00000000 		.space	576
- 880      00000000 
- 880      00000000 
- 880      00000000 
- 880      00000000 
- 881              		.text
- 882              	.Letext0:
- 883              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
- 884              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
- 885              		.file 4 "Include/nrf52840.h"
- 886              		.file 5 "/Users/timcarlo/Desktop/testsoftware/common/include/pindata.h"
- 887              		.file 6 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/manchester_nrf_helper.h"
- 888              		.file 7 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
- 889              		.file 8 "/Users/timcarlo/Desktop/testsoftware/common/include/printf.h"
+ 128:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint64_t blacklist = ~(1ULL << rx_pin_num);
+ 615              		.loc 1 128 33 view .LVU149
+ 616 0082 3943     		orrs	r1, r1, r7
+ 129:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_listen_on_all_pins_interrupt(blacklist, manchester_rising_handler, manchester_falling_hand
+ 617              		.loc 1 129 5 view .LVU150
+ 618 0084 C043     		mvns	r0, r0
+ 619 0086 C943     		mvns	r1, r1
+ 132:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 620              		.loc 1 132 19 view .LVU151
+ 621 0088 9E4C     		ldr	r4, .L109+32
+ 129:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     gpio_listen_on_all_pins_interrupt(blacklist, manchester_rising_handler, manchester_falling_hand
+ 622              		.loc 1 129 5 view .LVU152
+ 623 008a FFF7FEFF 		bl	gpio_listen_on_all_pins_interrupt
+ 624              	.LVL46:
+ 132:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 625              		.loc 1 132 5 is_stmt 1 view .LVU153
+ 133:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint32_t timeout_start = get_timer_ticks(TIMER_A);
+ 626              		.loc 1 133 30 is_stmt 0 view .LVU154
+ 627 008e 9A48     		ldr	r0, .L109+20
+ 132:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 628              		.loc 1 132 19 view .LVU155
+ 629 0090 2570     		strb	r5, [r4]
+ 133:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint32_t timeout_start = get_timer_ticks(TIMER_A);
+ 630              		.loc 1 133 5 is_stmt 1 view .LVU156
+ 133:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     uint32_t timeout_start = get_timer_ticks(TIMER_A);
+ 631              		.loc 1 133 30 is_stmt 0 view .LVU157
+ 632 0092 FFF7FEFF 		bl	get_timer_ticks
+ 633              	.LVL47:
+ 634 0096 0546     		mov	r5, r0
+ 635              	.LVL48:
+ 134:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     const uint32_t TIMEOUT_US = 1000000; // 1 second timeout
+ 636              		.loc 1 134 5 is_stmt 1 view .LVU158
+ 137:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!edge_detected) {
+ 637              		.loc 1 137 5 view .LVU159
+ 137:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!edge_detected) {
+ 638              		.loc 1 137 11 is_stmt 0 view .LVU160
+ 639 0098 08E0     		b	.L47
+ 640              	.LVL49:
+ 641              	.L49:
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 642              		.loc 1 138 13 view .LVU161
+ 643 009a FFF7FEFF 		bl	get_timer_ticks
+ 644              	.LVL50:
+ 645 009e 0146     		mov	r1, r0
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 646              		.loc 1 138 13 discriminator 1 view .LVU162
+ 647 00a0 2846     		mov	r0, r5
+ 648 00a2 FFF7FEFF 		bl	get_elapsed_time
+ 649              	.LVL51:
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 650              		.loc 1 138 12 discriminator 2 view .LVU163
+ 651 00a6 5845     		cmp	r0, fp
+ 652 00a8 00F2FD80 		bhi	.L103
+ 653              	.L47:
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 654              		.loc 1 138 9 is_stmt 1 view .LVU164
+ 137:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!edge_detected) {
+ 655              		.loc 1 137 12 view .LVU165
+ 656 00ac 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 138:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 657              		.loc 1 138 13 is_stmt 0 view .LVU166
+ 658 00ae 9248     		ldr	r0, .L109+20
+ 137:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!edge_detected) {
+ 659              		.loc 1 137 12 view .LVU167
+ 660 00b0 03F0FF07 		and	r7, r3, #255
+ 661 00b4 002B     		cmp	r3, #0
+ 662 00b6 F0D0     		beq	.L49
+ 144:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 663              		.loc 1 144 5 is_stmt 1 view .LVU168
+ 144:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     edge_detected = false;
+ 664              		.loc 1 144 19 is_stmt 0 view .LVU169
+ 665 00b8 0023     		movs	r3, #0
+ 666 00ba 2370     		strb	r3, [r4]
+ 145:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_timestamp = edge_timestamp;
+ 667              		.loc 1 145 5 is_stmt 1 view .LVU170
+ 145:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     last_edge_timestamp = edge_timestamp;
+ 668              		.loc 1 145 25 is_stmt 0 view .LVU171
+ 669 00bc 924B     		ldr	r3, .L109+36
+ 670 00be 934A     		ldr	r2, .L109+40
+ 671 00c0 1B68     		ldr	r3, [r3]
+ 672 00c2 1360     		str	r3, [r2]
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 673              		.loc 1 148 5 is_stmt 1 view .LVU172
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 674              		.loc 1 148 26 view .LVU173
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 675              		.loc 1 148 12 is_stmt 0 view .LVU174
+ 676 00c4 99F80030 		ldrb	r3, [r9]	@ zero_extendqisi2
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 677              		.loc 1 148 26 view .LVU175
+ 678 00c8 002B     		cmp	r3, #0
+ 679 00ca 38D1     		bne	.L56
+ 680              	.LBB64:
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 681              		.loc 1 151 16 discriminator 2 view .LVU176
+ 682 00cc DFF864B2 		ldr	fp, .L109+80
+ 683              	.LVL52:
+ 684              	.L50:
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 685              		.loc 1 151 16 discriminator 2 view .LVU177
+ 686              	.LBE64:
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 687              		.loc 1 148 29 discriminator 1 view .LVU178
+ 688 00d0 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 689              		.loc 1 148 26 discriminator 1 view .LVU179
+ 690 00d4 002B     		cmp	r3, #0
+ 691 00d6 32D1     		bne	.L56
+ 692              	.LBB67:
+ 149:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 693              		.loc 1 149 9 is_stmt 1 view .LVU180
+ 149:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 694              		.loc 1 149 25 is_stmt 0 view .LVU181
+ 695 00d8 8748     		ldr	r0, .L109+20
+ 696 00da FFF7FEFF 		bl	get_timer_ticks
+ 697              	.LVL53:
+ 698 00de 0546     		mov	r5, r0
+ 699              	.LVL54:
+ 150:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 700              		.loc 1 150 9 is_stmt 1 view .LVU182
+ 150:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 701              		.loc 1 150 15 is_stmt 0 view .LVU183
+ 702 00e0 08E0     		b	.L53
+ 703              	.LVL55:
+ 704              	.L54:
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 705              		.loc 1 151 17 view .LVU184
+ 706 00e2 FFF7FEFF 		bl	get_timer_ticks
+ 707              	.LVL56:
+ 708 00e6 0146     		mov	r1, r0
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 709              		.loc 1 151 17 discriminator 1 view .LVU185
+ 710 00e8 2846     		mov	r0, r5
+ 711 00ea FFF7FEFF 		bl	get_elapsed_time
+ 712              	.LVL57:
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 713              		.loc 1 151 16 discriminator 2 view .LVU186
+ 714 00ee 5845     		cmp	r0, fp
+ 715 00f0 00F2DF80 		bhi	.L104
+ 716              	.L53:
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 717              		.loc 1 151 13 is_stmt 1 view .LVU187
+ 150:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 718              		.loc 1 150 16 view .LVU188
+ 719 00f4 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 151:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > TIMEOUT_US) {
+ 720              		.loc 1 151 17 is_stmt 0 view .LVU189
+ 721 00f6 8048     		ldr	r0, .L109+20
+ 150:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 722              		.loc 1 150 16 view .LVU190
+ 723 00f8 03F0FF07 		and	r7, r3, #255
+ 724 00fc 002B     		cmp	r3, #0
+ 725 00fe F0D0     		beq	.L54
+ 158:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 726              		.loc 1 158 9 is_stmt 1 view .LVU191
+ 158:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 727              		.loc 1 158 30 is_stmt 0 view .LVU192
+ 728 0100 824F     		ldr	r7, .L109+40
+ 729 0102 814D     		ldr	r5, .L109+36
+ 730              	.LVL58:
+ 158:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 731              		.loc 1 158 30 view .LVU193
+ 732 0104 3868     		ldr	r0, [r7]
+ 733 0106 2968     		ldr	r1, [r5]
+ 734 0108 FFF7FEFF 		bl	get_elapsed_time
+ 735              	.LVL59:
+ 162:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US)) {
+ 736              		.loc 1 162 9 is_stmt 1 view .LVU194
+ 737              	.LBB65:
+ 738              	.LBI65:
+  33:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window
+ 739              		.loc 1 33 13 view .LVU195
+ 740              	.LBB66:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 741              		.loc 1 35 5 view .LVU196
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 742              		.loc 1 35 56 is_stmt 0 view .LVU197
+ 743 010c A0F5EA50 		sub	r0, r0, #7488
+ 744              	.LVL60:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 745              		.loc 1 35 56 view .LVU198
+ 746 0110 0C38     		subs	r0, r0, #12
+ 747              	.LVL61:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 748              		.loc 1 35 56 view .LVU199
+ 749 0112 41F28833 		movw	r3, #5000
+ 750 0116 9842     		cmp	r0, r3
+ 751 0118 00F2D180 		bhi	.L55
+ 752              	.LVL62:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 753              		.loc 1 35 56 view .LVU200
+ 754              	.LBE66:
+ 755              	.LBE65:
+ 163:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             synchronized = true;
+ 756              		.loc 1 163 13 is_stmt 1 view .LVU201
+ 163:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             synchronized = true;
+ 757              		.loc 1 163 26 is_stmt 0 view .LVU202
+ 758 011c 0123     		movs	r3, #1
+ 759 011e 89F80030 		strb	r3, [r9]
+ 165:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = gpio_read(rx_pin_num);
+ 760              		.loc 1 165 13 is_stmt 1 view .LVU203
+ 165:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = gpio_read(rx_pin_num);
+ 761              		.loc 1 165 33 is_stmt 0 view .LVU204
+ 762 0122 9AF80000 		ldrb	r0, [r10]	@ zero_extendqisi2
+ 763              	.LVL63:
+ 165:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = gpio_read(rx_pin_num);
+ 764              		.loc 1 165 33 view .LVU205
+ 765 0126 FFF7FEFF 		bl	gpio_read
+ 766              	.LVL64:
+ 165:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = gpio_read(rx_pin_num);
+ 767              		.loc 1 165 31 discriminator 1 view .LVU206
+ 768 012a 794B     		ldr	r3, .L109+44
+ 769 012c 1870     		strb	r0, [r3]
+ 169:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         last_edge_timestamp = edge_timestamp;
+ 770              		.loc 1 169 9 is_stmt 1 view .LVU207
+ 169:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         last_edge_timestamp = edge_timestamp;
+ 771              		.loc 1 169 29 is_stmt 0 view .LVU208
+ 772 012e 2B68     		ldr	r3, [r5]
+ 773 0130 3B60     		str	r3, [r7]
+ 170:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 774              		.loc 1 170 9 is_stmt 1 view .LVU209
+ 170:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 775              		.loc 1 170 23 is_stmt 0 view .LVU210
+ 776 0132 0023     		movs	r3, #0
+ 777 0134 2370     		strb	r3, [r4]
+ 778              	.LBE67:
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 779              		.loc 1 148 26 is_stmt 1 view .LVU211
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 780              		.loc 1 148 12 is_stmt 0 view .LVU212
+ 781 0136 99F80030 		ldrb	r3, [r9]	@ zero_extendqisi2
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 782              		.loc 1 148 26 view .LVU213
+ 783 013a 002B     		cmp	r3, #0
+ 784 013c C8D0     		beq	.L50
+ 785              	.LVL65:
+ 786              	.L56:
+ 173:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (!synchronized) {
+ 787              		.loc 1 173 5 is_stmt 1 view .LVU214
+ 173:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (!synchronized) {
+ 788              		.loc 1 173 9 is_stmt 0 view .LVU215
+ 789 013e 99F80030 		ldrb	r3, [r9]	@ zero_extendqisi2
+ 173:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     if (!synchronized) {
+ 790              		.loc 1 173 8 view .LVU216
+ 791 0142 03F0FF07 		and	r7, r3, #255
+ 792 0146 002B     		cmp	r3, #0
+ 793 0148 00F01A81 		beq	.L105
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 794              		.loc 1 180 48 is_stmt 1 view .LVU217
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 795              		.loc 1 180 29 is_stmt 0 view .LVU218
+ 796 014c 684B     		ldr	r3, .L109+12
+ 797 014e 1A88     		ldrh	r2, [r3]
+ 798 0150 664B     		ldr	r3, .L109+8
+ 799 0152 1B88     		ldrh	r3, [r3]
+ 800 0154 92B2     		uxth	r2, r2
+ 801 0156 9BB2     		uxth	r3, r3
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 802              		.loc 1 180 48 view .LVU219
+ 803 0158 9A42     		cmp	r2, r3
+ 804 015a 80F08D80 		bcs	.L65
+ 805              	.LBB68:
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 806              		.loc 1 185 16 discriminator 2 view .LVU220
+ 807 015e 47F23055 		movw	r5, #30000
+ 808              	.L59:
+ 809              	.LBE68:
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 810              		.loc 1 180 51 discriminator 1 view .LVU221
+ 811 0162 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 812              		.loc 1 180 48 discriminator 1 view .LVU222
+ 813 0166 03F0FF02 		and	r2, r3, #255
+ 814 016a 002B     		cmp	r3, #0
+ 815 016c 40F08480 		bne	.L65
+ 816              	.LBB79:
+ 181:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 817              		.loc 1 181 9 is_stmt 1 view .LVU223
+ 182:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 818              		.loc 1 182 25 is_stmt 0 view .LVU224
+ 819 0170 6148     		ldr	r0, .L109+20
+ 181:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 820              		.loc 1 181 23 view .LVU225
+ 821 0172 2270     		strb	r2, [r4]
+ 182:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 822              		.loc 1 182 9 is_stmt 1 view .LVU226
+ 182:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         timeout_start = get_timer_ticks(TIMER_A);
+ 823              		.loc 1 182 25 is_stmt 0 view .LVU227
+ 824 0174 FFF7FEFF 		bl	get_timer_ticks
+ 825              	.LVL66:
+ 826 0178 8146     		mov	r9, r0
+ 827              	.LVL67:
+ 184:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 828              		.loc 1 184 9 is_stmt 1 view .LVU228
+ 184:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 829              		.loc 1 184 15 is_stmt 0 view .LVU229
+ 830 017a 08E0     		b	.L62
+ 831              	.LVL68:
+ 832              	.L64:
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 833              		.loc 1 185 17 view .LVU230
+ 834 017c FFF7FEFF 		bl	get_timer_ticks
+ 835              	.LVL69:
+ 836 0180 0146     		mov	r1, r0
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 837              		.loc 1 185 17 discriminator 1 view .LVU231
+ 838 0182 4846     		mov	r0, r9
+ 839 0184 FFF7FEFF 		bl	get_elapsed_time
+ 840              	.LVL70:
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 841              		.loc 1 185 16 discriminator 2 view .LVU232
+ 842 0188 A842     		cmp	r0, r5
+ 843 018a 00F2D580 		bhi	.L106
+ 844              	.L62:
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 845              		.loc 1 185 13 is_stmt 1 view .LVU233
+ 184:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 846              		.loc 1 184 16 view .LVU234
+ 847 018e 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 185:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T2_TIME_US * 3) {
+ 848              		.loc 1 185 17 is_stmt 0 view .LVU235
+ 849 0190 5948     		ldr	r0, .L109+20
+ 184:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         while (!edge_detected) {
+ 850              		.loc 1 184 16 view .LVU236
+ 851 0192 002B     		cmp	r3, #0
+ 852 0194 F2D0     		beq	.L64
+ 853              	.L63:
+ 191:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (decode_error) break;
+ 854              		.loc 1 191 9 is_stmt 1 view .LVU237
+ 191:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (decode_error) break;
+ 855              		.loc 1 191 13 is_stmt 0 view .LVU238
+ 856 0196 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ 191:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (decode_error) break;
+ 857              		.loc 1 191 12 view .LVU239
+ 858 019a 03F0FF09 		and	r9, r3, #255
+ 859              	.LVL71:
+ 191:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (decode_error) break;
+ 860              		.loc 1 191 12 view .LVU240
+ 861 019e 002B     		cmp	r3, #0
+ 862 01a0 6AD1     		bne	.L65
+ 193:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 863              		.loc 1 193 9 is_stmt 1 view .LVU241
+ 193:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         uint32_t time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 864              		.loc 1 193 30 is_stmt 0 view .LVU242
+ 865 01a2 5A4B     		ldr	r3, .L109+40
+ 866 01a4 5849     		ldr	r1, .L109+36
+ 867 01a6 1868     		ldr	r0, [r3]
+ 868 01a8 0968     		ldr	r1, [r1]
+ 869 01aa FFF7FEFF 		bl	get_elapsed_time
+ 870              	.LVL72:
+ 194:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         bool next_bit;
+ 871              		.loc 1 194 9 is_stmt 1 view .LVU243
+ 195:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         bool valid_edge = false;
+ 872              		.loc 1 195 9 view .LVU244
+ 200:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (is_timing_within_window(time_diff, T_TIME_US, T_WINDOW_US)) {
+ 873              		.loc 1 200 9 view .LVU245
+ 874              	.LBB69:
+ 875              	.LBI69:
+  33:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window
+ 876              		.loc 1 33 13 view .LVU246
+ 877              	.LBB70:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 878              		.loc 1 35 5 view .LVU247
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 879              		.loc 1 35 56 is_stmt 0 view .LVU248
+ 880 01ae 40F6C313 		movw	r3, #2499
+ 881 01b2 9842     		cmp	r0, r3
+ 882 01b4 40F28F80 		bls	.L66
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 883              		.loc 1 35 56 discriminator 1 view .LVU249
+ 884 01b8 41F64C53 		movw	r3, #7500
+ 885 01bc 9842     		cmp	r0, r3
+ 886 01be 00F2C280 		bhi	.L67
+ 887              	.LVL73:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 888              		.loc 1 35 56 discriminator 1 view .LVU250
+ 889              	.LBE70:
+ 890              	.LBE69:
+ 891              	.LBB71:
+ 202:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 892              		.loc 1 202 13 is_stmt 1 view .LVU251
+ 202:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 893              		.loc 1 202 33 is_stmt 0 view .LVU252
+ 894 01c2 5149     		ldr	r1, .L109+36
+ 895 01c4 514A     		ldr	r2, .L109+40
+ 896 01c6 0B68     		ldr	r3, [r1]
+ 204:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             timeout_start = get_timer_ticks(TIMER_A);
+ 897              		.loc 1 204 29 view .LVU253
+ 898 01c8 4B48     		ldr	r0, .L109+20
+ 899              	.LVL74:
+ 202:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 900              		.loc 1 202 33 view .LVU254
+ 901 01ca 1360     		str	r3, [r2]
+ 203:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             edge_detected = false;
+ 902              		.loc 1 203 13 is_stmt 1 view .LVU255
+ 203:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             edge_detected = false;
+ 903              		.loc 1 203 27 is_stmt 0 view .LVU256
+ 904 01cc 84F80090 		strb	r9, [r4]
+ 204:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             timeout_start = get_timer_ticks(TIMER_A);
+ 905              		.loc 1 204 13 is_stmt 1 view .LVU257
+ 204:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             timeout_start = get_timer_ticks(TIMER_A);
+ 906              		.loc 1 204 29 is_stmt 0 view .LVU258
+ 907 01d0 FFF7FEFF 		bl	get_timer_ticks
+ 908              	.LVL75:
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 909              		.loc 1 207 20 discriminator 2 view .LVU259
+ 910 01d4 43F6982A 		movw	r10, #15000
+ 204:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             timeout_start = get_timer_ticks(TIMER_A);
+ 911              		.loc 1 204 29 view .LVU260
+ 912 01d8 8146     		mov	r9, r0
+ 913              	.LVL76:
+ 206:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             while (!edge_detected) {
+ 914              		.loc 1 206 13 is_stmt 1 view .LVU261
+ 206:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             while (!edge_detected) {
+ 915              		.loc 1 206 19 is_stmt 0 view .LVU262
+ 916 01da 08E0     		b	.L68
+ 917              	.LVL77:
+ 918              	.L70:
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 919              		.loc 1 207 21 view .LVU263
+ 920 01dc FFF7FEFF 		bl	get_timer_ticks
+ 921              	.LVL78:
+ 922 01e0 0146     		mov	r1, r0
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 923              		.loc 1 207 21 discriminator 1 view .LVU264
+ 924 01e2 4846     		mov	r0, r9
+ 925 01e4 FFF7FEFF 		bl	get_elapsed_time
+ 926              	.LVL79:
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 927              		.loc 1 207 20 discriminator 2 view .LVU265
+ 928 01e8 5045     		cmp	r0, r10
+ 929 01ea 00F2BC80 		bhi	.L107
+ 930              	.L68:
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 931              		.loc 1 207 17 is_stmt 1 view .LVU266
+ 206:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             while (!edge_detected) {
+ 932              		.loc 1 206 20 view .LVU267
+ 933 01ee 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 207:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 if (get_elapsed_time(timeout_start, get_timer_ticks(TIMER_A)) > T_TIME_US * 3) {
+ 934              		.loc 1 207 21 is_stmt 0 view .LVU268
+ 935 01f0 4148     		ldr	r0, .L109+20
+ 206:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             while (!edge_detected) {
+ 936              		.loc 1 206 20 view .LVU269
+ 937 01f2 002B     		cmp	r3, #0
+ 938 01f4 F2D0     		beq	.L70
+ 939              	.L69:
+ 213:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (decode_error) break;
+ 940              		.loc 1 213 13 is_stmt 1 view .LVU270
+ 213:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (decode_error) break;
+ 941              		.loc 1 213 17 is_stmt 0 view .LVU271
+ 942 01f6 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ 213:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (decode_error) break;
+ 943              		.loc 1 213 16 view .LVU272
+ 944 01fa 002B     		cmp	r3, #0
+ 945 01fc 3CD1     		bne	.L65
+ 215:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint32_t second_time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 946              		.loc 1 215 13 is_stmt 1 view .LVU273
+ 215:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint32_t second_time_diff = get_elapsed_time(last_edge_timestamp, edge_timestamp);
+ 947              		.loc 1 215 41 is_stmt 0 view .LVU274
+ 948 01fe 434B     		ldr	r3, .L109+40
+ 949 0200 1868     		ldr	r0, [r3]
+ 950 0202 414B     		ldr	r3, .L109+36
+ 951 0204 1968     		ldr	r1, [r3]
+ 952 0206 FFF7FEFF 		bl	get_elapsed_time
+ 953              	.LVL80:
+ 218:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (is_timing_within_window(second_time_diff, T_TIME_US, T_WINDOW_US)) {
+ 954              		.loc 1 218 13 is_stmt 1 view .LVU275
+ 955              	.LBB72:
+ 956              	.LBI72:
+  33:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window
+ 957              		.loc 1 33 13 view .LVU276
+ 958              	.LBB73:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 959              		.loc 1 35 5 view .LVU277
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 960              		.loc 1 35 56 is_stmt 0 view .LVU278
+ 961 020a 41F28832 		movw	r2, #5000
+ 962 020e A0F6C413 		subw	r3, r0, #2500
+ 963 0212 9342     		cmp	r3, r2
+ 964 0214 00F2A080 		bhi	.L108
+ 965              	.LVL81:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 966              		.loc 1 35 56 view .LVU279
+ 967              	.LBE73:
+ 968              	.LBE72:
+ 219:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 next_bit = current_bit_value;
+ 969              		.loc 1 219 17 is_stmt 1 view .LVU280
+ 219:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 next_bit = current_bit_value;
+ 970              		.loc 1 219 26 is_stmt 0 view .LVU281
+ 971 0218 3D49     		ldr	r1, .L109+44
+ 972 021a 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 973 021c DBB2     		uxtb	r3, r3
+ 974              	.LVL82:
+ 220:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 valid_edge = true;
+ 975              		.loc 1 220 17 is_stmt 1 view .LVU282
+ 220:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 valid_edge = true;
+ 976              		.loc 1 220 17 is_stmt 0 view .LVU283
+ 977              	.LBE71:
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 978              		.loc 1 236 9 is_stmt 1 view .LVU284
+ 979              	.L73:
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 980              		.loc 1 236 27 is_stmt 0 discriminator 1 view .LVU285
+ 981 021e 98F80020 		ldrb	r2, [r8]	@ zero_extendqisi2
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 982              		.loc 1 236 24 discriminator 1 view .LVU286
+ 983 0222 F2B9     		cbnz	r2, .L72
+ 984              	.LBB74:
+ 238:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t byte_index = decode_bit_count / 8;
+ 985              		.loc 1 238 13 is_stmt 1 view .LVU287
+ 238:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t byte_index = decode_bit_count / 8;
+ 986              		.loc 1 238 21 is_stmt 0 view .LVU288
+ 987 0224 324A     		ldr	r2, .L109+12
+ 988 0226 1288     		ldrh	r2, [r2]
+ 989 0228 90B2     		uxth	r0, r2
+ 990              	.LVL83:
+ 239:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t bit_index = 7 - (decode_bit_count % 8);
+ 991              		.loc 1 239 13 is_stmt 1 view .LVU289
+ 239:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t bit_index = 7 - (decode_bit_count % 8);
+ 992              		.loc 1 239 35 is_stmt 0 view .LVU290
+ 993 022a 314A     		ldr	r2, .L109+12
+ 994 022c 1288     		ldrh	r2, [r2]
+ 995 022e 92B2     		uxth	r2, r2
+ 996              	.LVL84:
+ 241:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (next_bit) {
+ 997              		.loc 1 241 13 is_stmt 1 view .LVU291
+ 241:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             if (next_bit) {
+ 998              		.loc 1 241 16 is_stmt 0 view .LVU292
+ 999 0230 6BB1     		cbz	r3, .L75
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1000              		.loc 1 242 17 is_stmt 1 view .LVU293
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1001              		.loc 1 242 21 is_stmt 0 view .LVU294
+ 1002 0232 C0F3C700 		ubfx	r0, r0, #3, #8
+ 1003              	.LVL85:
+ 239:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             uint8_t bit_index = 7 - (decode_bit_count % 8);
+ 1004              		.loc 1 239 35 view .LVU295
+ 1005 0236 D243     		mvns	r2, r2
+ 1006              	.LVL86:
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1007              		.loc 1 242 34 view .LVU296
+ 1008 0238 16F800E0 		ldrb	lr, [r6, r0]	@ zero_extendqisi2
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1009              		.loc 1 242 40 view .LVU297
+ 1010 023c 02F00702 		and	r2, r2, #7
+ 1011              	.LVL87:
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1012              		.loc 1 242 40 view .LVU298
+ 1013 0240 4FF0010C 		mov	ip, #1
+ 1014 0244 0CFA02F2 		lsl	r2, ip, r2
+ 242:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 data[byte_index] |= (1 << bit_index);
+ 1015              		.loc 1 242 34 view .LVU299
+ 1016 0248 42EA0E02 		orr	r2, r2, lr
+ 1017 024c 3254     		strb	r2, [r6, r0]
+ 1018              	.L75:
+ 245:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_bit_count++;
+ 1019              		.loc 1 245 13 is_stmt 1 view .LVU300
+ 245:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_bit_count++;
+ 1020              		.loc 1 245 29 is_stmt 0 view .LVU301
+ 1021 024e 2848     		ldr	r0, .L109+12
+ 1022 0250 0288     		ldrh	r2, [r0]
+ 1023 0252 0132     		adds	r2, r2, #1
+ 1024 0254 92B2     		uxth	r2, r2
+ 1025 0256 0280     		strh	r2, [r0]	@ movhi
+ 249:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = next_bit;
+ 1026              		.loc 1 249 13 is_stmt 1 view .LVU302
+ 249:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             current_bit_value = next_bit;
+ 1027              		.loc 1 249 31 is_stmt 0 view .LVU303
+ 1028 0258 0B70     		strb	r3, [r1]
+ 250:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 1029              		.loc 1 250 13 is_stmt 1 view .LVU304
+ 250:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 1030              		.loc 1 250 33 is_stmt 0 view .LVU305
+ 1031 025a 2B4B     		ldr	r3, .L109+36
+ 1032              	.LVL88:
+ 250:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 1033              		.loc 1 250 33 view .LVU306
+ 1034 025c 2B4A     		ldr	r2, .L109+40
+ 1035 025e 1B68     		ldr	r3, [r3]
+ 1036 0260 1360     		str	r3, [r2]
+ 1037              	.LVL89:
+ 1038              	.L72:
+ 250:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             last_edge_timestamp = edge_timestamp;
+ 1039              		.loc 1 250 33 view .LVU307
+ 1040              	.LBE74:
+ 253:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 1041              		.loc 1 253 9 is_stmt 1 view .LVU308
+ 253:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 1042              		.loc 1 253 23 is_stmt 0 view .LVU309
+ 1043 0262 0023     		movs	r3, #0
+ 1044 0264 2370     		strb	r3, [r4]
+ 1045              	.LBE79:
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 1046              		.loc 1 180 48 is_stmt 1 view .LVU310
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 1047              		.loc 1 180 29 is_stmt 0 view .LVU311
+ 1048 0266 224B     		ldr	r3, .L109+12
+ 1049 0268 1A88     		ldrh	r2, [r3]
+ 1050 026a 204B     		ldr	r3, .L109+8
+ 1051 026c 1B88     		ldrh	r3, [r3]
+ 1052 026e 92B2     		uxth	r2, r2
+ 1053 0270 9BB2     		uxth	r3, r3
+ 180:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (decode_bit_count < target_bit_count && !decode_error) {
+ 1054              		.loc 1 180 48 view .LVU312
+ 1055 0272 9A42     		cmp	r2, r3
+ 1056 0274 FFF475AF 		bcc	.L59
+ 1057              	.LVL90:
+ 1058              	.L65:
+ 256:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = false;
+ 1059              		.loc 1 256 5 is_stmt 1 view .LVU313
+ 256:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     decode_active = false;
+ 1060              		.loc 1 256 19 is_stmt 0 view .LVU314
+ 1061 0278 1E4B     		ldr	r3, .L109+16
+ 1062 027a 0020     		movs	r0, #0
+ 1063 027c 1870     		strb	r0, [r3]
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1064              		.loc 1 258 5 is_stmt 1 view .LVU315
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1065              		.loc 1 258 38 is_stmt 0 view .LVU316
+ 1066 027e 1C4B     		ldr	r3, .L109+12
+ 1067 0280 1A88     		ldrh	r2, [r3]
+ 1068 0282 1A4B     		ldr	r3, .L109+8
+ 1069 0284 1B88     		ldrh	r3, [r3]
+ 1070 0286 92B2     		uxth	r2, r2
+ 1071 0288 9BB2     		uxth	r3, r3
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1072              		.loc 1 258 59 view .LVU317
+ 1073 028a 9A42     		cmp	r2, r3
+ 1074 028c 72D0     		beq	.L60
+ 1075              	.L101:
+ 259:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Decode %s, bits: %d/%d\n", success ? "success" : "fail", decode_bit_count, target_bit_c
+ 1076              		.loc 1 259 5 discriminator 2 view .LVU318
+ 1077 028e 2149     		ldr	r1, .L109+48
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1078              		.loc 1 258 10 discriminator 6 view .LVU319
+ 1079 0290 0746     		mov	r7, r0
+ 1080              	.L61:
+ 259:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Decode %s, bits: %d/%d\n", success ? "success" : "fail", decode_bit_count, target_bit_c
+ 1081              		.loc 1 259 5 discriminator 4 view .LVU320
+ 1082 0292 174B     		ldr	r3, .L109+12
+ 1083 0294 2048     		ldr	r0, .L109+52
+ 1084 0296 1A88     		ldrh	r2, [r3]
+ 1085 0298 144B     		ldr	r3, .L109+8
+ 1086 029a 1B88     		ldrh	r3, [r3]
+ 1087 029c 92B2     		uxth	r2, r2
+ 1088 029e 9BB2     		uxth	r3, r3
+ 1089 02a0 FFF7FEFF 		bl	printf_
+ 1090              	.LVL91:
+ 260:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return success;
+ 1091              		.loc 1 260 5 is_stmt 1 view .LVU321
+ 260:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return success;
+ 1092              		.loc 1 260 12 is_stmt 0 view .LVU322
+ 1093 02a4 B2E6     		b	.L48
+ 1094              	.LVL92:
+ 1095              	.L103:
+ 139:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             printf("Timeout waiting for first edge\n");
+ 1096              		.loc 1 139 13 is_stmt 1 view .LVU323
+ 1097 02a6 1D48     		ldr	r0, .L109+56
+ 1098 02a8 FFF7FEFF 		bl	printf_
+ 1099              	.LVL93:
+ 140:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_active = false;
+ 1100              		.loc 1 140 13 view .LVU324
+ 140:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_active = false;
+ 1101              		.loc 1 140 27 is_stmt 0 view .LVU325
+ 1102 02ac 114B     		ldr	r3, .L109+16
+ 1103 02ae 1F70     		strb	r7, [r3]
+ 141:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             return false;
+ 1104              		.loc 1 141 13 is_stmt 1 view .LVU326
+ 141:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             return false;
+ 1105              		.loc 1 141 20 is_stmt 0 view .LVU327
+ 1106 02b0 ABE6     		b	.L46
+ 1107              	.L104:
+ 1108              	.LBB80:
+ 152:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Timeout waiting for sync edge\n");
+ 1109              		.loc 1 152 17 is_stmt 1 view .LVU328
+ 1110 02b2 1B48     		ldr	r0, .L109+60
+ 1111 02b4 FFF7FEFF 		bl	printf_
+ 1112              	.LVL94:
+ 153:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_active = false;
+ 1113              		.loc 1 153 17 view .LVU329
+ 153:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_active = false;
+ 1114              		.loc 1 153 31 is_stmt 0 view .LVU330
+ 1115 02b8 0E4B     		ldr	r3, .L109+16
+ 1116 02ba 1F70     		strb	r7, [r3]
+ 154:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 return false;
+ 1117              		.loc 1 154 17 is_stmt 1 view .LVU331
+ 154:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 return false;
+ 1118              		.loc 1 154 24 is_stmt 0 view .LVU332
+ 1119 02bc A5E6     		b	.L46
+ 1120              	.LVL95:
+ 1121              	.L55:
+ 169:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         last_edge_timestamp = edge_timestamp;
+ 1122              		.loc 1 169 9 is_stmt 1 view .LVU333
+ 169:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         last_edge_timestamp = edge_timestamp;
+ 1123              		.loc 1 169 29 is_stmt 0 view .LVU334
+ 1124 02be 124B     		ldr	r3, .L109+36
+ 1125 02c0 124A     		ldr	r2, .L109+40
+ 1126 02c2 1B68     		ldr	r3, [r3]
+ 1127 02c4 1360     		str	r3, [r2]
+ 170:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 1128              		.loc 1 170 9 is_stmt 1 view .LVU335
+ 170:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         edge_detected = false;
+ 1129              		.loc 1 170 23 is_stmt 0 view .LVU336
+ 1130 02c6 0023     		movs	r3, #0
+ 1131 02c8 2370     		strb	r3, [r4]
+ 1132              	.LBE80:
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 1133              		.loc 1 148 26 is_stmt 1 view .LVU337
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 1134              		.loc 1 148 12 is_stmt 0 view .LVU338
+ 1135 02ca 99F80030 		ldrb	r3, [r9]	@ zero_extendqisi2
+ 148:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     while (!synchronized && !decode_error) {
+ 1136              		.loc 1 148 26 view .LVU339
+ 1137 02ce 002B     		cmp	r3, #0
+ 1138 02d0 3FF4FEAE 		beq	.L50
+ 1139 02d4 33E7     		b	.L56
+ 1140              	.LVL96:
+ 1141              	.L66:
+ 1142              	.LBB81:
+ 232:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             printf("Invalid timing\n");
+ 1143              		.loc 1 232 13 is_stmt 1 view .LVU340
+ 1144 02d6 1348     		ldr	r0, .L109+64
+ 1145              	.LVL97:
+ 232:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             printf("Invalid timing\n");
+ 1146              		.loc 1 232 13 is_stmt 0 view .LVU341
+ 1147 02d8 FFF7FEFF 		bl	printf_
+ 1148              	.LVL98:
+ 233:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_error = true;
+ 1149              		.loc 1 233 13 is_stmt 1 view .LVU342
+ 233:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             decode_error = true;
+ 1150              		.loc 1 233 26 is_stmt 0 view .LVU343
+ 1151 02dc 0123     		movs	r3, #1
+ 1152 02de 88F80030 		strb	r3, [r8]
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 1153              		.loc 1 236 9 is_stmt 1 view .LVU344
+ 1154 02e2 BEE7     		b	.L72
+ 1155              	.L110:
+ 1156              		.align	2
+ 1157              	.L109:
+ 1158 02e4 10000000 		.word	.LC2
+ 1159 02e8 3C000000 		.word	.LC3
+ 1160 02ec 00000000 		.word	target_bit_count
+ 1161 02f0 00000000 		.word	decode_bit_count
+ 1162 02f4 00000000 		.word	decode_active
+ 1163 02f8 00800040 		.word	1073774592
+ 1164 02fc 00000000 		.word	manchester_falling_handler
+ 1165 0300 00000000 		.word	manchester_rising_handler
+ 1166 0304 00000000 		.word	edge_detected
+ 1167 0308 00000000 		.word	edge_timestamp
+ 1168 030c 00000000 		.word	last_edge_timestamp
+ 1169 0310 00000000 		.word	current_bit_value
+ 1170 0314 08000000 		.word	.LC1
+ 1171 0318 30010000 		.word	.LC11
+ 1172 031c 6C000000 		.word	.LC4
+ 1173 0320 8C000000 		.word	.LC5
+ 1174 0324 20010000 		.word	.LC10
+ 1175 0328 00000000 		.word	decode_error
+ 1176 032c 00000000 		.word	synchronized
+ 1177 0330 00000000 		.word	rx_pin_num
+ 1178 0334 40420F00 		.word	1000000
+ 1179              	.LVL99:
+ 1180              	.L106:
+ 186:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Timeout waiting for data edge\n");
+ 1181              		.loc 1 186 17 view .LVU345
+ 1182 0338 1448     		ldr	r0, .L111
+ 1183 033a FFF7FEFF 		bl	printf_
+ 1184              	.LVL100:
+ 187:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 1185              		.loc 1 187 17 view .LVU346
+ 187:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 1186              		.loc 1 187 30 is_stmt 0 view .LVU347
+ 1187 033e 0123     		movs	r3, #1
+ 1188 0340 88F80030 		strb	r3, [r8]
+ 188:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 break;
+ 1189              		.loc 1 188 17 is_stmt 1 view .LVU348
+ 1190 0344 27E7     		b	.L63
+ 1191              	.LVL101:
+ 1192              	.L67:
+ 226:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         else if (is_timing_within_window(time_diff, T2_TIME_US, T_WINDOW_US)) {
+ 1193              		.loc 1 226 14 view .LVU349
+ 1194              	.LBB75:
+ 1195              	.LBI75:
+  33:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c **** static bool is_timing_within_window(uint32_t measured_time, uint32_t expected_time, uint32_t window
+ 1196              		.loc 1 33 13 view .LVU350
+ 1197              	.LBB76:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 1198              		.loc 1 35 5 view .LVU351
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 1199              		.loc 1 35 56 is_stmt 0 discriminator 1 view .LVU352
+ 1200 0346 43F2D403 		movw	r3, #12500
+ 1201 034a 9842     		cmp	r0, r3
+ 1202 034c C3D8     		bhi	.L66
+ 1203              	.LVL102:
+  35:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     return (measured_time >= (expected_time - window)) && (measured_time <= (expected_time + window
+ 1204              		.loc 1 35 56 discriminator 1 view .LVU353
+ 1205              	.LBE76:
+ 1206              	.LBE75:
+ 228:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             next_bit = !current_bit_value;
+ 1207              		.loc 1 228 13 is_stmt 1 view .LVU354
+ 1208 034e 1049     		ldr	r1, .L111+4
+ 1209 0350 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 1210 0352 83F00103 		eor	r3, r3, #1
+ 1211              	.LVL103:
+ 229:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****             valid_edge = true;
+ 1212              		.loc 1 229 13 view .LVU355
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 1213              		.loc 1 236 9 view .LVU356
+ 1214 0356 62E7     		b	.L73
+ 1215              	.LVL104:
+ 1216              	.L108:
+ 1217              	.LBB77:
+ 222:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Invalid confirm timing\n");
+ 1218              		.loc 1 222 17 view .LVU357
+ 1219 0358 0E48     		ldr	r0, .L111+8
+ 1220              	.LVL105:
+ 222:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 printf("Invalid confirm timing\n");
+ 1221              		.loc 1 222 17 is_stmt 0 view .LVU358
+ 1222 035a FFF7FEFF 		bl	printf_
+ 1223              	.LVL106:
+ 223:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 1224              		.loc 1 223 17 is_stmt 1 view .LVU359
+ 223:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 1225              		.loc 1 223 30 is_stmt 0 view .LVU360
+ 1226 035e 0123     		movs	r3, #1
+ 1227 0360 88F80030 		strb	r3, [r8]
+ 223:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                 decode_error = true;
+ 1228              		.loc 1 223 30 view .LVU361
+ 1229              	.LBE77:
+ 236:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         if (valid_edge && !decode_error) {
+ 1230              		.loc 1 236 9 is_stmt 1 view .LVU362
+ 1231 0364 7DE7     		b	.L72
+ 1232              	.LVL107:
+ 1233              	.L107:
+ 1234              	.LBB78:
+ 208:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     printf("Timeout waiting for confirm edge\n");
+ 1235              		.loc 1 208 21 view .LVU363
+ 1236 0366 0C48     		ldr	r0, .L111+12
+ 1237 0368 FFF7FEFF 		bl	printf_
+ 1238              	.LVL108:
+ 209:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     decode_error = true;
+ 1239              		.loc 1 209 21 view .LVU364
+ 209:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     decode_error = true;
+ 1240              		.loc 1 209 34 is_stmt 0 view .LVU365
+ 1241 036c 0123     		movs	r3, #1
+ 1242 036e 88F80030 		strb	r3, [r8]
+ 210:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     break;
+ 1243              		.loc 1 210 21 is_stmt 1 view .LVU366
+ 1244 0372 40E7     		b	.L69
+ 1245              	.LVL109:
+ 1246              	.L60:
+ 210:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****                     break;
+ 1247              		.loc 1 210 21 is_stmt 0 view .LVU367
+ 1248              	.LBE78:
+ 1249              	.LBE81:
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1250              		.loc 1 258 62 discriminator 1 view .LVU368
+ 1251 0374 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ 258:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     bool success = (decode_bit_count == target_bit_count) && !decode_error;
+ 1252              		.loc 1 258 59 discriminator 1 view .LVU369
+ 1253 0378 002B     		cmp	r3, #0
+ 1254 037a 88D1     		bne	.L101
+ 259:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****     printf("Decode %s, bits: %d/%d\n", success ? "success" : "fail", decode_bit_count, target_bit_c
+ 1255              		.loc 1 259 5 discriminator 1 view .LVU370
+ 1256 037c 0749     		ldr	r1, .L111+16
+ 1257 037e 88E7     		b	.L61
+ 1258              	.L105:
+ 174:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         printf("Synchronization failed\n");
+ 1259              		.loc 1 174 9 is_stmt 1 view .LVU371
+ 1260 0380 0748     		ldr	r0, .L111+20
+ 1261 0382 FFF7FEFF 		bl	printf_
+ 1262              	.LVL110:
+ 175:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         decode_active = false;
+ 1263              		.loc 1 175 9 view .LVU372
+ 175:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         decode_active = false;
+ 1264              		.loc 1 175 23 is_stmt 0 view .LVU373
+ 1265 0386 074B     		ldr	r3, .L111+24
+ 1266 0388 1F70     		strb	r7, [r3]
+ 176:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return false;
+ 1267              		.loc 1 176 9 is_stmt 1 view .LVU374
+ 176:/Users/timcarlo/Desktop/testsoftware/common/utils/machester.c ****         return false;
+ 1268              		.loc 1 176 16 is_stmt 0 view .LVU375
+ 1269 038a 3EE6     		b	.L46
+ 1270              	.L112:
+ 1271              		.align	2
+ 1272              	.L111:
+ 1273 038c C4000000 		.word	.LC7
+ 1274 0390 00000000 		.word	current_bit_value
+ 1275 0394 08010000 		.word	.LC9
+ 1276 0398 E4000000 		.word	.LC8
+ 1277 039c 00000000 		.word	.LC0
+ 1278 03a0 AC000000 		.word	.LC6
+ 1279 03a4 00000000 		.word	decode_active
+ 1280              		.cfi_endproc
+ 1281              	.LFE145:
+ 1283              		.section	.bss.decode_error,"aw",%nobits
+ 1286              	decode_error:
+ 1287 0000 00       		.space	1
+ 1288              		.section	.bss.target_bit_count,"aw",%nobits
+ 1289              		.align	1
+ 1292              	target_bit_count:
+ 1293 0000 0000     		.space	2
+ 1294              		.section	.bss.decode_bit_count,"aw",%nobits
+ 1295              		.align	1
+ 1298              	decode_bit_count:
+ 1299 0000 0000     		.space	2
+ 1300              		.section	.bss.synchronized,"aw",%nobits
+ 1303              	synchronized:
+ 1304 0000 00       		.space	1
+ 1305              		.section	.bss.current_bit_value,"aw",%nobits
+ 1308              	current_bit_value:
+ 1309 0000 00       		.space	1
+ 1310              		.section	.bss.decode_active,"aw",%nobits
+ 1313              	decode_active:
+ 1314 0000 00       		.space	1
+ 1315              		.section	.bss.last_edge_timestamp,"aw",%nobits
+ 1316              		.align	2
+ 1319              	last_edge_timestamp:
+ 1320 0000 00000000 		.space	4
+ 1321              		.section	.bss.edge_timestamp,"aw",%nobits
+ 1322              		.align	2
+ 1325              	edge_timestamp:
+ 1326 0000 00000000 		.space	4
+ 1327              		.section	.bss.last_edge_was_rising,"aw",%nobits
+ 1330              	last_edge_was_rising:
+ 1331 0000 00       		.space	1
+ 1332              		.section	.bss.edge_detected,"aw",%nobits
+ 1335              	edge_detected:
+ 1336 0000 00       		.space	1
+ 1337              		.section	.bss.rx_pin_num,"aw",%nobits
+ 1340              	rx_pin_num:
+ 1341 0000 00       		.space	1
+ 1342              		.section	.bss.tx_pin_num,"aw",%nobits
+ 1345              	tx_pin_num:
+ 1346 0000 00       		.space	1
+ 1347              		.text
+ 1348              	.Letext0:
+ 1349              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
+ 1350              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
+ 1351              		.file 4 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/lib/gcc/arm-none-eabi/14.2.1/includ
+ 1352              		.file 5 "Include/nrf52840.h"
+ 1353              		.file 6 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
+ 1354              		.file 7 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/string.h"
+ 1355              		.file 8 "/Users/timcarlo/Desktop/testsoftware/common/include/printf.h"
 DEFINED SYMBOLS
-                            *ABS*:00000000 main.c
-/var/tmp//cckwqszU.s:21     .text.rising_handler:00000000 $t
-/var/tmp//cckwqszU.s:28     .text.rising_handler:00000000 rising_handler
-/var/tmp//cckwqszU.s:225    .text.rising_handler:000000b8 $d
-/var/tmp//cckwqszU.s:841    .data.current_driven_pin:00000000 current_driven_pin
-/var/tmp//cckwqszU.s:879    .bss.pin_data:00000000 pin_data
-/var/tmp//cckwqszU.s:853    .bss.last_event_valid:00000000 last_event_valid
-/var/tmp//cckwqszU.s:860    .bss.last_event:00000000 last_event
-/var/tmp//cckwqszU.s:235    .text.falling_handler:00000000 $t
-/var/tmp//cckwqszU.s:242    .text.falling_handler:00000000 falling_handler
-/var/tmp//cckwqszU.s:289    .text.falling_handler:00000024 $d
-/var/tmp//cckwqszU.s:296    .text.turn_off_leds:00000000 $t
-/var/tmp//cckwqszU.s:303    .text.turn_off_leds:00000000 turn_off_leds
-/var/tmp//cckwqszU.s:353    .text.turn_off_leds:00000028 $d
-/var/tmp//cckwqszU.s:872    .bss.red_led_on:00000000 red_led_on
-/var/tmp//cckwqszU.s:866    .bss.green_led_on:00000000 green_led_on
-/var/tmp//cckwqszU.s:359    .rodata.led_test_routine.str1.4:00000000 $d
-/var/tmp//cckwqszU.s:366    .text.led_test_routine:00000000 $t
-/var/tmp//cckwqszU.s:373    .text.led_test_routine:00000000 led_test_routine
-/var/tmp//cckwqszU.s:457    .text.led_test_routine:00000050 $d
-/var/tmp//cckwqszU.s:463    .text.send_signal:00000000 $t
-/var/tmp//cckwqszU.s:470    .text.send_signal:00000000 send_signal
-/var/tmp//cckwqszU.s:514    .text.send_signal:00000020 $d
-/var/tmp//cckwqszU.s:519    .text.set_selected_pin:00000000 $t
-/var/tmp//cckwqszU.s:526    .text.set_selected_pin:00000000 set_selected_pin
-/var/tmp//cckwqszU.s:559    .text.set_selected_pin:00000018 $d
-/var/tmp//cckwqszU.s:835    .bss.selected_pin:00000000 selected_pin
-/var/tmp//cckwqszU.s:829    .bss.selected_pin_data:00000000 selected_pin_data
-/var/tmp//cckwqszU.s:566    .text.set_standart_blacklist_pins:00000000 $t
-/var/tmp//cckwqszU.s:573    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
-/var/tmp//cckwqszU.s:596    .rodata.print_active_pins_from_mask.str1.4:00000000 $d
-/var/tmp//cckwqszU.s:606    .text.print_active_pins_from_mask:00000000 $t
-/var/tmp//cckwqszU.s:613    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
-/var/tmp//cckwqszU.s:701    .text.print_active_pins_from_mask:0000004c $d
-/var/tmp//cckwqszU.s:708    .rodata.main.str1.4:00000000 $d
-/var/tmp//cckwqszU.s:721    .text.startup.main:00000000 $t
-/var/tmp//cckwqszU.s:728    .text.startup.main:00000000 main
-/var/tmp//cckwqszU.s:808    .text.startup.main:00000060 $d
-/var/tmp//cckwqszU.s:822    .bss.black_list_mask:00000000 black_list_mask
-/var/tmp//cckwqszU.s:819    .bss.black_list_mask:00000000 $d
-/var/tmp//cckwqszU.s:826    .bss.selected_pin_data:00000000 $d
-/var/tmp//cckwqszU.s:836    .bss.selected_pin:00000000 $d
-/var/tmp//cckwqszU.s:847    .bss.state:00000000 state
-/var/tmp//cckwqszU.s:848    .bss.state:00000000 $d
-/var/tmp//cckwqszU.s:854    .bss.last_event_valid:00000000 $d
-/var/tmp//cckwqszU.s:857    .bss.last_event:00000000 $d
-/var/tmp//cckwqszU.s:867    .bss.green_led_on:00000000 $d
-/var/tmp//cckwqszU.s:873    .bss.red_led_on:00000000 $d
-/var/tmp//cckwqszU.s:876    .bss.pin_data:00000000 $d
+                            *ABS*:00000000 machester.c
+/var/tmp//cc89b0id.s:21     .text.manchester_falling_handler:00000000 $t
+/var/tmp//cc89b0id.s:27     .text.manchester_falling_handler:00000000 manchester_falling_handler
+/var/tmp//cc89b0id.s:93     .text.manchester_falling_handler:00000030 $d
+/var/tmp//cc89b0id.s:1340   .bss.rx_pin_num:00000000 rx_pin_num
+/var/tmp//cc89b0id.s:1313   .bss.decode_active:00000000 decode_active
+/var/tmp//cc89b0id.s:1330   .bss.last_edge_was_rising:00000000 last_edge_was_rising
+/var/tmp//cc89b0id.s:1335   .bss.edge_detected:00000000 edge_detected
+/var/tmp//cc89b0id.s:1325   .bss.edge_timestamp:00000000 edge_timestamp
+/var/tmp//cc89b0id.s:103    .text.manchester_rising_handler:00000000 $t
+/var/tmp//cc89b0id.s:109    .text.manchester_rising_handler:00000000 manchester_rising_handler
+/var/tmp//cc89b0id.s:172    .text.manchester_rising_handler:00000028 $d
+/var/tmp//cc89b0id.s:182    .text.manchester_init:00000000 $t
+/var/tmp//cc89b0id.s:189    .text.manchester_init:00000000 manchester_init
+/var/tmp//cc89b0id.s:222    .text.manchester_init:00000014 $d
+/var/tmp//cc89b0id.s:1345   .bss.tx_pin_num:00000000 tx_pin_num
+/var/tmp//cc89b0id.s:228    .text.manchester_transmit_byte:00000000 $t
+/var/tmp//cc89b0id.s:235    .text.manchester_transmit_byte:00000000 manchester_transmit_byte
+/var/tmp//cc89b0id.s:399    .text.manchester_transmit_byte:00000064 $d
+/var/tmp//cc89b0id.s:404    .text.manchester_transmit_array:00000000 $t
+/var/tmp//cc89b0id.s:411    .text.manchester_transmit_array:00000000 manchester_transmit_array
+/var/tmp//cc89b0id.s:462    .rodata.manchester_receive_array.str1.4:00000000 $d
+/var/tmp//cc89b0id.s:499    .text.manchester_receive_array:00000000 $t
+/var/tmp//cc89b0id.s:506    .text.manchester_receive_array:00000000 manchester_receive_array
+/var/tmp//cc89b0id.s:1158   .text.manchester_receive_array:000002e4 $d
+/var/tmp//cc89b0id.s:1292   .bss.target_bit_count:00000000 target_bit_count
+/var/tmp//cc89b0id.s:1298   .bss.decode_bit_count:00000000 decode_bit_count
+/var/tmp//cc89b0id.s:1319   .bss.last_edge_timestamp:00000000 last_edge_timestamp
+/var/tmp//cc89b0id.s:1308   .bss.current_bit_value:00000000 current_bit_value
+/var/tmp//cc89b0id.s:1286   .bss.decode_error:00000000 decode_error
+/var/tmp//cc89b0id.s:1303   .bss.synchronized:00000000 synchronized
+/var/tmp//cc89b0id.s:1182   .text.manchester_receive_array:00000338 $t
+/var/tmp//cc89b0id.s:1273   .text.manchester_receive_array:0000038c $d
+/var/tmp//cc89b0id.s:1287   .bss.decode_error:00000000 $d
+/var/tmp//cc89b0id.s:1289   .bss.target_bit_count:00000000 $d
+/var/tmp//cc89b0id.s:1295   .bss.decode_bit_count:00000000 $d
+/var/tmp//cc89b0id.s:1304   .bss.synchronized:00000000 $d
+/var/tmp//cc89b0id.s:1309   .bss.current_bit_value:00000000 $d
+/var/tmp//cc89b0id.s:1314   .bss.decode_active:00000000 $d
+/var/tmp//cc89b0id.s:1316   .bss.last_edge_timestamp:00000000 $d
+/var/tmp//cc89b0id.s:1322   .bss.edge_timestamp:00000000 $d
+/var/tmp//cc89b0id.s:1331   .bss.last_edge_was_rising:00000000 $d
+/var/tmp//cc89b0id.s:1336   .bss.edge_detected:00000000 $d
+/var/tmp//cc89b0id.s:1341   .bss.rx_pin_num:00000000 $d
+/var/tmp//cc89b0id.s:1346   .bss.tx_pin_num:00000000 $d
                            .group:00000000 wm4.0.c78fe9a012b08da15ba0560431b6d537
-                           .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4._newlib_version.h.4.411db44ea2338a62eca2f0777f81481b
                            .group:00000000 wm4.features.h.33.d554620bb17bd3b714c3fb5c268772bc
                            .group:00000000 wm4._default_types.h.15.247e5cd201eca3442cbf5404108c4935
                            .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
                            .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
                            .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.stdbool.h.29.c08aa3eec75cf5b9b5003883f43253f0
+                           .group:00000000 wm4.stddef.h.39.0dc9006b34572d4d9cae4c8b422c4971
+                           .group:00000000 wm4.nrf.h.36.2c9771b922e05998cb98cd38e577d26d
+                           .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4.cmsis_version.h.32.0ac195c83bb4537824e6ad1c47474b79
                            .group:00000000 wm4.core_cm4.h.66.d954c01095d518cd043caf62225efced
                            .group:00000000 wm4.cmsis_gcc.h.26.ec732d7dec3e44b4b15b499f7fbfba3f
                            .group:00000000 wm4.core_cm4.h.186.369ba2229bf6f92b71e2ad1ae8388018
                            .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
                            .group:00000000 wm4.nrf52840.h.2760.94facbe4f0b1a63284aed08b8635f538
-                           .group:00000000 wm4.stdbool.h.29.c08aa3eec75cf5b9b5003883f43253f0
-                           .group:00000000 wm4.stddef.h.39.0dc9006b34572d4d9cae4c8b422c4971
-                           .group:00000000 wm4.nrf.h.36.2c9771b922e05998cb98cd38e577d26d
                            .group:00000000 wm4.nrf52840_bitfields.h.36.6f0372e47edb7eb297e4f285382d0a6c
                            .group:00000000 wm4.nrf51_to_nrf52840.h.36.a52984f77ed625f80506d6aa3574a54b
                            .group:00000000 wm4.nrf52_to_nrf52840.h.36.718b4211de2aa9d86eb1b548550c2d83
@@ -1327,21 +2036,15 @@ DEFINED SYMBOLS
                            .group:00000000 wm4.stdarg.h.31.f7f4f3bfddce9ed034956076d59396f7
                            .group:00000000 wm4.printf.h.60.4e905941388f8572eb1bb13f71697bea
                            .group:00000000 wm4.nrf52840_helper.h.14.8698c162b15106bd6fab89d1453eac25
-                           .group:00000000 wm4.check_initial_state.h.34.73cd76ffb6bd9fd22e1b58d2667ddb90
 
 UNDEFINED SYMBOLS
 get_timer_ticks
-timer_diff_ms
-gpio_drive_low
-printf_
-gpio_drive_high
-delay_ms
-gpio_open_drain_drive
 release_gpio_open_drain
-io_init
-initialize_pin_data_array
+delay_us
+gpio_open_drain_drive
+printf_
+memset
 start_timer
-get_chip_family_name
-get_unique_id_str
-manchester_init
-manchester_transmit_array
+gpio_listen_on_all_pins_interrupt
+get_elapsed_time
+gpio_read

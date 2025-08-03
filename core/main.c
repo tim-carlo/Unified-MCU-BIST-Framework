@@ -21,6 +21,7 @@
     ((void)fprintf(stdout, "[%s] " fmt, get_chip_family_name(), ##__VA_ARGS__))
 #endif
 
+
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "printf.h"
@@ -39,6 +40,9 @@
 
 #define TIMER_A TIMER_A4
 #define TIMER_B TIMER_B0
+
+#define MANCHESTER_TX_PIN ABS_PIN(3, 7)
+#define MANCHESTER_RX_PIN ABS_PIN(3, 6)
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -57,6 +61,9 @@
 
 #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
 #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
+
+#define MANCHESTER_TX_PIN 11
+#define MANCHESTER_RX_PIN 12
 
 #endif
 
@@ -266,6 +273,30 @@ void print_active_pins_from_mask(uint64_t mask)
     printf("\n");
 }
 
+void send_example_data(void)
+{
+    printf("Sending example data...\n");
+    char bsp[] = "hallo welt!\n";
+    manchester_transmit_array(strlen(bsp), (uint8_t*)bsp);
+}
+void receive_example_data(void)
+{
+    uint8_t data[12] = {0}; // Buffer to hold received data
+    if (manchester_receive_array(data, 12))
+    {
+        printf("Received data: ");
+        for (uint8_t i = 0; i < 12; i++)
+        {
+            printf("%c", data[i]);
+        }
+        printf("\n");
+    }
+    else
+    {
+        printf("Failed to receive data.\n");
+    }
+}
+
 int main(void)
 {
     io_init();
@@ -277,21 +308,21 @@ int main(void)
     printf("Running on %s\n", get_chip_family_name());
     printf("Chip UID: %s\n", get_unique_id_str());
 
-    manchester_init((uint8_t)11, (uint8_t)12); // Initialize Manchester encoding if needed
+    manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN); // Initialize Manchester encoding with TX and RX pins
 
     while (1)
     {
-        printf("Sending test data via Manchester encoding...\n");
+        
         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
         uint8_t bsp_length = 12;
-        manchester_transmit_array(
-            11,            // Length of the data array
-            (uint8_t *)bsp // Example data to transmit
-        );
+        #if defined(NRF52840_XXAA)
+        receive_example_data(); // Receive example data using Manchester encoding
+        #elif defined(__MSP430FR5994__)
+        printf("Sending test data via Manchester encoding...\n");
+        send_example_data(); // Send example data using Manchester encoding
         delay_ms(1000); // Delay to allow transmission to complete
+        #endif
     }
-
-    // manchester_init(); // Initialize Manchester encoding if needed
 
     // printf("Initializing GPIO pins...\n");
 

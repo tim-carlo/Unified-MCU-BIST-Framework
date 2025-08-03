@@ -96,6 +96,7 @@ extern "C"
 
     void gpio_reset(uint8_t abs_pin);
     void release_gpio_open_drain(uint8_t abs_pin);
+    void gpio_open_drain(uint8_t abs_pin);
 
     bool is_interupt_blacklisted(uint8_t abs_pin);
     void configure_pin_sense(uint8_t abs_pin, bool sense_low);

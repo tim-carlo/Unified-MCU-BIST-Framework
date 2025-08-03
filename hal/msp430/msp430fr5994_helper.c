@@ -129,7 +129,7 @@ void io_init()
  */
 void gpio_pullup_init(uint8_t abs_pin)
 {
-    uint16_t base = get_port_base_of_absolute_pin(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Enable pull-up resistor (REN = 1, OUT = 1)
     *(volatile uint8_t *)(base + PORT_REN_OFFSET) |= mask;
@@ -143,11 +143,11 @@ void gpio_pullup_init(uint8_t abs_pin)
  */
 void gpio_pulldown_init(uint8_t abs_pin)
 {
-    uint16_t base = get_port_base_of_absolute_pin(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Enable pull-down resistor (REN = 1, OUT = 0)
-    *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
-    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
+    *(volatile uint8_t *)(base + PORT_REN_OFFSET) |= mask;
+    *(volatile uint8_t *)(base + PORT_OUT_OFFSET) &= ~mask;
 }
 
 /**
@@ -156,7 +156,7 @@ void gpio_pulldown_init(uint8_t abs_pin)
  */
 void gpio_pullup_clear(uint8_t abs_pin)
 {
-    uint16_t base = get_port_base_of_absolute_pin(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Disable pull-up resistor (REN = 0)
     *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) &= ~mask;
@@ -170,7 +170,7 @@ void gpio_pullup_clear(uint8_t abs_pin)
  */
 void gpio_pulldown_clear(uint8_t abs_pin)
 {
-    uint16_t base = get_port_base_of_absolute_pin(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Disable pull-down resistor (REN = 0)
     *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) &= ~mask;
@@ -184,7 +184,7 @@ void gpio_pulldown_clear(uint8_t abs_pin)
  */
 void gpio_drive_low(uint8_t abs_pin)
 {
-    uint16_t base = get_port_base_of_absolute_pin(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t mask = 1 << get_relative_pin(abs_pin);
     // Set pin low (OUT = 0)
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
@@ -238,35 +238,41 @@ bool gpio_read(uint8_t abs_pin)
 
 void delay_ticks(uint32_t ticks)
 {
-    if (ticks == 0) return;
+    if (ticks == 0)
+        return;
 
     // Stop and clear timer
     TA0CTL = TASSEL__SMCLK | ID__1 | MC__STOP | TACLR;
     TA0R = 0;
 
     remaining_ticks = ticks;
-    
+
     // Calculate the number of overflows needed
     // if the remaining ticks are less than 0x10000, we can set it directly
-    if (remaining_ticks <= 0x10000) {
+    if (remaining_ticks <= 0x10000)
+    {
         // Single period
         TA0CCR0 = remaining_ticks - 1;
         overflow_count = 0;
-    } else {
+    }
+    else
+    {
         // Multiple periods are needed so we calculate the overflow count
         overflow_count = (remaining_ticks - 1) / 0x10000;
-        TA0CCR0 = 0xFFFF;  // Full period first
+        TA0CCR0 = 0xFFFF; // Full period first
     }
 
     TA0CCTL0 = CCIE;
-    if (overflow_count > 0) {
-        TA0CTL |= TAIE;  // Enable overflow interrupt if needed
+    if (overflow_count > 0)
+    {
+        TA0CTL |= TAIE; // Enable overflow interrupt if needed
     }
 
     delay_done = false;
-    TA0CTL |= MC__UP;  // Start timer
+    TA0CTL |= MC__UP; // Start timer
 
-    while (!delay_done);
+    while (!delay_done)
+        ;
 
     // Cleanup
     TA0CCTL0 &= ~CCIE;
@@ -274,56 +280,60 @@ void delay_ticks(uint32_t ticks)
     TA0CTL |= TACLR;
 }
 
-
 // This is needed to quit the delay loop when the timer reaches the target ticks
-__attribute__((interrupt(TIMER0_A0_VECTOR))) 
-void Timer0_A0_ISR(void)
+__attribute__((interrupt(TIMER0_A0_VECTOR))) void Timer0_A0_ISR(void)
 {
     // Clear the interrupt flag
     TA0CCTL0 &= ~CCIFG;
-    if (overflow_count == 0) {
+    if (overflow_count == 0)
+    {
         // Last tick reached, signal completion
         delay_done = true;
-    } else {
+    }
+    else
+    {
         // Prepare for next overflow
         TA0CCR0 = 0xFFFF;
     }
 }
 
-
-__attribute__((interrupt(TIMER0_A1_VECTOR))) 
-void Timer0_A1_ISR(void)
+__attribute__((interrupt(TIMER0_A1_VECTOR))) void Timer0_A1_ISR(void)
 {
-    switch (__even_in_range(TA0IV, TA0IV_TAIFG)) {
-        // Handle Timer A0 overflow
-        case TA0IV_TAIFG:
-            if (overflow_count > 0) {
-                overflow_count--;
-                if (overflow_count == 0) {
-                    // Last overflow, set final count
-                    // Since the timer counts inclusive, we set it to remaining_ticks - 1
-                    // (% 0x10000) used to ensure it fits in 16 bits
-                    TA0CCR0 = (remaining_ticks - 1) % 0x10000; // Set remaining ticks
-                }
+    switch (__even_in_range(TA0IV, TA0IV_TAIFG))
+    {
+    // Handle Timer A0 overflow
+    case TA0IV_TAIFG:
+        if (overflow_count > 0)
+        {
+            overflow_count--;
+            if (overflow_count == 0)
+            {
+                // Last overflow, set final count
+                // Since the timer counts inclusive, we set it to remaining_ticks - 1
+                // (% 0x10000) used to ensure it fits in 16 bits
+                TA0CCR0 = (remaining_ticks - 1) % 0x10000; // Set remaining ticks
             }
-            break;
-        // Handle other cases if needed
-        default:
-            break;
+        }
+        break;
+    // Handle other cases if needed
+    default:
+        break;
     }
 }
-
 
 /**
  * @brief Delay for a specified number of microseconds
  *
  * @param us Number of microseconds to delay
  */
+#define DELAY_1US_CYCLES   (SMCLK_HZ / 1000000 - 5) // 5 = Loop Overhead in Zyklen (messen!)
+
 void delay_us(uint32_t us)
 {
-    if (us == 0) return;
-    uint32_t ticks = us * (SMCLK_HZ / 1000000);
-    delay_ticks(ticks);
+    while (us--)
+    {
+        __delay_cycles(DELAY_1US_CYCLES);
+    }
 }
 
 /**
@@ -332,16 +342,19 @@ void delay_us(uint32_t us)
  */
 void delay_ms(uint32_t ms)
 {
-    if (ms == 0) return;
+    if (ms == 0)
+        return;
 
     const uint32_t ticks_per_ms = SMCLK_HZ / 1000;
-    
-    while (ms >= 1000) {
-        delay_ticks(SMCLK_HZ);  // Exactly 1 second
+
+    while (ms >= 1000)
+    {
+        delay_ticks(SMCLK_HZ); // Exactly 1 second
         ms -= 1000;
     }
     // Handle remaining milliseconds
-    if (ms > 0) {
+    if (ms > 0)
+    {
         uint32_t ticks = ms * ticks_per_ms;
         delay_ticks(ticks);
     }
@@ -407,7 +420,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask,
             continue; // Skip blacklisted pins
 
         gpio_pullup_init(abs_pin);
-        gpio_input_init(abs_pin);  
+        gpio_input_init(abs_pin);
 
         uint8_t port = abs_pin >> 3;
         uint8_t pin = abs_pin & 0x07;
@@ -477,20 +490,28 @@ DEFINE_PORT_ISR(7)
 DEFINE_PORT_ISR(8)
 
 /**
+ * @brief Initialize GPIO pin for open-drain output using absolute pin number
+ * @param abs_pin Absolute pin number (0-47)
+ */
+void gpio_open_drain(uint8_t abs_pin)
+{
+    // TODO: rework the naming of this function
+    release_gpio_open_drain(abs_pin); // Ensure pin is released from any previous state
+}
+/**
  * @brief Release GPIO pin from open-drain state (set as input) using absolute pin number
  * @param abs_pin Absolute pin number (0-47)
  */
 void release_gpio_open_drain(uint8_t abs_pin)
 {
-    gpio_pullup_init(abs_pin); // Set pin as input with pull-down resistor
-    gpio_input_init(abs_pin); // Set pin as input
+    gpio_pullup_init(abs_pin); // Set pin as input with pull-up resistor
+    gpio_input_init(abs_pin);  // Set pin as input
 }
-
 
 void gpio_open_drain_drive(uint8_t abs_pin)
 {
     gpio_output_init(abs_pin); // Set pin as output
-    gpio_drive_low(abs_pin); // Drive pin low
+    gpio_drive_low(abs_pin);   // Drive pin low
 }
 
 /**
@@ -547,6 +568,19 @@ void __attribute__((interrupt(TIMER0_B1_VECTOR))) TIMER0_B1_ISR(void)
         timer_overflows_b0++;
         break;
         // maybe later add more cases for TB0IV
+    }
+}
+
+uint32_t get_elapsed_time(uint32_t start, uint32_t current)
+{
+    if (current >= start)
+    {
+        return current - start; // Normal case
+    }
+    else
+    {
+        // Handle wrap-around case
+        return (UINT32_MAX - start) + current + 1;
     }
 }
 
@@ -710,7 +744,7 @@ uint32_t random32_lfsr(void)
  */
 uint32_t random32(void)
 {
-   return random32_lfsr(); // Use LFSR for now, as RNG is not available on MSP430
+    return random32_lfsr(); // Use LFSR for now, as RNG is not available on MSP430
 }
 
 /**

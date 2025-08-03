@@ -2,6 +2,7 @@
 #define MANCHESTER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840_helper.h"
@@ -17,7 +18,7 @@
 // The code is inspired by the above document and adapted for the NRF52 platform.
 
 void manchester_init(uint8_t tx_pin, uint8_t rx_pin);
-void manchester_transmit_array(uint8_t length, uint8_t *data);
+void manchester_transmit_array(uint8_t length, const uint8_t *data);
 bool manchester_receive_array(uint8_t *data, uint8_t length);
 
 
