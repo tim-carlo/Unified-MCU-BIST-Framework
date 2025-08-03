@@ -166,7 +166,7 @@ void sendOne(void)
     release_gpio_open_drain(TxPin); // Set Tx pin high (send one)
     delay_us(delay2);
     gpio_open_drain_drive(TxPin); // Set Tx pin low (idle state)
-} // end of send one
+}
 
 // TODO use repairing codes perhabs?
 // http://en.wikipedia.org/wiki/Hamming_code
