@@ -27,6 +27,12 @@ The data rate is then 600 bits/s.
 #include "manchester.h"
 #include "nrf52840_helper.h"
 
+#if defined(NRF52840_XXAA)
+#include "nrf52840.h"
+#elif defined(__MSP430FR5994__)
+#include <msp430fr5994.h>
+#endif
+
 static int8_t RxPin = 255;
 static int8_t TxPin = 255;
 uint8_t applyWorkAround1Mhz = 0;
@@ -47,11 +53,28 @@ volatile uint8_t rx_maxBytes = 2;
 volatile uint8_t rx_default_data[2];
 volatile uint8_t *rx_data = rx_default_data;
 
+
+void sendZero(void)
+{
+    delay_us(delay1);
+    gpio_open_drain_drive(TxPin); // Drive low
+    delay_us(delay2);
+    release_gpio_open_drain(TxPin); // Release to high-impedance
+}
+
+void sendOne(void)
+{
+    delay_us(delay1);
+    release_gpio_open_drain(TxPin); // Set Tx pin high (send one)
+    delay_us(delay2);
+    gpio_open_drain_drive(TxPin); // Set Tx pin low (idle state)
+}
+
 void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
 {
     TxPin = txPin;
     RxPin = rxPin;
-    
+
     // Configure both pins as open-drain
     gpio_open_drain(txPin); // Set Tx pin as open-drain output
     gpio_open_drain(rxPin); // Set Rx pin as open-drain input
@@ -76,20 +99,14 @@ void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
     // emprirically determined values to compensate for the time loss
 
 #if defined(NRF52840)
-    // 64 MHz core
-    uint16_t compensationFactor = 2;
+    // 64 MHz core similar to the 64 MHz core in the NRF52840
+    delay1 = delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
 #elif defined(MSP430FR5994)
-    // 16 MHz core
+    // 16 MHz core similar to the 16 MHz core in the Attiny85
     uint16_t compensationFactor = 4;
+    delay1 = (HALF_BIT_INTERVAL >> speedFactor) - compensationFactor;
+    delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
 #endif
-
-
-}
-
-void manchester_transmit(uint8_t data)
-{
-    uint8_t byteData[2] = {2, data};
-    transmitArray(2, byteData);
 }
 
 /*
@@ -153,21 +170,6 @@ void manchester_transmitArray(uint8_t numBytes, uint8_t *data)
 #endif
 } // end of send the data
 
-void sendZero(void) {
-    delay_us(delay1);
-    gpio_open_drain_drive(TxPin); // Drive low
-    delay_us(delay2);
-    release_gpio_open_drain(TxPin); // Release to high-impedance
-}
-
-void sendOne(void)
-{
-    delay_us(delay1);
-    release_gpio_open_drain(TxPin); // Set Tx pin high (send one)
-    delay_us(delay2);
-    gpio_open_drain_drive(TxPin); // Set Tx pin low (idle state)
-}
-
 // TODO use repairing codes perhabs?
 // http://en.wikipedia.org/wiki/Hamming_code
 
@@ -199,6 +201,14 @@ uint16_t manchester_encodeMessage(uint8_t id, uint8_t data)
 
 void manchester_beginReceiveArray(uint8_t maxBytes, uint8_t *data)
 {
+    MANRX_SetupReceive(speedFactor); // Initialize timer
+// Platform-specific timer start
+#if defined(NRF52840_XXAA)
+    NRF_TIMER3->TASKS_START = 1;
+#elif defined(__MSP430FR5994__)
+// Start timer implementation
+#endif
+    MANRX_BeginReceive();
     MANRX_BeginReceiveBytes(maxBytes, data);
 }
 
@@ -233,7 +243,7 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
 
     // Set up the receive pin
-    gpio_open_drain(rx_pin_num);
+    gpio_open_drain(RxPin);
 
     // Configure timer 3 for Manchester RX
     NVIC_DisableIRQ(TIMER3_IRQn);
@@ -256,7 +266,7 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
 
     // RX-Pin als Open-Drain-Eingang
-    gpio_open_drain(rx_pin_num);
+    gpio_open_drain(RxPin);
 
     // Configure Timer A4 for Manchester RX
     stop_timer(TIMER_A4);
@@ -297,9 +307,9 @@ uint8_t MANRX_GetMessage(void)
     return (((int16_t)rx_data[0]) << 8) | (int16_t)rx_data[1];
 }
 
-static void AddManBit(uint16_t *manBits, uint8_t *numMB,
-                      uint8_t *curByte, uint8_t *data,
-                      uint8_t bit)
+static void AddManBit(volatile uint16_t *manBits, volatile uint8_t *numMB,
+                     volatile uint8_t *curByte, volatile uint8_t *data,
+                     uint8_t bit)
 {
     *manBits <<= 1;
     *manBits |= bit;
@@ -332,24 +342,6 @@ static void AddManBit(uint16_t *manBits, uint8_t *numMB,
     }
 }
 
-#if defined(NRF52840_XXAA)
-void TIMER3_IRQHandler(void)
-{
-    if (NRF_TIMER3->EVENTS_COMPARE[0])
-    {
-        NRF_TIMER3->EVENTS_COMPARE[0] = 0; // Clear the event
-        MANRX_ISR();                       // Call the Manchester RX ISR
-    }
-}
-#elif defined(__MSP430FR5994__)
-void __attribute__((interrupt(TIMER4_A1_VECTOR))) TIMER4_A1_ISR(void)
-{
-    if (TA4IV & TAIV_TAIFG) // Check for Timer A4 overflow
-    {
-        MANRX_ISR(); // Call the Manchester RX ISR
-    }
-}
-#endif
 void MANRX_ISR(void)
 {
     if (rx_mode < RX_MODE_MSG) // receiving something
@@ -464,3 +456,22 @@ void MANRX_ISR(void)
         rx_last_sample = rx_sample;
     }
 }
+
+#if defined(NRF52840_XXAA)
+void TIMER3_IRQHandler(void)
+{
+    if (NRF_TIMER3->EVENTS_COMPARE[0])
+    {
+        NRF_TIMER3->EVENTS_COMPARE[0] = 0; // Clear the event
+        MANRX_ISR();                       // Call the Manchester RX ISR
+    }
+}
+#elif defined(__MSP430FR5994__)
+void __attribute__((interrupt(TIMER4_A1_VECTOR))) TIMER4_A1_ISR(void)
+{
+    if (TA4IV & TAIV_TAIFG) // Check for Timer A4 overflow
+    {
+        MANRX_ISR(); // Call the Manchester RX ISR
+    }
+}
+#endif

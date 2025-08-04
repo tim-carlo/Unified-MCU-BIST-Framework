@@ -277,23 +277,16 @@ void send_example_data(void)
 {
     printf("Sending example data...\n");
     char bsp[] = "hallo welt!\n";
-    manchester_transmit_array(strlen(bsp), (uint8_t*)bsp);
+    manchester_transmitArray(strlen(bsp), (uint8_t*)bsp);
 }
 void receive_example_data(void)
 {
     uint8_t data[12] = {0}; // Buffer to hold received data
-    if (manchester_receive_array(data, 12))
+    manchester_beginReceiveArray(12, data); // Start receiving data
+    printf("Received data: ");
+    for (uint8_t i = 0; i < 12; i++)
     {
-        printf("Received data: ");
-        for (uint8_t i = 0; i < 12; i++)
-        {
-            printf("%c", data[i]);
-        }
-        printf("\n");
-    }
-    else
-    {
-        printf("Failed to receive data.\n");
+        printf("%c", data[i]); // Print received data  
     }
 }
 
@@ -308,7 +301,7 @@ int main(void)
     printf("Running on %s\n", get_chip_family_name());
     printf("Chip UID: %s\n", get_unique_id_str());
 
-    manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN); // Initialize Manchester encoding with TX and RX pins
+    manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, MAN_300); // Initialize Manchester encoding with TX and RX pins
 
     while (1)
     {
@@ -316,6 +309,8 @@ int main(void)
         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
         uint8_t bsp_length = 12;
         #if defined(NRF52840_XXAA)
+        printf("Sending test data via Manchester encoding...\n");
+
         receive_example_data(); // Receive example data using Manchester encoding
         #elif defined(__MSP430FR5994__)
         printf("Sending test data via Manchester encoding...\n");
