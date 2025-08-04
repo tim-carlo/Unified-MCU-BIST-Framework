@@ -57,7 +57,7 @@ typedef enum
     TIMER_A1,
     TIMER_A4,
     TIMER_B0
-} timer_t;
+} timer_type;
 
 #define GET_TxxCTL(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CTL : (timer) == TIMER_A1 ? &TA1CTL \
                                                        : (timer) == TIMER_A4   ? &TA4CTL \
@@ -70,6 +70,9 @@ typedef enum
 #define GET_TxxCCTL0(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CCTL0 : (timer) == TIMER_A1 ? &TA1CCTL0 \
                                                            : (timer) == TIMER_A4   ? &TA4CCTL0 \
                                                                                    : &TB0CCTL0))
+#define GET_TxxCCR0(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CCR0 : (timer) == TIMER_A1 ? &TA1CCR0 \
+                                                   : (timer) == TIMER_A4   ? &TA4CCR0 \
+                                                                           : &TB0CCR0))                                                                                   
 
 #define TICKS_PER_OVERFLOW 65536UL
 
@@ -109,10 +112,10 @@ extern "C"
     void delay_us(uint32_t us);
     void delay_ms(uint32_t ms);
 
-    uint32_t get_timer_ticks(timer_t timer_r);
-    void start_timer(timer_t timer);
-    void stop_timer(timer_t timer);
-    void reset_timer(timer_t timer);
+    uint32_t get_timer_ticks(timer_type timer_r);
+    void start_timer(timer_type timer);
+    void stop_timer(timer_type timer);
+    void reset_timer(timer_type timer);
 
     uint32_t ticks_to_us(uint32_t ticks);
     uint32_t ticks_to_ms(uint32_t ticks);

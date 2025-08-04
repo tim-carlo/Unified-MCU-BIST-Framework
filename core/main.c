@@ -303,14 +303,19 @@ int main(void)
 
     manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, MAN_300); // Initialize Manchester encoding with TX and RX pins
 
+    #if defined(NRF52840_XXAA)
+    printf("Using NRF52840 chip.\n");
+    manchester_beginReceive(); // Start receiving Manchester encoded data
+    #elif defined(__MSP430FR5994__)
+    printf("Using MSP430FR5994 chip.\n");
+    #endif
+
     while (1)
     {
         
         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
         uint8_t bsp_length = 12;
         #if defined(NRF52840_XXAA)
-        printf("Sending test data via Manchester encoding...\n");
-
         receive_example_data(); // Receive example data using Manchester encoding
         #elif defined(__MSP430FR5994__)
         printf("Sending test data via Manchester encoding...\n");

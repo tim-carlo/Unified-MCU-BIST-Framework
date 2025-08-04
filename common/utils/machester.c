@@ -25,7 +25,6 @@ The data rate is then 600 bits/s.
 */
 
 #include "manchester.h"
-#include "nrf52840_helper.h"
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
@@ -270,13 +269,13 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     // RX-Pin als Open-Drain-Eingang
     gpio_open_drain(RxPin);
 
-    // Configure Timer A4 for Manchester RX
-    stop_timer(TIMER_A4);
-    volatile uint16_t *ctl = GET_TxxCTL(TIMER_A4);
-    volatile uint16_t *ccr0 = GET_TxxCCR0(TIMER_A4, 0);
+    // Configure Timer A1 for Manchester RX
+    stop_timer(TIMER_A1);
+    volatile uint16_t *ctl = GET_TxxCTL(TIMER_A1);
+    volatile uint16_t *ccr0 = GET_TxxCCR0(TIMER_A1);
     *ctl = TASSEL__SMCLK | MC__UP | TACLR;                     // SMCLK, Up Mode, Clear
     *ccr0 = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1; // Set CCR0 for sample interval
-    *ctl |= TAIE;                                              // Enable Timer Overflow A4 interrupt
+    *ctl |= TAIE;                                              // Enable Timer Overflow A1 interrupt
 #endif
 }
 
@@ -469,11 +468,15 @@ void TIMER3_IRQHandler(void)
     }
 }
 #elif defined(__MSP430FR5994__)
-void __attribute__((interrupt(TIMER4_A1_VECTOR))) TIMER4_A1_ISR(void)
+void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
 {
-    if (TA4IV & TAIV_TAIFG) // Check for Timer A4 overflow
+    switch (TA1IV)
     {
-        MANRX_ISR(); // Call the Manchester RX ISR
+    case TA1IV_TAIFG:
+        MANRX_ISR();
+        break;
+    default:
+        break;
     }
 }
 #endif

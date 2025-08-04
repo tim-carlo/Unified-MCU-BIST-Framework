@@ -326,7 +326,7 @@ __attribute__((interrupt(TIMER0_A1_VECTOR))) void Timer0_A1_ISR(void)
  *
  * @param us Number of microseconds to delay
  */
-#define DELAY_1US_CYCLES   (SMCLK_HZ / 1000000 - 5) // 5 = Loop Overhead in Zyklen (messen!)
+#define DELAY_1US_CYCLES (SMCLK_HZ / 1000000 - 5) // 5 = Loop Overhead in Zyklen (messen!)
 
 void delay_us(uint32_t us)
 {
@@ -519,7 +519,7 @@ void gpio_open_drain_drive(uint8_t abs_pin)
  *
  * @param timer Timer to start (TIMER_A4, TIMER_B0)
  */
-void start_timer(timer_t timer)
+void start_timer(timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
 
@@ -539,7 +539,7 @@ void start_timer(timer_t timer)
  *
  * @param timer Timer to stop (TIMER_A4, TIMER_B0)
  */
-void stop_timer(timer_t timer)
+void stop_timer(timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     volatile uint16_t *r = GET_TxxR(timer);
@@ -590,7 +590,7 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
  * @param timer_r Pointer to the timer register (TA0R, TA1R, TA4R, TB0R)
  * @return uint32_t Timer ticks
  */
-uint32_t get_timer_ticks(timer_t timer)
+uint32_t get_timer_ticks(timer_type timer)
 {
     volatile uint16_t *timer_r = GET_TxxR(timer);
     uint16_t counter = *timer_r;
