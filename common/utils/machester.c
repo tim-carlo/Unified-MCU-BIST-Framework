@@ -29,8 +29,10 @@ The data rate is then 600 bits/s.
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
+#include "nrf52840_helper.h"
 #elif defined(__MSP430FR5994__)
 #include <msp430fr5994.h>
+#include "msp430fr5994_helper.h"
 #endif
 
 static int8_t RxPin = 255;
