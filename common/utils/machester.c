@@ -296,6 +296,11 @@ void MANRX_BeginReceiveBytes(uint8_t maxBytes, uint8_t *data)
 void MANRX_StopReceive(void)
 {
     rx_mode = RX_MODE_IDLE;
+#if defined(NRF52840_XXAA)
+    NRF_TIMER3->TASKS_STOP = 1; // Stop the timer
+#elif defined(__MSP430FR5994__)
+    stop_timer(TIMER_A1); // Stop Timer A1
+#endif
 }
 
 uint8_t MANRX_ReceiveComplete(void)
