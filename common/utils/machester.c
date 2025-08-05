@@ -25,6 +25,11 @@ The data rate is then 600 bits/s.
 */
 
 #include "manchester.h"
+#include "printf.h"
+
+#define BAUD_FROM_SPEEDFACTOR(sf) (BASE_BAUD_RATE << (sf))
+#define LONG_BIT_US(sf) (1000000UL / BAUD_FROM_SPEEDFACTOR(sf)) // Full bit time
+#define MID_BIT_US(sf) (LONG_BIT_US(sf) / 2)                    // Half bit time
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
@@ -54,21 +59,22 @@ volatile uint8_t rx_maxBytes = 2;
 volatile uint8_t rx_default_data[2];
 volatile uint8_t *rx_data = rx_default_data;
 
-
 void sendZero(void)
 {
+    // Manchester 0: first half high, second half low (transition from high to low)
+    release_gpio_open_drain(TxPin); // Set high (release to pull-up)
     delay_us(delay1);
     gpio_open_drain_drive(TxPin); // Drive low
     delay_us(delay2);
-    release_gpio_open_drain(TxPin); // Release to high-impedance
 }
 
 void sendOne(void)
 {
+    // Manchester 1: first half low, second half high (transition from low to high)
+    gpio_open_drain_drive(TxPin); // Drive low
     delay_us(delay1);
-    release_gpio_open_drain(TxPin); // Set Tx pin high (send one)
+    release_gpio_open_drain(TxPin); // Set high (release to pull-up)
     delay_us(delay2);
-    gpio_open_drain_drive(TxPin); // Set Tx pin low (idle state)
 }
 
 void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
@@ -99,15 +105,34 @@ void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
     // because of high ovehead associated with it, instead we use this
     // emprirically determined values to compensate for the time loss
 
-#if defined(NRF52840)
-    // 64 MHz core similar to the 64 MHz core in the NRF52840
-    delay1 = delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
-#elif defined(MSP430FR5994)
-    // 16 MHz core similar to the 16 MHz core in the Attiny85
+    // Calculate delays based on speedFactor
+    // HALF_BIT_INTERVAL is for speed factor 0 (300 baud)
+    // Each speed factor doubles the rate, so we right-shift the interval
+
+    // uint16_t baseInterval = HALF_BIT_INTERVAL >> speedFactor;
+    // uint16_t halfBit = MID_BIT_US(speedFactor);
+    uint32_t baudrate_tbl[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
+    uint32_t baud = baudrate_tbl[speedFactor];
+
+    // µs-Werte berechnen
+    uint32_t fullBit_us = 1000000UL / baud;
+    uint32_t halfBit_us = fullBit_us / 2;
+
+#if defined(NRF52840_XXAA)
+    // 64 MHz core
+    // delay1 = delay2 = baseInterval;
+    delay1 = (uint16_t)(halfBit_us);
+    delay2 = (uint16_t)(halfBit_us);
+
+#elif defined(__MSP430FR5994__)
+    // 16 MHz core
     uint16_t compensationFactor = 4;
-    delay1 = (HALF_BIT_INTERVAL >> speedFactor) - compensationFactor;
-    delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
+    delay1 = (uint16_t)(halfBit_us - compensationFactor);
+    delay2 = (uint16_t)(halfBit_us - 2);
 #endif
+
+    printf("Manchester initialized with TxPin: %d, RxPin: %d, SpeedFactor: %d\n", (int)TxPin, (int)RxPin, (int)speedFactor);
+    printf("Delay1: %d, Delay2: %d\n", (int)delay1, (int)delay2);
 }
 
 /*
@@ -207,7 +232,7 @@ void manchester_beginReceiveArray(uint8_t maxBytes, uint8_t *data)
 #if defined(NRF52840_XXAA)
     NRF_TIMER3->TASKS_START = 1;
 #elif defined(__MSP430FR5994__)
-// Start timer implementation
+    start_timer(TIMER_A1); // Start Timer A1
 #endif
     MANRX_BeginReceive();
     MANRX_BeginReceiveBytes(maxBytes, data);
@@ -233,15 +258,13 @@ void manchester_stopReceive(void)
     MANRX_StopReceive();
 }
 
+
 void MANRX_SetupReceive(uint8_t speedFactor)
 {
 #if defined(NRF52840_XXAA)
     // Beispiel: Samplingrate = 8x pro Bit, Bitdauer aus speedFactor ableiten
     // Hier: 2T = Bitdauer, SAMPLES_PER_BIT = 8
-    uint32_t baudrate_tbl[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
-    uint32_t baud = baudrate_tbl[speedFactor];
-    uint32_t bit_time_us = 1000000UL / baud;
-    uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
+    uint32_t sample_interval_us = (512 >> speedFactor); // 512 us for speed factor 0 (300 baud)
 
     // Set up the receive pin
     gpio_open_drain(RxPin);
@@ -254,28 +277,63 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
     NRF_TIMER3->TASKS_CLEAR = 1;
     NRF_TIMER3->CC[0] = sample_interval_us;
-    NRF_TIMER3->CC[1] = sample_interval_us;
     NRF_TIMER3->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
     NRF_TIMER3->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
     NVIC_ClearPendingIRQ(TIMER3_IRQn);
     NVIC_EnableIRQ(TIMER3_IRQn);
+
+    printf("NRF52840 RX Timer: %lu µs interval\n", sample_interval_us);
+
+    // Set P0.11 as output (for debugging/toggling in ISR)
+    NRF_P0->DIRSET = (1 << 11);
 #elif defined(__MSP430FR5994__)
-    // Beispiel: Samplingrate = 8x pro Bit, Bitdauer aus speedFactor ableiten
+    // Use same sample interval as transmission delays for consistency
     uint32_t baudrate_tbl[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
     uint32_t baud = baudrate_tbl[speedFactor];
     uint32_t bit_time_us = 1000000UL / baud;
-    uint32_t sample_interval_us = bit_time_us / 8; // SAMPLES_PER_BIT = 8
+    uint32_t sample_interval_us = bit_time_us / 6; // 6 samples per bit (like Arduino)
 
-    // RX-Pin als Open-Drain-Eingang
+    // Set up the receive pin
     gpio_open_drain(RxPin);
 
     // Configure Timer A1 for Manchester RX
     stop_timer(TIMER_A1);
     volatile uint16_t *ctl = GET_TxxCTL(TIMER_A1);
     volatile uint16_t *ccr0 = GET_TxxCCR0(TIMER_A1);
-    *ctl = TASSEL__SMCLK | MC__UP | TACLR;                     // SMCLK, Up Mode, Clear
-    *ccr0 = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1; // Set CCR0 for sample interval
-    *ctl |= TAIE;                                              // Enable Timer Overflow A1 interrupt
+
+    // Calculate timer value for sample interval
+    // SMCLK = 16MHz, we want sample_interval_us microseconds
+    uint32_t timer_counts = (sample_interval_us * SMCLK_HZ) / 1000000UL;
+    
+    // Use appropriate divider to fit in 16-bit CCR0
+    uint16_t divider = 1;
+    uint16_t div_bits = 0; // ID__1
+    
+    if (timer_counts > 65535) {
+        divider = 2;
+        div_bits = ID__1; // /2
+        timer_counts /= 2;
+    }
+    if (timer_counts > 65535) {
+        divider = 4;
+        div_bits = ID__2; // /4
+        timer_counts /= 2;
+    }
+    if (timer_counts > 65535) {
+        divider = 8;
+        div_bits = ID__3; // /8
+        timer_counts /= 2;
+    }
+
+    *ctl = TASSEL__SMCLK | MC__UP | TACLR | div_bits; // SMCLK, Up Mode, Clear
+    *ccr0 = (uint16_t)timer_counts;
+
+    // Enable CCR0 interrupt
+    volatile uint16_t *cctl0 = GET_TxxCCTL0(TIMER_A1);
+    *cctl0 |= CCIE; // Enable CCR0 interrupt
+
+    printf("MSP430 RX Timer: interval=%lu µs, counts=%lu, divider=%u\n", 
+           sample_interval_us, timer_counts, divider);
 #endif
 }
 
@@ -314,8 +372,8 @@ uint8_t MANRX_GetMessage(void)
 }
 
 static void AddManBit(volatile uint16_t *manBits, volatile uint8_t *numMB,
-                     volatile uint8_t *curByte, volatile uint8_t *data,
-                     uint8_t bit)
+                      volatile uint8_t *curByte, volatile uint8_t *data,
+                      uint8_t bit)
 {
     *manBits <<= 1;
     *manBits |= bit;
@@ -350,6 +408,11 @@ static void AddManBit(volatile uint16_t *manBits, volatile uint8_t *numMB,
 
 void MANRX_ISR(void)
 {
+#if defined(NRF52840_XXAA)
+    // Toggle pin P0.11 on NRF52840
+    NRF_P0->OUT ^= (1 << 11);
+#endif
+
     if (rx_mode < RX_MODE_MSG) // receiving something
     {
         // Increment counter
@@ -436,6 +499,7 @@ void MANRX_ISR(void)
                 {
                     // wrong signal lenght, discard the message
                     rx_mode = RX_MODE_PRE;
+                    printf("Manchester RX: Invalid signal length %d\n", rx_count);
                 }
                 else
                 {
@@ -468,20 +532,14 @@ void TIMER3_IRQHandler(void)
 {
     if (NRF_TIMER3->EVENTS_COMPARE[0])
     {
-        NRF_TIMER3->EVENTS_COMPARE[0] = 0; // Clear the event
-        MANRX_ISR();                       // Call the Manchester RX ISR
+        NRF_TIMER3->EVENTS_COMPARE[0] = 0;
+        MANRX_ISR();
     }
 }
 #elif defined(__MSP430FR5994__)
-void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
+void __attribute__((interrupt(TIMER1_A0_VECTOR))) TIMER1_A0_ISR(void)
 {
-    switch (TA1IV)
-    {
-    case TA1IV_TAIFG:
-        MANRX_ISR();
-        break;
-    default:
-        break;
-    }
+    // CCR0 interrupt - automatically cleared
+    MANRX_ISR();
 }
 #endif

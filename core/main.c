@@ -21,7 +21,6 @@
     ((void)fprintf(stdout, "[%s] " fmt, get_chip_family_name(), ##__VA_ARGS__))
 #endif
 
-
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "printf.h"
@@ -48,7 +47,6 @@
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_helper.h"
-
 
 #include "printf.h"
 #define TEST_PIN 3
@@ -277,17 +275,51 @@ void send_example_data(void)
 {
     printf("Sending example data...\n");
     char bsp[] = "hallo welt!\n";
-    manchester_transmitArray(strlen(bsp), (uint8_t*)bsp);
+    manchester_transmitArray(strlen(bsp), (uint8_t *)bsp);
 }
 void receive_example_data(void)
 {
-    uint8_t data[12] = {0}; // Buffer to hold received data
+    uint8_t data[12] = {0};                 // Buffer to hold received data
     manchester_beginReceiveArray(12, data); // Start receiving data
-    printf("Received data: ");
+    printf("Waiting for Manchester data...\n");
+    // Wait for reception to complete
+    while (!manchester_receiveComplete())
+    {
+    }
+    
+    printf("Data received successfully!\n");
+    
+    // Get the 16-bit message using manchester_getMessage()
+    uint16_t message = manchester_getMessage();
+    printf("Manchester message (16-bit): 0x%04X\n", message);
+    
+    // Also show the raw data buffer
+    printf("Raw data buffer: ");
     for (uint8_t i = 0; i < 12; i++)
     {
-        printf("%c", data[i]); // Print received data  
+        if (data[i] >= 32 && data[i] <= 126) // Printable ASCII
+        {
+            printf("%c", data[i]);
+        }
+        else
+        {
+            printf("[%02X]", data[i]); // Show hex for non-printable chars
+        }
     }
+    printf("\n");
+    
+    // Try to decode the message if it contains ID and checksum
+    uint8_t id, decoded_data;
+    if (manchester_decodeMessage(message, &id, &decoded_data))
+    {
+        printf("Decoded message - ID: %u, Data: %u (0x%02X)\n", id, decoded_data, decoded_data);
+    }
+    else
+    {
+        printf("Message checksum invalid or not encoded message format\n");
+    }
+    
+    manchester_stopReceive(); // Stop receiving after completion
 }
 
 int main(void)
@@ -303,25 +335,25 @@ int main(void)
 
     manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, MAN_300); // Initialize Manchester encoding with TX and RX pins
 
-    #if defined(NRF52840_XXAA)
+#if defined(NRF52840_XXAA)
     printf("Using NRF52840 chip.\n");
     manchester_beginReceive(); // Start receiving Manchester encoded data
-    #elif defined(__MSP430FR5994__)
+#elif defined(__MSP430FR5994__)
     printf("Using MSP430FR5994 chip.\n");
-    #endif
+#endif
 
     while (1)
     {
-        
+
         char bsp[] = "hallo welt!\n"; // Example BSP name, replace with actual BSP name if needed
         uint8_t bsp_length = 12;
-        #if defined(NRF52840_XXAA)
+#if defined(NRF52840_XXAA)
         receive_example_data(); // Receive example data using Manchester encoding
-        #elif defined(__MSP430FR5994__)
+#elif defined(__MSP430FR5994__)
         printf("Sending test data via Manchester encoding...\n");
         send_example_data(); // Send example data using Manchester encoding
-        delay_ms(1000); // Delay to allow transmission to complete
-        #endif
+        delay_ms(1000);      // Delay to allow transmission to complete
+#endif
     }
 
     // printf("Initializing GPIO pins...\n");
