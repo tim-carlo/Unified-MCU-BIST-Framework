@@ -282,7 +282,7 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     NVIC_ClearPendingIRQ(TIMER3_IRQn);
     NVIC_EnableIRQ(TIMER3_IRQn);
 
-    printf("NRF52840 RX Timer: %lu µs interval\n", sample_interval_us);
+    printf("NRF52840 RX Timer: %lu micros interval\n", sample_interval_us);
 
     // Set P0.11 as output (for debugging/toggling in ISR)
     NRF_P0->DIRSET = (1 << 11);
