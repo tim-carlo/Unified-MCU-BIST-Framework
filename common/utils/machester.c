@@ -61,20 +61,18 @@ volatile uint8_t *rx_data = rx_default_data;
 
 void sendZero(void)
 {
-    // Manchester 0: first half high, second half low (transition from high to low)
-    release_gpio_open_drain(TxPin); // Set high (release to pull-up)
     delay_us(delay1);
-    gpio_open_drain_drive(TxPin); // Drive low
+    release_gpio_open_drain(TxPin);
     delay_us(delay2);
+    gpio_open_drain_drive(TxPin);
 }
 
 void sendOne(void)
 {
-    // Manchester 1: first half low, second half high (transition from low to high)
-    gpio_open_drain_drive(TxPin); // Drive low
     delay_us(delay1);
-    release_gpio_open_drain(TxPin); // Set high (release to pull-up)
+    gpio_open_drain_drive(TxPin);
     delay_us(delay2);
+    release_gpio_open_drain(TxPin);
 }
 
 void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
@@ -127,8 +125,8 @@ void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t sF)
 #elif defined(__MSP430FR5994__)
     // 16 MHz core
     uint16_t compensationFactor = 4;
-    delay1 = (uint16_t)(halfBit_us - compensationFactor);
-    delay2 = (uint16_t)(halfBit_us - 2);
+    delay1 = (uint16_t)(halfBit_us);
+    delay2 = (uint16_t)(halfBit_us);
 #endif
 
     printf("Manchester initialized with TxPin: %d, RxPin: %d, SpeedFactor: %d\n", (int)TxPin, (int)RxPin, (int)speedFactor);
@@ -305,35 +303,35 @@ void MANRX_SetupReceive(uint8_t speedFactor)
     // SMCLK = 16MHz, we want sample_interval_us microseconds
     uint32_t timer_counts = (sample_interval_us * SMCLK_HZ) / 1000000UL;
     
-    // Use appropriate divider to fit in 16-bit CCR0
-    uint16_t divider = 1;
-    uint16_t div_bits = 0; // ID__1
+    // // Use appropriate divider to fit in 16-bit CCR0
+    // uint16_t divider = 1;
+    // uint16_t div_bits = 0; // ID__1
     
-    if (timer_counts > 65535) {
-        divider = 2;
-        div_bits = ID__1; // /2
-        timer_counts /= 2;
-    }
-    if (timer_counts > 65535) {
-        divider = 4;
-        div_bits = ID__2; // /4
-        timer_counts /= 2;
-    }
-    if (timer_counts > 65535) {
-        divider = 8;
-        div_bits = ID__3; // /8
-        timer_counts /= 2;
-    }
+    // if (timer_counts > 65535) {
+    //     divider = 2;
+    //     div_bits = ID__1; // /2
+    //     timer_counts /= 2;
+    // }
+    // if (timer_counts > 65535) {
+    //     divider = 4;
+    //     div_bits = ID__2; // /4
+    //     timer_counts /= 2;
+    // }
+    // if (timer_counts > 65535) {
+    //     divider = 8;
+    //     div_bits = ID__3; // /8
+    //     timer_counts /= 2;
+    // }
 
-    *ctl = TASSEL__SMCLK | MC__UP | TACLR | div_bits; // SMCLK, Up Mode, Clear
+ //   *ctl = TASSEL__SMCLK | MC__UP | TACLR | div_bits; // SMCLK, Up Mode, Clear
     *ccr0 = (uint16_t)timer_counts;
 
     // Enable CCR0 interrupt
     volatile uint16_t *cctl0 = GET_TxxCCTL0(TIMER_A1);
     *cctl0 |= CCIE; // Enable CCR0 interrupt
 
-    printf("MSP430 RX Timer: interval=%lu µs, counts=%lu, divider=%u\n", 
-           sample_interval_us, timer_counts, divider);
+    // printf("MSP430 RX Timer: interval=%lu µs, counts=%lu, divider=%u\n", 
+        //    sample_interval_us, timer_counts, divider);
 #endif
 }
 
