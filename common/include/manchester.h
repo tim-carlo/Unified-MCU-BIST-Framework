@@ -1,170 +1,44 @@
-/*
-
-
-https://github.com/mchr3k/arduino-libs-manchester
-
-
-
-This code is based on the Atmel Corporation Manchester
-Coding Basics Application Note.
-
-http://www.atmel.com/dyn/resources/prod_documents/doc9164.pdf
-
-Quotes from the application note:
-
-"Manchester coding states that there will always be a transition of the message signal
-at the mid-point of the data bit frame.
-What occurs at the bit edges depends on the state of the previous bit frame and
-does not always produce a transition. A logical '1' is defined as a mid-point transition
-from low to high and a '0' is a mid-point transition from high to low.
- 
-We use Timing Based Manchester Decode.
-In this approach we will capture the time between each transition coming from the demodulation
-circuit."
-
-Timer 2 is used with a ATMega328. Timer 1 is used for a ATtiny85 and ATtiny84
-
-This code gives a basic data rate as 1200 bauds. In manchester encoding we send 1 0 for a data bit 0.
-We send 0 1 for a data bit 1. This ensures an average over time of a fixed DC level in the TX/RX.
-This is required by the ASK RF link system to ensure its correct operation.
-The data rate is then 600 bits/s. Higher and lower rates are also supported.
-*/
 
 #ifndef MANCHESTER_h
 #define MANCHESTER_h
 
-//timer scaling factors for different transmission speeds
-#define MAN_300 0
-#define MAN_600 1
-#define MAN_1200 2
-#define MAN_2400 3
-#define MAN_4800 4
-#define MAN_9600 5
-#define MAN_19200 6
-#define MAN_38400 7
-
-/*
-Timer 2 in the ATMega328 and Timer 1 in a ATtiny85 is used to find the time between
-each transition coming from the demodulation circuit.
-Their setup is for sampling the input in regular intervals.
-For practical reasons we use power of 2 timer prescaller for sampling, 
-for best timing we use pulse lenght as integer multiple of sampling speed.
-We chose to sample every 8 ticks, and pulse lenght of 48 ticks 
-thats 6 samples per pulse, lower sampling rate (3) will not work well for 
-innacurate clocks (like internal oscilator) higher sampling rate (12) will
-cause too much overhead and will not work at higher transmission speeds.
-This gives us 16000000Hz/48/256 = 1302 pulses per second (so it's not really 1200) 
-At different transmission speeds or on different microcontroller frequencies, clock prescaller is adjusted 
-to be compatible with those values. We allow about 50% clock speed difference both ways
-allowing us to transmit even with up to 100% in clock speed difference
-*/
-
-// added by caoxp@github
-// 
-// the sync pulse amount for transmitting and receiving.
-// a pulse means : HI,LO   or  LO,HI   
-// usually SYNC_PULSE_MAX >= SYNC_PULSE_DEF + 2
-//         SYNC_PULSE_MIN <= SYNC_PULSE_DEF + 2
-//  consider the pulses rising when starting transmitting.
-//  SYNC_PULSE_MIN should be much less than SYNC_PULSE_DEF
-//  all maximum of 255
-#define     SYNC_PULSE_MIN  1
-#define     SYNC_PULSE_DEF  3
-#define     SYNC_PULSE_MAX  5
-
-//#define       SYNC_PULSE_MIN  10
-//#define       SYNC_PULSE_DEF  14
-//#define       SYNC_PULSE_MAX  16
-
-//define to use 1 or 0 to sync
-// when using 1 to sync, sending SYNC_PULSE_DEF 1's , and send a 0 to start data.
-//                       and end the transimitting by three 1's
-// when using 0 to sync, sending SYNC_PULSE_DEF 0's , and send a 1 to start data.
-//                       and end the transimitting by three 0's
-
-#define     SYNC_BIT_VALUE      0
-//decoding not finished.
-//#define     SYNC_BIT_VALUE      0
-
-
-/*
-	Signal timing, we take sample every 8 clock ticks
-	
-	ticks:   [0]-[8]--[16]-[24]-[32]-[40]-[48]-[56]-[64]-[72]-[80]-[88]-[96][104][112][120][128][136]
-	samples: |----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
-	single:  |                    [--------|----------]
-	double:  |                                         [-----------------|--------------------]
-	signal:  |_____________________________                               ______________________
-	         |                             |_____________________________|
-
-*/
-
-//setup timing for receiver
-#define MinCount        33  //pulse lower count limit on capture
-#define MaxCount        65  //pulse higher count limit on capture
-#define MinLongCount    66  //pulse lower count on double pulse
-#define MaxLongCount    129 //pulse higher count on double pulse
-
-//setup timing for transmitter
-#define HALF_BIT_INTERVAL 3072 //(=48 * 1024 * 1000000 / 16000000Hz) microseconds for speed factor 0 (300baud)
-
-//it's common to zero terminate a string or to transmit small numbers involving a lot of zeroes
-//those zeroes may be mistaken for training pattern, confusing the receiver and resulting high packet lost, 
-//therefore we xor the data with random decoupling mask
-#define DECOUPLING_MASK 0b11001010 
-
-#define RX_MODE_PRE 0
-#define RX_MODE_SYNC 1
-#define RX_MODE_DATA 2
-#define RX_MODE_MSG 3
-#define RX_MODE_IDLE 4
-
-#define TimeOutDefault -1 //the timeout in msec default blocks
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include "printf.h"
+
+#include "spooky_decoder.h"
+#include "spooky_encoder.h"
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_helper.h"
-#include "printf.h"
+
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
-#include "printf.h"
 #include <msp430.h>
 #endif
 
+#define RATE_300 0
+#define RATE_600 1
+#define RATE_1200 2
+#define RATE_2400 3
+#define RATE_4800 4
+#define RATE_9600 5
+#define RATE_19200 6
+#define RATE_38400 7
 
-// Initialize the Manchester encoder/decoder
-void manchester_init(uint8_t txPin, uint8_t rxPin, uint8_t speedFactor);
-void manchester_setup(uint8_t txPin, uint8_t rxPin, uint8_t SF);
-void manchester_setupTransmit(uint8_t pin, uint8_t SF);
-void manchester_setupReceive(uint8_t pin, uint8_t SF);
+// Add baud_rates array for supported rates
+static const uint32_t baud_rates[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
 
-// Send functions
-void manchester_sendZero(void);
-void manchester_sendOne(void);
-void manchester_transmit(uint8_t data);
-void manchester_transmitArray(uint8_t numBytes, uint8_t *data);
-
-// Receive functions
-void manchester_beginReceive(void);
-void manchester_beginReceiveArray(uint8_t maxBytes, uint8_t *data);
-uint8_t manchester_receiveComplete(void);
-uint8_t manchester_getMessage(void);
-void manchester_stopReceive(void);
-
-// Helper functions
-uint8_t manchester_decodeMessage(uint16_t m, uint8_t *id, uint8_t *data);
-uint16_t manchester_encodeMessage(uint8_t id, uint8_t data);
-
-// Low-level functions for Interrupt Service Routine (ISR)
-void MANRX_SetupReceive(uint8_t speedFactor);
-void MANRX_BeginReceive(void);
-void MANRX_BeginReceiveBytes(uint8_t maxBytes, uint8_t *data);
-uint8_t MANRX_ReceiveComplete(void);
-uint8_t MANRX_GetMessage(void);
-void MANRX_StopReceive(void);
+void manchester_init(uint8_t tx_pin, uint8_t rx_pin, uint8_t tx_rate);
+void manchester_begin_receive(void);
+void manchester_stop_receive(void);
+void manchester_transmit_array(uint8_t *bsp, uint8_t size);
+void manchester_test_timer_simple(void);   // Test timer function
+void manchester_test_pin_manual(void);     // Test pin manually
+void manchester_test_timer_extended(void); // Extended timer test
+void manchester_get_timer_stats(void);     // Get timer statistics
 
 #endif // MANCHESTER_h
