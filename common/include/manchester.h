@@ -33,12 +33,8 @@
 static const uint32_t baud_rates[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
 
 void manchester_init(uint8_t tx_pin, uint8_t rx_pin, uint8_t tx_rate);
-void manchester_begin_receive(void);
-void manchester_stop_receive(void);
-void manchester_transmit_array(uint8_t *bsp, uint8_t size);
-void manchester_test_timer_simple(void);   // Test timer function
-void manchester_test_pin_manual(void);     // Test pin manually
-void manchester_test_timer_extended(void); // Extended timer test
-void manchester_get_timer_stats(void);     // Get timer statistics
+void manchester_transmit_array(uint8_t *data, uint8_t size);
+bool manchester_receive_array(uint8_t *data, uint8_t size);
+void manchester_test_send(void); // Test function for Manchester transmission
 
 #endif // MANCHESTER_h

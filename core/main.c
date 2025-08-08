@@ -60,7 +60,7 @@
 #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
 #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
 
-#define MANCHESTER_TX_PIN 11
+#define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
 
 #endif
@@ -304,14 +304,6 @@ int main(void)
 
     manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, RATE_300); // Initialize Manchester encoding with TX and RX pins
 
-#if defined(NRF52840_XXAA)
-    printf("Using NRF52840 chip.\n");
-   // manchester_begin_receive(); // Start receiving Manchester encoded data
-    send_example_data();
-#elif defined(__MSP430FR5994__)
-    printf("Using MSP430FR5994 chip.\n");
-#endif
-
     while (1)
     {
 
@@ -319,10 +311,11 @@ int main(void)
         uint8_t bsp_length = 12;
 #if defined(NRF52840_XXAA)
         // receive_example_data(); // Receive example data using Manchester encoding
+        send_example_data(); 
 #elif defined(__MSP430FR5994__)
         printf("Sending test data via Manchester encoding...\n");
-        send_example_data(); // Send example data using Manchester encoding
-        delay_ms(1000);      // Delay to allow transmission to complete
+        send_example_data();
+        delay_ms(100);     
 #endif
     }
 
