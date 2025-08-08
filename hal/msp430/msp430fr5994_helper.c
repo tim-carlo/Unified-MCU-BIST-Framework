@@ -116,6 +116,7 @@ void io_init()
     P2SEL1 |= BIT0 | BIT1;    // Set UART function
 
     configure_timer((volatile uint16_t *)&TA1CTL); // Configure Timer A1
+    configure_timer((volatile uint16_t *)&TA2CTL); // Configure Timer A2
     configure_timer((volatile uint16_t *)&TA4CTL); // Configure Timer A4
     configure_timer((volatile uint16_t *)&TB0CTL); // Configure Timer B0
 
@@ -517,14 +518,18 @@ void gpio_open_drain_drive(uint8_t abs_pin)
 /**
  * @brief Start the specified timer in continuous mode
  *
- * @param timer Timer to start (TIMER_A4, TIMER_B0)
+ * @param timer Timer to start (TIMER_A1, TIMER_A2, TIMER_A4, TIMER_B0)
  */
 void start_timer(timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
 
     // Reset overflow counter for the selected timer
-    if (timer == TIMER_A4)
+    if (timer == TIMER_A1)
+        timer_overflows_a1 = 0;
+    else if (timer == TIMER_A2)
+        timer_overflows_a2 = 0;
+    else if (timer == TIMER_A4)
         timer_overflows_a4 = 0;
     else if (timer == TIMER_B0)
         timer_overflows_b0 = 0;
@@ -537,7 +542,7 @@ void start_timer(timer_type timer)
 /**
  * @brief Stop the specified timer
  *
- * @param timer Timer to stop (TIMER_A4, TIMER_B0)
+ * @param timer Timer to stop (TIMER_A1, TIMER_A2, TIMER_A4, TIMER_B0)
  */
 void stop_timer(timer_type timer)
 {
@@ -547,6 +552,28 @@ void stop_timer(timer_type timer)
     *ctl &= ~MC_3; // Clear MC bits → stop mode
     *ctl |= TACLR; // Clear timer (setzt den Zähler zurück)
     *r = 0;        // Zur Sicherheit Timer-Register auf 0 schreiben
+}
+
+void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
+{
+    switch (__even_in_range(TA1IV, TA1IV_TAIFG))
+    {
+    case TA1IV_TAIFG:
+        timer_overflows_a1++;
+        break;
+        // maybe later add more cases for TA1IV
+    }
+}
+
+void __attribute__((interrupt(TIMER2_A1_VECTOR))) TIMER2_A1_ISR(void)
+{
+    switch (__even_in_range(TA2IV, TA2IV_TAIFG))
+    {
+    case TA2IV_TAIFG:
+        timer_overflows_a2++;
+        break;
+        // maybe later add more cases for TA2IV
+    }
 }
 
 void __attribute__((interrupt(TIMER4_A1_VECTOR))) TIMER4_A1_ISR(void)
@@ -587,7 +614,7 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
 /**
  * @brief Get the timer ticks object
  *
- * @param timer_r Pointer to the timer register (TA0R, TA1R, TA4R, TB0R)
+ * @param timer_r Pointer to the timer register (TA0R, TA1R, TA2R, TA4R, TB0R)
  * @return uint32_t Timer ticks
  */
 uint32_t get_timer_ticks(timer_type timer)
@@ -598,6 +625,12 @@ uint32_t get_timer_ticks(timer_type timer)
 
     switch (timer)
     {
+    case TIMER_A1:
+        overflows = timer_overflows_a1;
+        break;
+    case TIMER_A2:
+        overflows = timer_overflows_a2;
+        break;
     case TIMER_A4:
         overflows = timer_overflows_a4;
         break;
