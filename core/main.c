@@ -41,7 +41,7 @@
 #define TIMER_B TIMER_B0
 
 #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
-#define MANCHESTER_RX_PIN ABS_PIN(3, 6)
+#define MANCHESTER_RX_PIN ABS_PIN(3, 7)
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -304,16 +304,16 @@ int main(void)
     printf("Running on %s\n", get_chip_family_name());
     printf("Chip UID: %s\n", get_unique_id_str());
 
-    manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, RATE_9600); // Initialize Manchester encoding with TX and RX pins
+    manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, RATE_2400); // Initialize Manchester encoding with TX and RX pins
 
     while (1)
     {
 #if defined(NRF52840_XXAA)
-        receive_example_data(); // Receive example data using Manchester encoding
-#elif defined(__MSP430FR5994__)
         printf("Sending test data via Manchester encoding...\n");
         send_example_data();
-        delay_ms(100);     
+        delay_ms(100);
+#elif defined(__MSP430FR5994__)
+        receive_example_data(); // Receive example data using Manchester encoding
 #endif
     }
 

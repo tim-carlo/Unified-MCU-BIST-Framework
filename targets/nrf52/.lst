@@ -70,7 +70,7 @@
   41:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_B TIMER_B0
   42:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
   43:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
-  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN ABS_PIN(3, 6)
+  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
   45:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
   46:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
   47:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
@@ -1209,326 +1209,303 @@
  835 0028 5DF804FB 		ldr	pc, [sp], #4
  836              	.L70:
  837              		.cfi_restore_state
- 838              	.LBB12:
- 839              	.LBI12:
- 282:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 840              		.loc 1 282 6 is_stmt 1 view .LVU208
- 841              	.LBB13:
  292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 842              		.loc 1 292 9 view .LVU209
- 843 002c 0448     		ldr	r0, .L73+8
- 844 002e FFF7FEFF 		bl	printf_
- 845              	.LVL62:
- 846              	.LBE13:
- 847              	.LBE12:
- 848              		.loc 1 294 1 is_stmt 0 view .LVU210
- 849 0032 09B0     		add	sp, sp, #36
- 850              		.cfi_def_cfa_offset 4
- 851              		@ sp needed
- 852 0034 5DF804FB 		ldr	pc, [sp], #4
- 853              	.L74:
- 854              		.align	2
- 855              	.L73:
- 856 0038 00000000 		.word	.LC7
- 857 003c 1C000000 		.word	.LC8
- 858 0040 30000000 		.word	.LC9
- 859              		.cfi_endproc
- 860              	.LFE147:
- 862              		.section	.rodata.main.str1.4,"aMS",%progbits,1
- 863              		.align	2
- 864              	.LC10:
- 865 0000 52756E6E 		.ascii	"Running on %s\012\000"
+ 838              		.loc 1 292 9 is_stmt 1 view .LVU208
+ 839 002c 0448     		ldr	r0, .L73+8
+ 840 002e FFF7FEFF 		bl	printf_
+ 841              	.LVL62:
+ 842              		.loc 1 294 1 is_stmt 0 view .LVU209
+ 843 0032 09B0     		add	sp, sp, #36
+ 844              		.cfi_def_cfa_offset 4
+ 845              		@ sp needed
+ 846 0034 5DF804FB 		ldr	pc, [sp], #4
+ 847              	.L74:
+ 848              		.align	2
+ 849              	.L73:
+ 850 0038 00000000 		.word	.LC7
+ 851 003c 1C000000 		.word	.LC8
+ 852 0040 30000000 		.word	.LC9
+ 853              		.cfi_endproc
+ 854              	.LFE147:
+ 856              		.section	.rodata.main.str1.4,"aMS",%progbits,1
+ 857              		.align	2
+ 858              	.LC10:
+ 859 0000 52756E6E 		.ascii	"Running on %s\012\000"
+ 859      696E6720 
+ 859      6F6E2025 
+ 859      730A00
+ 860 000f 00       		.align	2
+ 861              	.LC11:
+ 862 0010 43686970 		.ascii	"Chip UID: %s\012\000"
+ 862      20554944 
+ 862      3A202573 
+ 862      0A00
+ 863 001e 0000     		.align	2
+ 864              	.LC12:
+ 865 0020 53656E64 		.ascii	"Sending test data via Manchester encoding...\012\000"
  865      696E6720 
- 865      6F6E2025 
- 865      730A00
- 866 000f 00       		.align	2
- 867              	.LC11:
- 868 0010 43686970 		.ascii	"Chip UID: %s\012\000"
- 868      20554944 
- 868      3A202573 
- 868      0A00
- 869              		.section	.text.startup.main,"ax",%progbits
- 870              		.align	1
- 871              		.p2align 2,,3
- 872              		.global	main
- 873              		.syntax unified
- 874              		.thumb
- 875              		.thumb_func
- 877              	main:
- 878              	.LFB148:
+ 865      74657374 
+ 865      20646174 
+ 865      61207669 
+ 866              		.section	.text.startup.main,"ax",%progbits
+ 867              		.align	1
+ 868              		.p2align 2,,3
+ 869              		.global	main
+ 870              		.syntax unified
+ 871              		.thumb
+ 872              		.thumb_func
+ 874              	main:
+ 875              	.LFB148:
  295:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
  296:/Users/timcarlo/Desktop/testsoftware/core/main.c **** int main(void)
  297:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 879              		.loc 1 297 1 is_stmt 1 view -0
- 880              		.cfi_startproc
- 881              		@ Volatile: function does not return.
- 882              		@ args = 0, pretend = 0, frame = 32
- 883              		@ frame_needed = 0, uses_anonymous_args = 0
+ 876              		.loc 1 297 1 is_stmt 1 view -0
+ 877              		.cfi_startproc
+ 878              		@ Volatile: function does not return.
+ 879              		@ args = 0, pretend = 0, frame = 16
+ 880              		@ frame_needed = 0, uses_anonymous_args = 0
  298:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 884              		.loc 1 298 5 view .LVU212
+ 881              		.loc 1 298 5 view .LVU211
  297:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 885              		.loc 1 297 1 is_stmt 0 view .LVU213
- 886 0000 00B5     		push	{lr}
- 887              		.cfi_def_cfa_offset 4
- 888              		.cfi_offset 14, -4
- 889 0002 89B0     		sub	sp, sp, #36
- 890              		.cfi_def_cfa_offset 40
- 891              		.loc 1 298 5 view .LVU214
- 892 0004 FFF7FEFF 		bl	io_init
- 893              	.LVL63:
+ 882              		.loc 1 297 1 is_stmt 0 view .LVU212
+ 883 0000 00B5     		push	{lr}
+ 884              		.cfi_def_cfa_offset 4
+ 885              		.cfi_offset 14, -4
+ 886 0002 85B0     		sub	sp, sp, #20
+ 887              		.cfi_def_cfa_offset 24
+ 888              		.loc 1 298 5 view .LVU213
+ 889 0004 FFF7FEFF 		bl	io_init
+ 890              	.LVL63:
  299:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS); // Initialize pin data array
- 894              		.loc 1 299 5 is_stmt 1 view .LVU215
- 895 0008 3021     		movs	r1, #48
- 896 000a 1748     		ldr	r0, .L80
- 897 000c FFF7FEFF 		bl	initialize_pin_data_array
- 898              	.LVL64:
+ 891              		.loc 1 299 5 is_stmt 1 view .LVU214
+ 892 0008 3021     		movs	r1, #48
+ 893 000a 1848     		ldr	r0, .L78
+ 894 000c 184C     		ldr	r4, .L78+4
+ 895 000e FFF7FEFF 		bl	initialize_pin_data_array
+ 896              	.LVL64:
  300:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
  301:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Start Timer B for Pin Time Measurements
  302:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_timer(TIMER_B);
- 899              		.loc 1 302 5 view .LVU216
- 900 0010 1648     		ldr	r0, .L80+4
- 901 0012 FFF7FEFF 		bl	start_timer
- 902              	.LVL65:
+ 897              		.loc 1 302 5 view .LVU215
+ 898 0012 1848     		ldr	r0, .L78+8
+ 899 0014 FFF7FEFF 		bl	start_timer
+ 900              	.LVL65:
  303:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
  304:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Running on %s\n", get_chip_family_name());
- 903              		.loc 1 304 5 view .LVU217
- 904 0016 FFF7FEFF 		bl	get_chip_family_name
- 905              	.LVL66:
- 906 001a 0146     		mov	r1, r0
- 907              		.loc 1 304 5 is_stmt 0 discriminator 1 view .LVU218
- 908 001c 1448     		ldr	r0, .L80+8
- 909 001e FFF7FEFF 		bl	printf_
- 910              	.LVL67:
+ 901              		.loc 1 304 5 view .LVU216
+ 902 0018 FFF7FEFF 		bl	get_chip_family_name
+ 903              	.LVL66:
+ 904 001c 0146     		mov	r1, r0
+ 905              		.loc 1 304 5 is_stmt 0 discriminator 1 view .LVU217
+ 906 001e 1648     		ldr	r0, .L78+12
+ 907 0020 FFF7FEFF 		bl	printf_
+ 908              	.LVL67:
  305:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Chip UID: %s\n", get_unique_id_str());
- 911              		.loc 1 305 5 is_stmt 1 view .LVU219
- 912 0022 FFF7FEFF 		bl	get_unique_id_str
- 913              	.LVL68:
- 914 0026 0146     		mov	r1, r0
- 915              		.loc 1 305 5 is_stmt 0 discriminator 1 view .LVU220
- 916 0028 1248     		ldr	r0, .L80+12
- 917 002a FFF7FEFF 		bl	printf_
- 918              	.LVL69:
+ 909              		.loc 1 305 5 is_stmt 1 view .LVU218
+ 910 0024 FFF7FEFF 		bl	get_unique_id_str
+ 911              	.LVL68:
+ 912 0028 0146     		mov	r1, r0
+ 913              		.loc 1 305 5 is_stmt 0 discriminator 1 view .LVU219
+ 914 002a 1448     		ldr	r0, .L78+16
+ 915 002c FFF7FEFF 		bl	printf_
+ 916              	.LVL69:
  306:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 307:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, RATE_9600); // Initialize Manchester enco
- 919              		.loc 1 307 5 is_stmt 1 view .LVU221
- 920 002e 0C21     		movs	r1, #12
- 921 0030 0522     		movs	r2, #5
- 922 0032 0846     		mov	r0, r1
- 923 0034 FFF7FEFF 		bl	manchester_init
- 924              	.LVL70:
- 925              	.L78:
+ 307:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_init(MANCHESTER_TX_PIN, MANCHESTER_RX_PIN, RATE_2400); // Initialize Manchester enco
+ 917              		.loc 1 307 5 is_stmt 1 view .LVU220
+ 918 0030 0C21     		movs	r1, #12
+ 919 0032 0322     		movs	r2, #3
+ 920 0034 0846     		mov	r0, r1
+ 921 0036 FFF7FEFF 		bl	manchester_init
+ 922              	.LVL70:
+ 923              	.L76:
  308:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
  309:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     while (1)
- 926              		.loc 1 309 5 view .LVU222
+ 924              		.loc 1 309 5 view .LVU221
  310:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
  311:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 312:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         receive_example_data(); // Receive example data using Manchester encoding
- 927              		.loc 1 312 9 discriminator 1 view .LVU223
- 928              	.LBB18:
- 929              	.LBI18:
- 282:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 930              		.loc 1 282 6 view .LVU224
- 931              	.LBB19:
- 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint8_t data[32] = {0};
- 932              		.loc 1 284 5 view .LVU225
- 933 0038 0F48     		ldr	r0, .L80+16
- 934 003a FFF7FEFF 		bl	printf_
- 935              	.LVL71:
- 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (manchester_receive_array(data, sizeof(data)))
- 936              		.loc 1 285 5 view .LVU226
- 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (manchester_receive_array(data, sizeof(data)))
- 937              		.loc 1 285 13 is_stmt 0 view .LVU227
- 938 003e 2022     		movs	r2, #32
- 939 0040 0021     		movs	r1, #0
- 940 0042 6846     		mov	r0, sp
- 941 0044 FFF7FEFF 		bl	memset
- 942              	.LVL72:
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 943              		.loc 1 286 5 is_stmt 1 view .LVU228
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 944              		.loc 1 286 9 is_stmt 0 view .LVU229
- 945 0048 2021     		movs	r1, #32
- 946 004a 6846     		mov	r0, sp
- 947 004c FFF7FEFF 		bl	manchester_receive_array
- 948              	.LVL73:
- 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 949              		.loc 1 288 9 is_stmt 1 view .LVU230
- 950              	.LBB20:
- 951              	.LBI20:
- 282:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 952              		.loc 1 282 6 view .LVU231
- 953              	.LBB21:
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 954              		.loc 1 292 9 view .LVU232
- 955              	.LBE21:
- 956              	.LBE20:
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 957              		.loc 1 286 9 is_stmt 0 view .LVU233
- 958 0050 0346     		mov	r3, r0
- 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 959              		.loc 1 288 9 view .LVU234
- 960 0052 6946     		mov	r1, sp
- 961 0054 0948     		ldr	r0, .L80+20
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 962              		.loc 1 286 8 discriminator 1 view .LVU235
- 963 0056 13B1     		cbz	r3, .L76
- 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 964              		.loc 1 288 9 view .LVU236
- 965 0058 FFF7FEFF 		bl	printf_
- 966              	.LVL74:
- 967 005c ECE7     		b	.L78
- 968              	.L76:
- 969              	.LBB23:
- 970              	.LBB22:
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 971              		.loc 1 292 9 view .LVU237
- 972 005e 0848     		ldr	r0, .L80+24
- 973 0060 FFF7FEFF 		bl	printf_
- 974              	.LVL75:
- 975              	.LBE22:
- 976              	.LBE23:
- 977              	.LBE19:
- 978              	.LBE18:
+ 312:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("Sending test data via Manchester encoding...\n");
+ 925              		.loc 1 312 9 view .LVU222
+ 926 003a 1148     		ldr	r0, .L78+20
+ 927 003c FFF7FEFF 		bl	printf_
+ 928              	.LVL71:
+ 313:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         send_example_data();
+ 929              		.loc 1 313 9 view .LVU223
+ 930              	.LBB12:
+ 931              	.LBI12:
+ 276:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 932              		.loc 1 276 6 view .LVU224
+ 933              	.LBB13:
+ 278:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     char bsp[] = "Mithu_Stinkt\n";
+ 934              		.loc 1 278 5 view .LVU225
+ 935 0040 1048     		ldr	r0, .L78+24
+ 936 0042 FFF7FEFF 		bl	printf_
+ 937              	.LVL72:
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_transmit_array((uint8_t *)bsp, strlen(bsp));
+ 938              		.loc 1 279 5 view .LVU226
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_transmit_array((uint8_t *)bsp, strlen(bsp));
+ 939              		.loc 1 279 10 is_stmt 0 view .LVU227
+ 940 0046 94E80F00 		ldm	r4, {r0, r1, r2, r3}
+ 941 004a EC46     		mov	ip, sp
+ 942 004c ACE80700 		stmia	ip!, {r0, r1, r2}
+ 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 943              		.loc 1 280 47 view .LVU228
+ 944 0050 6846     		mov	r0, sp
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     manchester_transmit_array((uint8_t *)bsp, strlen(bsp));
+ 945              		.loc 1 279 10 view .LVU229
+ 946 0052 ACF80030 		strh	r3, [ip]	@ movhi
+ 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 947              		.loc 1 280 5 is_stmt 1 view .LVU230
+ 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 948              		.loc 1 280 47 is_stmt 0 view .LVU231
+ 949 0056 FFF7FEFF 		bl	strlen
+ 950              	.LVL73:
+ 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 951              		.loc 1 280 5 discriminator 1 view .LVU232
+ 952 005a C1B2     		uxtb	r1, r0
+ 953 005c 6846     		mov	r0, sp
+ 954 005e FFF7FEFF 		bl	manchester_transmit_array
+ 955              	.LVL74:
+ 956              	.LBE13:
+ 957              	.LBE12:
+ 314:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         delay_ms(100);
+ 958              		.loc 1 314 9 is_stmt 1 discriminator 1 view .LVU233
+ 959 0062 6420     		movs	r0, #100
+ 960 0064 FFF7FEFF 		bl	delay_ms
+ 961              	.LVL75:
  309:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 979              		.loc 1 309 11 is_stmt 1 view .LVU238
- 980              	.LBB25:
- 981              	.LBB24:
- 294:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 982              		.loc 1 294 1 is_stmt 0 view .LVU239
- 983 0064 E8E7     		b	.L78
- 984              	.L81:
- 985 0066 00BF     		.align	2
- 986              	.L80:
- 987 0068 00000000 		.word	pin_data
- 988 006c 00900040 		.word	1073778688
- 989 0070 00000000 		.word	.LC10
- 990 0074 10000000 		.word	.LC11
- 991 0078 00000000 		.word	.LC7
- 992 007c 1C000000 		.word	.LC8
- 993 0080 30000000 		.word	.LC9
- 994              	.LBE24:
- 995              	.LBE25:
- 996              		.cfi_endproc
- 997              	.LFE148:
- 999              		.global	black_list_mask
- 1000              		.section	.bss.black_list_mask,"aw",%nobits
- 1001              		.align	3
- 1004              	black_list_mask:
- 1005 0000 00000000 		.space	8
- 1005      00000000 
- 1006              		.global	selected_pin_data
- 1007              		.section	.bss.selected_pin_data,"aw",%nobits
- 1008              		.align	2
- 1011              	selected_pin_data:
- 1012 0000 00000000 		.space	4
- 1013              		.global	selected_pin
- 1014              		.section	.bss.selected_pin,"aw",%nobits
- 1017              	selected_pin:
- 1018 0000 00       		.space	1
- 1019              		.global	current_driven_pin
- 1020              		.section	.data.current_driven_pin,"aw"
- 1023              	current_driven_pin:
- 1024 0000 31       		.byte	49
- 1025              		.global	state
- 1026              		.section	.bss.state,"aw",%nobits
- 1029              	state:
- 1030 0000 00       		.space	1
- 1031              		.global	last_event_valid
- 1032              		.section	.bss.last_event_valid,"aw",%nobits
- 1035              	last_event_valid:
- 1036 0000 00       		.space	1
- 1037              		.global	last_event
- 1038              		.section	.bss.last_event,"aw",%nobits
- 1039              		.align	2
- 1042              	last_event:
- 1043 0000 00000000 		.space	4
- 1044              		.global	green_led_on
- 1045              		.section	.bss.green_led_on,"aw",%nobits
- 1048              	green_led_on:
- 1049 0000 00       		.space	1
- 1050              		.global	red_led_on
- 1051              		.section	.bss.red_led_on,"aw",%nobits
- 1054              	red_led_on:
- 1055 0000 00       		.space	1
- 1056              		.global	pin_data
- 1057              		.section	.bss.pin_data,"aw",%nobits
- 1058              		.align	2
- 1061              	pin_data:
- 1062 0000 00000000 		.space	576
- 1062      00000000 
- 1062      00000000 
- 1062      00000000 
- 1062      00000000 
- 1063              		.text
- 1064              	.Letext0:
- 1065              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
- 1066              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
- 1067              		.file 4 "Include/nrf52840.h"
- 1068              		.file 5 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/lib/gcc/arm-none-eabi/14.2.1/includ
- 1069              		.file 6 "/Users/timcarlo/Desktop/testsoftware/common/include/pindata.h"
- 1070              		.file 7 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
- 1071              		.file 8 "/Users/timcarlo/Desktop/testsoftware/common/include/manchester.h"
- 1072              		.file 9 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/string.h"
- 1073              		.file 10 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/stdio.h"
- 1074              		.file 11 "<built-in>"
+ 962              		.loc 1 309 11 view .LVU234
+ 963 0068 E7E7     		b	.L76
+ 964              	.L79:
+ 965 006a 00BF     		.align	2
+ 966              	.L78:
+ 967 006c 00000000 		.word	pin_data
+ 968 0070 1C000000 		.word	.LC6
+ 969 0074 00900040 		.word	1073778688
+ 970 0078 00000000 		.word	.LC10
+ 971 007c 10000000 		.word	.LC11
+ 972 0080 20000000 		.word	.LC12
+ 973 0084 00000000 		.word	.LC5
+ 974              		.cfi_endproc
+ 975              	.LFE148:
+ 977              		.global	black_list_mask
+ 978              		.section	.bss.black_list_mask,"aw",%nobits
+ 979              		.align	3
+ 982              	black_list_mask:
+ 983 0000 00000000 		.space	8
+ 983      00000000 
+ 984              		.global	selected_pin_data
+ 985              		.section	.bss.selected_pin_data,"aw",%nobits
+ 986              		.align	2
+ 989              	selected_pin_data:
+ 990 0000 00000000 		.space	4
+ 991              		.global	selected_pin
+ 992              		.section	.bss.selected_pin,"aw",%nobits
+ 995              	selected_pin:
+ 996 0000 00       		.space	1
+ 997              		.global	current_driven_pin
+ 998              		.section	.data.current_driven_pin,"aw"
+ 1001              	current_driven_pin:
+ 1002 0000 31       		.byte	49
+ 1003              		.global	state
+ 1004              		.section	.bss.state,"aw",%nobits
+ 1007              	state:
+ 1008 0000 00       		.space	1
+ 1009              		.global	last_event_valid
+ 1010              		.section	.bss.last_event_valid,"aw",%nobits
+ 1013              	last_event_valid:
+ 1014 0000 00       		.space	1
+ 1015              		.global	last_event
+ 1016              		.section	.bss.last_event,"aw",%nobits
+ 1017              		.align	2
+ 1020              	last_event:
+ 1021 0000 00000000 		.space	4
+ 1022              		.global	green_led_on
+ 1023              		.section	.bss.green_led_on,"aw",%nobits
+ 1026              	green_led_on:
+ 1027 0000 00       		.space	1
+ 1028              		.global	red_led_on
+ 1029              		.section	.bss.red_led_on,"aw",%nobits
+ 1032              	red_led_on:
+ 1033 0000 00       		.space	1
+ 1034              		.global	pin_data
+ 1035              		.section	.bss.pin_data,"aw",%nobits
+ 1036              		.align	2
+ 1039              	pin_data:
+ 1040 0000 00000000 		.space	576
+ 1040      00000000 
+ 1040      00000000 
+ 1040      00000000 
+ 1040      00000000 
+ 1041              		.text
+ 1042              	.Letext0:
+ 1043              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
+ 1044              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
+ 1045              		.file 4 "Include/nrf52840.h"
+ 1046              		.file 5 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/lib/gcc/arm-none-eabi/14.2.1/includ
+ 1047              		.file 6 "/Users/timcarlo/Desktop/testsoftware/common/include/pindata.h"
+ 1048              		.file 7 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
+ 1049              		.file 8 "/Users/timcarlo/Desktop/testsoftware/common/include/manchester.h"
+ 1050              		.file 9 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/string.h"
+ 1051              		.file 10 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/stdio.h"
+ 1052              		.file 11 "<built-in>"
 DEFINED SYMBOLS
                             *ABS*:00000000 main.c
-/var/tmp//cckZxkNl.s:21     .text.rising_handler:00000000 $t
-/var/tmp//cckZxkNl.s:28     .text.rising_handler:00000000 rising_handler
-/var/tmp//cckZxkNl.s:225    .text.rising_handler:000000b8 $d
-/var/tmp//cckZxkNl.s:1023   .data.current_driven_pin:00000000 current_driven_pin
-/var/tmp//cckZxkNl.s:1061   .bss.pin_data:00000000 pin_data
-/var/tmp//cckZxkNl.s:1035   .bss.last_event_valid:00000000 last_event_valid
-/var/tmp//cckZxkNl.s:1042   .bss.last_event:00000000 last_event
-/var/tmp//cckZxkNl.s:235    .text.falling_handler:00000000 $t
-/var/tmp//cckZxkNl.s:242    .text.falling_handler:00000000 falling_handler
-/var/tmp//cckZxkNl.s:289    .text.falling_handler:00000024 $d
-/var/tmp//cckZxkNl.s:296    .text.turn_off_leds:00000000 $t
-/var/tmp//cckZxkNl.s:303    .text.turn_off_leds:00000000 turn_off_leds
-/var/tmp//cckZxkNl.s:353    .text.turn_off_leds:00000028 $d
-/var/tmp//cckZxkNl.s:1054   .bss.red_led_on:00000000 red_led_on
-/var/tmp//cckZxkNl.s:1048   .bss.green_led_on:00000000 green_led_on
-/var/tmp//cckZxkNl.s:359    .rodata.led_test_routine.str1.4:00000000 $d
-/var/tmp//cckZxkNl.s:366    .text.led_test_routine:00000000 $t
-/var/tmp//cckZxkNl.s:373    .text.led_test_routine:00000000 led_test_routine
-/var/tmp//cckZxkNl.s:457    .text.led_test_routine:00000050 $d
-/var/tmp//cckZxkNl.s:463    .text.send_signal:00000000 $t
-/var/tmp//cckZxkNl.s:470    .text.send_signal:00000000 send_signal
-/var/tmp//cckZxkNl.s:514    .text.send_signal:00000020 $d
-/var/tmp//cckZxkNl.s:519    .text.set_selected_pin:00000000 $t
-/var/tmp//cckZxkNl.s:526    .text.set_selected_pin:00000000 set_selected_pin
-/var/tmp//cckZxkNl.s:559    .text.set_selected_pin:00000018 $d
-/var/tmp//cckZxkNl.s:1017   .bss.selected_pin:00000000 selected_pin
-/var/tmp//cckZxkNl.s:1011   .bss.selected_pin_data:00000000 selected_pin_data
-/var/tmp//cckZxkNl.s:566    .text.set_standart_blacklist_pins:00000000 $t
-/var/tmp//cckZxkNl.s:573    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
-/var/tmp//cckZxkNl.s:596    .rodata.print_active_pins_from_mask.str1.4:00000000 $d
-/var/tmp//cckZxkNl.s:606    .text.print_active_pins_from_mask:00000000 $t
-/var/tmp//cckZxkNl.s:613    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
-/var/tmp//cckZxkNl.s:701    .text.print_active_pins_from_mask:0000004c $d
-/var/tmp//cckZxkNl.s:708    .rodata.send_example_data.str1.4:00000000 $d
-/var/tmp//cckZxkNl.s:715    .text.send_example_data:00000000 $t
-/var/tmp//cckZxkNl.s:722    .text.send_example_data:00000000 send_example_data
-/var/tmp//cckZxkNl.s:768    .text.send_example_data:0000002c $d
-/var/tmp//cckZxkNl.s:774    .rodata.receive_example_data.str1.4:00000000 $d
-/var/tmp//cckZxkNl.s:784    .text.receive_example_data:00000000 $t
-/var/tmp//cckZxkNl.s:791    .text.receive_example_data:00000000 receive_example_data
-/var/tmp//cckZxkNl.s:856    .text.receive_example_data:00000038 $d
-/var/tmp//cckZxkNl.s:863    .rodata.main.str1.4:00000000 $d
-/var/tmp//cckZxkNl.s:870    .text.startup.main:00000000 $t
-/var/tmp//cckZxkNl.s:877    .text.startup.main:00000000 main
-/var/tmp//cckZxkNl.s:987    .text.startup.main:00000068 $d
-/var/tmp//cckZxkNl.s:1004   .bss.black_list_mask:00000000 black_list_mask
-/var/tmp//cckZxkNl.s:1001   .bss.black_list_mask:00000000 $d
-/var/tmp//cckZxkNl.s:1008   .bss.selected_pin_data:00000000 $d
-/var/tmp//cckZxkNl.s:1018   .bss.selected_pin:00000000 $d
-/var/tmp//cckZxkNl.s:1029   .bss.state:00000000 state
-/var/tmp//cckZxkNl.s:1030   .bss.state:00000000 $d
-/var/tmp//cckZxkNl.s:1036   .bss.last_event_valid:00000000 $d
-/var/tmp//cckZxkNl.s:1039   .bss.last_event:00000000 $d
-/var/tmp//cckZxkNl.s:1049   .bss.green_led_on:00000000 $d
-/var/tmp//cckZxkNl.s:1055   .bss.red_led_on:00000000 $d
-/var/tmp//cckZxkNl.s:1058   .bss.pin_data:00000000 $d
+/var/tmp//ccJg1DP5.s:21     .text.rising_handler:00000000 $t
+/var/tmp//ccJg1DP5.s:28     .text.rising_handler:00000000 rising_handler
+/var/tmp//ccJg1DP5.s:225    .text.rising_handler:000000b8 $d
+/var/tmp//ccJg1DP5.s:1001   .data.current_driven_pin:00000000 current_driven_pin
+/var/tmp//ccJg1DP5.s:1039   .bss.pin_data:00000000 pin_data
+/var/tmp//ccJg1DP5.s:1013   .bss.last_event_valid:00000000 last_event_valid
+/var/tmp//ccJg1DP5.s:1020   .bss.last_event:00000000 last_event
+/var/tmp//ccJg1DP5.s:235    .text.falling_handler:00000000 $t
+/var/tmp//ccJg1DP5.s:242    .text.falling_handler:00000000 falling_handler
+/var/tmp//ccJg1DP5.s:289    .text.falling_handler:00000024 $d
+/var/tmp//ccJg1DP5.s:296    .text.turn_off_leds:00000000 $t
+/var/tmp//ccJg1DP5.s:303    .text.turn_off_leds:00000000 turn_off_leds
+/var/tmp//ccJg1DP5.s:353    .text.turn_off_leds:00000028 $d
+/var/tmp//ccJg1DP5.s:1032   .bss.red_led_on:00000000 red_led_on
+/var/tmp//ccJg1DP5.s:1026   .bss.green_led_on:00000000 green_led_on
+/var/tmp//ccJg1DP5.s:359    .rodata.led_test_routine.str1.4:00000000 $d
+/var/tmp//ccJg1DP5.s:366    .text.led_test_routine:00000000 $t
+/var/tmp//ccJg1DP5.s:373    .text.led_test_routine:00000000 led_test_routine
+/var/tmp//ccJg1DP5.s:457    .text.led_test_routine:00000050 $d
+/var/tmp//ccJg1DP5.s:463    .text.send_signal:00000000 $t
+/var/tmp//ccJg1DP5.s:470    .text.send_signal:00000000 send_signal
+/var/tmp//ccJg1DP5.s:514    .text.send_signal:00000020 $d
+/var/tmp//ccJg1DP5.s:519    .text.set_selected_pin:00000000 $t
+/var/tmp//ccJg1DP5.s:526    .text.set_selected_pin:00000000 set_selected_pin
+/var/tmp//ccJg1DP5.s:559    .text.set_selected_pin:00000018 $d
+/var/tmp//ccJg1DP5.s:995    .bss.selected_pin:00000000 selected_pin
+/var/tmp//ccJg1DP5.s:989    .bss.selected_pin_data:00000000 selected_pin_data
+/var/tmp//ccJg1DP5.s:566    .text.set_standart_blacklist_pins:00000000 $t
+/var/tmp//ccJg1DP5.s:573    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
+/var/tmp//ccJg1DP5.s:596    .rodata.print_active_pins_from_mask.str1.4:00000000 $d
+/var/tmp//ccJg1DP5.s:606    .text.print_active_pins_from_mask:00000000 $t
+/var/tmp//ccJg1DP5.s:613    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
+/var/tmp//ccJg1DP5.s:701    .text.print_active_pins_from_mask:0000004c $d
+/var/tmp//ccJg1DP5.s:708    .rodata.send_example_data.str1.4:00000000 $d
+/var/tmp//ccJg1DP5.s:715    .text.send_example_data:00000000 $t
+/var/tmp//ccJg1DP5.s:722    .text.send_example_data:00000000 send_example_data
+/var/tmp//ccJg1DP5.s:768    .text.send_example_data:0000002c $d
+/var/tmp//ccJg1DP5.s:774    .rodata.receive_example_data.str1.4:00000000 $d
+/var/tmp//ccJg1DP5.s:784    .text.receive_example_data:00000000 $t
+/var/tmp//ccJg1DP5.s:791    .text.receive_example_data:00000000 receive_example_data
+/var/tmp//ccJg1DP5.s:850    .text.receive_example_data:00000038 $d
+/var/tmp//ccJg1DP5.s:857    .rodata.main.str1.4:00000000 $d
+/var/tmp//ccJg1DP5.s:867    .text.startup.main:00000000 $t
+/var/tmp//ccJg1DP5.s:874    .text.startup.main:00000000 main
+/var/tmp//ccJg1DP5.s:967    .text.startup.main:0000006c $d
+/var/tmp//ccJg1DP5.s:982    .bss.black_list_mask:00000000 black_list_mask
+/var/tmp//ccJg1DP5.s:979    .bss.black_list_mask:00000000 $d
+/var/tmp//ccJg1DP5.s:986    .bss.selected_pin_data:00000000 $d
+/var/tmp//ccJg1DP5.s:996    .bss.selected_pin:00000000 $d
+/var/tmp//ccJg1DP5.s:1007   .bss.state:00000000 state
+/var/tmp//ccJg1DP5.s:1008   .bss.state:00000000 $d
+/var/tmp//ccJg1DP5.s:1014   .bss.last_event_valid:00000000 $d
+/var/tmp//ccJg1DP5.s:1017   .bss.last_event:00000000 $d
+/var/tmp//ccJg1DP5.s:1027   .bss.green_led_on:00000000 $d
+/var/tmp//ccJg1DP5.s:1033   .bss.red_led_on:00000000 $d
+/var/tmp//ccJg1DP5.s:1036   .bss.pin_data:00000000 $d
                            .group:00000000 wm4.0.c78fe9a012b08da15ba0560431b6d537
                            .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4._newlib_version.h.4.411db44ea2338a62eca2f0777f81481b
