@@ -347,7 +347,7 @@ int main(void)
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
-                if (!isStackEmpty(active_pins_stack))
+                if (!is_stack_empty(active_pins_stack))
                 {
                     uint8_t pin;
                     stack_pop(active_pins_stack, &pin);
@@ -356,7 +356,7 @@ int main(void)
                     printf("Active pin detected: %u\n", selected_pin);
                     active_signal_detected = true;
                 }
-                freeStack(active_pins_stack);
+                free_stack(active_pins_stack);
             }
 
             stop_timer(TIMER_A);
@@ -397,7 +397,7 @@ int main(void)
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
-                if (!isStackEmpty(active_pins_stack))
+                if (!is_stack_empty(active_pins_stack))
                 {
                     uint8_t pin;
                     stack_pop(active_pins_stack, &pin);
@@ -406,7 +406,7 @@ int main(void)
                     another_active_pin_detected = true;
                     set_selected_pin(pin); // Set the selected pin to the active pin
                 }
-                freeStack(active_pins_stack);
+                free_stack(active_pins_stack);
 
                 // Check for SYN event in the pin_events
                 if (last_event_valid && last_event.is_syn && last_event.pin == selected_pin)
@@ -473,17 +473,17 @@ int main(void)
                 uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin);
                 push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
 
-                if (!isStackEmpty(active_pins_stack))
+                if (!is_stack_empty(active_pins_stack))
                 {
                     uint8_t pin;
                     stack_pop(active_pins_stack, &pin);
                     set_selected_pin(pin);
                     printf("Another pin is high: %u, switching to MAYBE_RESPONDER\n", selected_pin);
                     received_other_signal = true;
-                    freeStack(active_pins_stack);
+                    free_stack(active_pins_stack);
                     break;
                 }
-                freeStack(active_pins_stack);
+                free_stack(active_pins_stack);
             }
             release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
             printf("SYN signal sent on pin %u\n", selected_pin);

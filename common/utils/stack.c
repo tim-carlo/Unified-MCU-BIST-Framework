@@ -85,7 +85,7 @@ void stack_pop(Stack* stack, void *out) {
  * @param stack Pointer to the stack
  * @param out Pointer to the location where the top item will be stored
  */
-int isStackEmpty(Stack* stack) {
+int is_stack_empty(Stack* stack) {
     return stack->top == -1;
 }
 
@@ -109,7 +109,7 @@ void stack_peek(Stack* stack, void *out) {
  * 
  * @param stack Pointer to the stack to be freed
  */
-void freeStack(Stack* stack) {
+void free_stack(Stack* stack) {
     free(stack->array);
     free(stack);
 }

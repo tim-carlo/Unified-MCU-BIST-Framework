@@ -17,10 +17,10 @@ typedef struct {
 
 Stack* create_stack(int capacity, size_t element_size);
 int stack_is_full(Stack* stack);
-int isStackEmpty(Stack* stack);
+int is_stack_empty(Stack* stack);
 void stack_push(Stack* stack, void *item);
 void stack_pop(Stack* stack, void *out);
 void stack_peek(Stack* stack, void *out);
-void freeStack(Stack* stack);
+void free_stack(Stack* stack);
 
 #endif // STACK_H
