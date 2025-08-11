@@ -16,7 +16,6 @@ uint64_t gpio_blacklist_intern_mask = 0; // Global blacklist for GPIO pins
 gpio_interrupt_handler_t rising_handler_global = NULL;
 gpio_interrupt_handler_t falling_handler_global = NULL;
 
-
 static volatile uint32_t prev_input_state_p0 = 0;
 static volatile uint32_t prev_input_state_p1 = 0;
 
@@ -168,9 +167,9 @@ void push_active_pins_to_stack(Stack *stack, uint8_t level)
 {
     for (uint8_t abs_pin = 0; abs_pin < NUMBER_OF_GPIO_PINS; abs_pin++)
     {
-        if(gpio_blacklist_intern_mask & (1ULL << abs_pin))
+        if (gpio_blacklist_intern_mask & (1ULL << abs_pin))
             continue; // Skip blacklisted pins
-            
+
         if (gpio_read(abs_pin) == level)
         {
             printf("Pushing active pin %lu to stack\n", abs_pin);
@@ -217,12 +216,16 @@ void gpio_open_drain(uint8_t abs_pin)
 {
     NRF_GPIO_Type *PORT = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint8_t pin = (abs_pin < 32) ? abs_pin : (abs_pin - 32);
-    PORT->DIRCLR = (1UL << pin);
-    PORT->PIN_CNF[pin] = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
-                         BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
-                         BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
-                         BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) |
-                         BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+
+    // Prepare CNF for open-drain
+    PORT->PIN_CNF[pin] =
+        BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) | 
+        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+        BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) | 
+        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) | 
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+
+    PORT->OUTCLR = (1UL << pin); // Ensure low when driven
 }
 bool is_interupt_blacklisted(uint8_t abs_pin)
 {
@@ -249,7 +252,6 @@ void configure_pin_sense(uint8_t abs_pin, bool sense_low)
         port->PIN_CNF[pin] |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, High);
 }
 
-
 /**
  * @brief Listen on a specific GPIO pin for rising and falling edges
  * @param abs_pin Absolute pin number (0-47)
@@ -257,10 +259,9 @@ void configure_pin_sense(uint8_t abs_pin, bool sense_low)
  * @param rising_handler Handler for rising edges
  */
 void gpio_listen_on_pin_interrupt(uint8_t abs_pin,
-                                   gpio_interrupt_handler_t falling_handler,
-                                   gpio_interrupt_handler_t rising_handler)
+                                  gpio_interrupt_handler_t falling_handler,
+                                  gpio_interrupt_handler_t rising_handler)
 {
-    
 }
 
 /**
@@ -302,7 +303,6 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
     NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
     NVIC_EnableIRQ(GPIOTE_IRQn);
 }
-
 
 void GPIOTE_IRQHandler(void)
 {
@@ -352,22 +352,35 @@ void release_gpio_open_drain(uint8_t abs_pin)
 {
     NRF_GPIO_Type *port = (abs_pin < 32) ? NRF_P0 : NRF_P1;
     uint32_t pin_idx = abs_pin % 32;
+
+    // Set pin as input (released state - will be pulled high by external pull-up)
+    port->DIRCLR = (1UL << pin_idx); // Set pin as input
     port->PIN_CNF[pin_idx] =
         BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
         BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
         BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
-        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
-    port->DIRCLR = (1UL << pin_idx); // Set pin as input
+        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) |
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
 }
 
 /**
  * @brief Drive GPIO pin in open-drain mode using absolute pin number
- *
+ * Open-drain: Drive low by setting as output + low, "drive high" by setting as input (pulled high)
  */
 void gpio_open_drain_drive(uint8_t abs_pin)
 {
-    gpio_output_init(abs_pin);
-    gpio_drive_low(abs_pin);
+    NRF_GPIO_Type *port = (abs_pin < 32) ? NRF_P0 : NRF_P1;
+    uint32_t pin_idx = abs_pin % 32;
+
+    // Drive low: Set pin as output and drive low
+    port->OUTCLR = (1UL << pin_idx); // Set output register to low
+    port->DIRSET = (1UL << pin_idx); // Set pin as output
+    port->PIN_CNF[pin_idx] =
+        BV_BY_NAME(GPIO_PIN_CNF_DIR, Output) |
+        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Disconnect) |
+        BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled) |
+        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) |
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
 }
 
 /**
@@ -394,19 +407,21 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
  */
 void delay_us(uint32_t us)
 {
-    NRF_TIMER3->TASKS_STOP  = 1;
+    NRF_TIMER3->TASKS_STOP = 1;
     NRF_TIMER3->TASKS_CLEAR = 1;
 
-    //TIMER3: 1 MHz:  1 tick = 1 µs
+    // TIMER3: 1 MHz:  1 tick = 1 µs
     NRF_TIMER3->PRESCALER = 4;
-    NRF_TIMER3->MODE      = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER3->BITMODE   = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
 
     NRF_TIMER3->CC[0] = us;
     NRF_TIMER3->EVENTS_COMPARE[0] = 0;
     NRF_TIMER3->TASKS_START = 1;
 
-    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0) {}
+    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0)
+    {
+    }
 
     NRF_TIMER3->TASKS_STOP = 1;
     // clear the flag
@@ -420,19 +435,21 @@ void delay_us(uint32_t us)
  */
 void delay_ms(uint32_t ms)
 {
-    NRF_TIMER3->TASKS_STOP  = 1;
+    NRF_TIMER3->TASKS_STOP = 1;
     NRF_TIMER3->TASKS_CLEAR = 1;
 
-    //TIMER3: 1 MHz:  1 tick = 1 µs
+    // TIMER3: 1 MHz:  1 tick = 1 µs
     NRF_TIMER3->PRESCALER = 4;
-    NRF_TIMER3->MODE      = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER3->BITMODE   = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
 
     NRF_TIMER3->CC[0] = ms * 1000;
     NRF_TIMER3->EVENTS_COMPARE[0] = 0;
     NRF_TIMER3->TASKS_START = 1;
 
-    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0) {}
+    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0)
+    {
+    }
 
     NRF_TIMER3->TASKS_STOP = 1;
     // clear the flag
