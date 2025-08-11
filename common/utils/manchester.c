@@ -45,7 +45,7 @@ static void set_TX(bool state)
 {
     if (state)
     {
-        release_gpio_open_drain(tx_pin); 
+        release_gpio_open_drain(tx_pin);
     }
     else
     {
@@ -87,19 +87,15 @@ static void setup_timer(uint16_t sample_interval_us)
 
     // Configure Timer A1 for Manchester timing
     TA1CTL = MC__STOP | TACLR;
-    TA1CCTL0 = 0;  // Clear all CCR0 control bits
-    
-    // Set CCR0 for the sample interval
+    TA1CCTL0 = 0;
+
     TA1CCR0 = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
-    
+
     // Enable CCR0 interrupt
     TA1CCTL0 = CCIE;
-    
+
     // Configure timer: SMCLK source, no division, stopped initially, clear timer
     TA1CTL = TASSEL__SMCLK | ID__1 | MC__STOP | TACLR;
-    
-    printf("MSP430 Timer A1 configured: CCR0=%u, sample_interval=%u us\n", 
-           TA1CCR0, sample_interval_us);
 
 #endif
 }
@@ -110,12 +106,12 @@ static void manchester_start_timer()
     NRF_TIMER4->TASKS_START = 1;
 #elif defined(__MSP430FR5994__)
     // Clear timer and start in Up mode - timer will restart automatically at CCR0
-    TA1CTL |= TACLR;          // Clear timer counter
-    TA1CCTL0 &= ~CCIFG;       // Clear any pending CCR0 interrupt flag
-    TA1CCTL0 |= CCIE;         // Ensure CCR0 interrupt is enabled
-    TA1CTL &= ~MC_3;          // Clear mode bits first
-    TA1CTL |= MC__UP;         // Start in Up mode
-    printf("MSP430 Timer A1 started in Up mode, CCR0=%u\n", TA1CCR0);
+    TA1CTL |= TACLR;    // Clear timer counter
+    TA1CCTL0 &= ~CCIFG; // Clear any pending CCR0 interrupt flag
+    TA1CCTL0 |= CCIE;   // Ensure CCR0 interrupt is enabled
+    TA1CTL &= ~MC_3;    // Clear mode bits first
+    TA1CTL |= MC__UP;   // Start in Up mode
+    LOG("MSP430 Timer A1 started in Up mode, CCR0=%u\n", TA1CCR0);
 #endif
 }
 
@@ -125,14 +121,14 @@ static void manchester_stop_timer()
     NRF_TIMER4->TASKS_STOP = 1;
 #elif defined(__MSP430FR5994__)
     // Stop Timer A1 completely and reset for next use
-    TA1CTL &= ~MC_3;      // Clear mode control bits (stop timer)
-    TA1CTL |= TACLR;      // Clear timer counter
-    TA1CCTL0 &= ~CCIFG;   // Clear any pending interrupt flags
-    
+    TA1CTL &= ~MC_3;    // Clear mode control bits (stop timer)
+    TA1CTL |= TACLR;    // Clear timer counter
+    TA1CCTL0 &= ~CCIFG; // Clear any pending interrupt flags
+
     // Reset interrupt_flag to prevent hanging
     interrupt_flag = 0;
-    
-    printf("MSP430 Timer A1 stopped and reset\n");
+
+    LOG("MSP430 Timer A1 stopped and reset\n");
 #endif
 }
 
@@ -142,7 +138,7 @@ static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
     {
         return;
     }
-    
+
     // Copy received data to receive_buffer
     if (receive_buffer != NULL && data_size >= 2)
     {
@@ -201,17 +197,21 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
     setup_timer(sample_interval_us);
 
 #if defined(NRF52840_XXAA)
+#if DEBUG == 1
     // Configure Pin 11 as output for debugging
     gpio_output_init(11);
-    
+#endif
+
     // Ensure TX pin is in released state initially
     release_gpio_open_drain(tx_pin);
-    printf("NRF52840 Manchester TX pin %u configured as open-drain\n", tx_pin);
+    LOG("NRF52840 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #elif defined(__MSP430FR5994__)
+#if DEBUG == 1
     gpio_output_init(ABS_PIN(3, 5));
-    // Ensure TX pin is in released state initially  
+#endif
+    // Ensure TX pin is in released state initially
     release_gpio_open_drain(tx_pin);
-    printf("MSP430 Manchester TX pin %u configured as open-drain\n", tx_pin);
+    LOG("MSP430 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #endif
 }
 
@@ -240,32 +240,32 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         LOG("Data size (%u) exceeds buffer capacity (%u).\n", size, ENCODER_BUFFER_SIZE);
         return false;
     }
-    
+
     mode = RECEIVE;
     receive_buffer = data;
     memset(data, 0, size); // Clear receive buffer
-    
+
     LOG("Starting Manchester reception, waiting for data...\n");
     manchester_start_timer();
 
     bool finish_decoding = false;
     uint32_t timeout_counter = 0;
     const uint32_t max_timeout = 10000000; // Timeout after ~10 seconds
-    
+
     while (!finish_decoding && timeout_counter < max_timeout)
     {
         while (!interrupt_flag && timeout_counter < max_timeout)
         {
             timeout_counter++;
         }
-        
+
         if (timeout_counter >= max_timeout)
         {
             LOG("Manchester reception timeout\n");
             manchester_stop_timer();
             return false;
         }
-        
+
         interrupt_flag = 0; // Reset the interrupt flag
 
         bool rx_state = read_Rx();
@@ -284,7 +284,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
             return false;
         }
     }
-    
+
     manchester_stop_timer();
     return finish_decoding;
 }
@@ -375,10 +375,10 @@ void manchester_transmit_array(uint8_t *data, uint8_t size)
 
     manchester_stop_timer();
     set_TX(false); // Ensure TX is off when done
-    
+
     // Reset interrupt flag for next transmission
     interrupt_flag = 0;
-    
+
     LOG("Manchester transmission cleanup completed\n");
 }
 
@@ -389,8 +389,10 @@ void TIMER4_IRQHandler(void)
     {
         NRF_TIMER4->EVENTS_COMPARE[0] = 0;
 
+#if DEBUG == 1
         // Toggle pin for debugging (Pin 11)
         NRF_P0->OUT ^= (1UL << 11);
+#endif
 
         // Set interrupt flag to signal main loop
         interrupt_flag = 1;
@@ -401,11 +403,13 @@ __attribute__((interrupt(TIMER1_A0_VECTOR))) void TIMER1_A0_ISR(void)
 {
     // Clear the CCR0 interrupt flag
     TA1CCTL0 &= ~CCIFG;
+#if DEBUG == 1
     P3OUT ^= BIT5;
-    
+#endif
+
     interrupt_flag = 1;
-    
+
     // Clear any pending interrupt flags to prevent stuck interrupts
-    TA1IV; 
+    TA1IV;
 }
 #endif
