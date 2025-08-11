@@ -1,4 +1,3 @@
-
 #ifndef MANCHESTER_h
 #define MANCHESTER_h
 
@@ -35,6 +34,5 @@ static const uint32_t baud_rates[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 3
 void manchester_init(uint8_t tx_pin, uint8_t rx_pin, uint8_t tx_rate);
 void manchester_transmit_array(uint8_t *data, uint8_t size);
 bool manchester_receive_array(uint8_t *data, uint8_t size);
-void manchester_test_send(void); // Test function for Manchester transmission
 
 #endif // MANCHESTER_h

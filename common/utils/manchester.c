@@ -1,4 +1,3 @@
-
 #include "manchester.h"
 #include "printf.h"
 
@@ -46,17 +45,17 @@ static void set_TX(bool state)
 {
     if (state)
     {
-        gpio_drive_low(tx_pin); // Set pin to open-drain mode
+        release_gpio_open_drain(tx_pin); 
     }
     else
     {
-        release_gpio_open_drain(tx_pin); // Release pin from open-drain mode
+        gpio_open_drain_drive(tx_pin);
     }
 }
 
 static bool read_Rx()
 {
-    return gpio_read(rx_pin) == 0;
+    return gpio_read(rx_pin);
 }
 
 static void setup_timer(uint16_t sample_interval_us)
@@ -143,12 +142,13 @@ static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
     {
         return;
     }
-
-    uint8_t device_id = data[0];
-    (void)device_id;
-    uint8_t b = data[1];
-    receive_buffer = data + 2; // Store the payload in receive_buffer
-    LOG("Received data: device_id=%u, payload_byte=%u\n", device_id, b);
+    
+    // Copy received data to receive_buffer
+    if (receive_buffer != NULL && data_size >= 2)
+    {
+        memcpy(receive_buffer, data, data_size); // Skip device_id and first payload byte
+        LOG("Data copied to receive_buffer\n");
+    }
 }
 
 void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
@@ -157,7 +157,7 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
     rx_pin = Rx;
 
     gpio_open_drain(tx_pin);
-    gpio_open_drain(rx_pin);
+    gpio_input_init(rx_pin);
 
     if (rate >= 7 || rate < 0)
         return;
@@ -201,14 +201,17 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
     setup_timer(sample_interval_us);
 
 #if defined(NRF52840_XXAA)
-    // Configure Pin 11 as output
-    NRF_P0->PIN_CNF[11] = (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos) |
-                          (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
-                          (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos) |
-                          (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos) |
-                          (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+    // Configure Pin 11 as output for debugging
+    gpio_output_init(11);
+    
+    // Ensure TX pin is in released state initially
+    release_gpio_open_drain(tx_pin);
+    printf("NRF52840 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #elif defined(__MSP430FR5994__)
     gpio_output_init(ABS_PIN(3, 5));
+    // Ensure TX pin is in released state initially  
+    release_gpio_open_drain(tx_pin);
+    printf("MSP430 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #endif
 }
 
@@ -237,16 +240,32 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         LOG("Data size (%u) exceeds buffer capacity (%u).\n", size, ENCODER_BUFFER_SIZE);
         return false;
     }
+    
     mode = RECEIVE;
+    receive_buffer = data;
+    memset(data, 0, size); // Clear receive buffer
+    
+    LOG("Starting Manchester reception, waiting for data...\n");
     manchester_start_timer();
 
-    receive_buffer = data;
     bool finish_decoding = false;
-    while (!finish_decoding)
+    uint32_t timeout_counter = 0;
+    const uint32_t max_timeout = 10000000; // Timeout after ~10 seconds
+    
+    while (!finish_decoding && timeout_counter < max_timeout)
     {
-        while (!interrupt_flag)
+        while (!interrupt_flag && timeout_counter < max_timeout)
         {
+            timeout_counter++;
         }
+        
+        if (timeout_counter >= max_timeout)
+        {
+            LOG("Manchester reception timeout\n");
+            manchester_stop_timer();
+            return false;
+        }
+        
         interrupt_flag = 0; // Reset the interrupt flag
 
         bool rx_state = read_Rx();
@@ -256,15 +275,18 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         if (step_result == SPOOKY_DECODER_STEP_DONE)
         {
             finish_decoding = true;
+            LOG("Manchester reception completed successfully\n");
         }
         else if (step_result < 0)
         {
             LOG("Manchester reception error: %d\n", step_result);
+            manchester_stop_timer();
             return false;
         }
     }
+    
     manchester_stop_timer();
-    return true;
+    return finish_decoding;
 }
 
 void manchester_transmit_array(uint8_t *data, uint8_t size)
