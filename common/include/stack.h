@@ -20,7 +20,7 @@ int stack_is_full(Stack* stack);
 int isStackEmpty(Stack* stack);
 void stack_push(Stack* stack, void *item);
 void stack_pop(Stack* stack, void *out);
-void peek(Stack* stack, void *out);
+void stack_peek(Stack* stack, void *out);
 void freeStack(Stack* stack);
 
 #endif // STACK_H

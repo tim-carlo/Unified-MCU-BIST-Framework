@@ -80,7 +80,7 @@ void stack_pop(Stack* stack, void *out) {
 }
 
 /**
- * @brief Peek at the top item of the stack without removing it
+ * @brief stack_peek at the top item of the stack without removing it
  * 
  * @param stack Pointer to the stack
  * @param out Pointer to the location where the top item will be stored
@@ -90,12 +90,12 @@ int isStackEmpty(Stack* stack) {
 }
 
 /**
- * @brief Peek at the top item of the stack without removing it
+ * @brief stack_peek at the top item of the stack without removing it
  * 
  * @param stack Pointer to the stack
  * @param out Pointer to the location where the top item will be stored
  */
-void peek(Stack* stack, void *out) {
+void stack_peek(Stack* stack, void *out) {
     if (stack_is_empty(stack)) {
         if (out) memset(out, 0, stack->element_size);
         return;
