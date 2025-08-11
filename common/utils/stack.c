@@ -8,7 +8,7 @@
  * @param element_size Size of each element in the stack
  * @return Stack* A pointer to the created stacks
  */
-Stack* createStack(int capacity, size_t element_size) {
+Stack* create_stack(int capacity, size_t element_size) {
 
     Stack *stack = (Stack*)malloc(sizeof(Stack));
     if (!stack) {
@@ -36,7 +36,7 @@ Stack* createStack(int capacity, size_t element_size) {
  * @param stack Pointer to the stack
  * @return int 1 if full, 0 otherwise
  */
-int isFull(Stack* stack) {
+int stack_is_full(Stack* stack) {
     return stack->top == stack->capacity - 1;
 }
 
@@ -46,31 +46,31 @@ int isFull(Stack* stack) {
  * @param stack Pointer to the stack
  * @return int 1 if empty, 0 otherwise
  */
-int isEmpty(Stack* stack) {
+int stack_is_empty(Stack* stack) {
     return stack->top == -1;
 }
 
 /**
- * @brief Push an item onto the stack
+ * @brief stack_push an item onto the stack
  * 
  * @param stack Pointer to the stack
  * @param item Pointer to the item to be pushed onto the stack
  */
-void push(Stack* stack, void *item) {
-    if (isFull(stack))
+void stack_push(Stack* stack, void *item) {
+    if (stack_is_full(stack))
         return;
     void *target = (char*)stack->array + (++stack->top * stack->element_size);
     memcpy(target, item, stack->element_size);
 }
 
 /**
- * @brief Pop an item from the stack
+ * @brief stack_pop an item from the stack
  * 
  * @param stack Pointer to the stack
  * @param out Pointer to the location where the popped item will be stored
  */
-void pop(Stack* stack, void *out) {
-    if (isEmpty(stack)) {
+void stack_pop(Stack* stack, void *out) {
+    if (stack_is_empty(stack)) {
         if (out) memset(out, 0, stack->element_size);
         return;
     }
@@ -96,7 +96,7 @@ int isStackEmpty(Stack* stack) {
  * @param out Pointer to the location where the top item will be stored
  */
 void peek(Stack* stack, void *out) {
-    if (isEmpty(stack)) {
+    if (stack_is_empty(stack)) {
         if (out) memset(out, 0, stack->element_size);
         return;
     }

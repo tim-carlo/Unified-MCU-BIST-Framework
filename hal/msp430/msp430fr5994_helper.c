@@ -361,7 +361,7 @@ void delay_ms(uint32_t ms)
     }
 }
 /**
- * @brief Push all active GPIO pins except the specified one to a stack using absolute pin numbers
+ * @brief stack_push all active GPIO pins except the specified one to a stack using absolute pin numbers
  *
  * @param stack Pointer to the stack where active pins will be pushed
  * @param expected_level Expected level of the pins (true for high, false for low)
@@ -376,7 +376,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
         if (gpio_read(abs_pin) == expected_level)
         {
             printf("Pushing active pin %lu to stack\n", abs_pin);
-            push(stack, &abs_pin);
+            stack_push(stack, &abs_pin);
         }
     }
 }
