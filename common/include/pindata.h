@@ -10,6 +10,8 @@
 #define ERROR_REASON_DISTURBED 3
 #define ERROR_REASON_TRIES_EXCEEDED 4
 
+#define INVALID_TIMESTAMP 0xFFFFFFFFUL // Explicit invalid value as uint32_t
+
 
 typedef struct
 {
@@ -31,6 +33,8 @@ typedef struct
 void reset_pin_data(PinData *data);
 void reset_last_falling_edge(PinData *data);
 void initialize_pin_data_array(PinData *array, uint32_t length);
+void print_pin_data_array(PinData *array, uint32_t length);
+
 void set_ack(PinData *data, bool value);
 void set_syn_ack(PinData *data, bool value);
 void set_syn(PinData *data, bool value);

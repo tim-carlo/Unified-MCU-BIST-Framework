@@ -1,4 +1,7 @@
 #include "PinData.h"
+#include "printf.h"
+
+
 
 /**
  * @brief Reset the PinData structure to its initial state
@@ -7,7 +10,8 @@
  *
  * @param data Pointer to the PinData structure to reset
  */
-void reset_pin_data(PinData *data) {
+void reset_pin_data(PinData *data)
+{
     data->pin = 0;
     data->steps = 0;
     data->num_false_responses = 0;
@@ -18,10 +22,11 @@ void reset_pin_data(PinData *data) {
 
 /**
  * @brief Reset the last falling edge timestamp in the PinData structure
- * 
+ *
  * @param data Pointer to the PinData structure
  */
-void reset_last_falling_edge(PinData *data) {
+void reset_last_falling_edge(PinData *data)
+{
     data->last_falling_edge = 0;
 }
 
@@ -33,25 +38,49 @@ void reset_last_falling_edge(PinData *data) {
  * @param array Pointer to the array of PinData structures
  * @param length Number of elements in the array
  */
-void initialize_pin_data_array(PinData *array, uint32_t length) {
-    for (uint8_t i = 0; i < length; ++i) {
-        array[i].pin = i;
+void initialize_pin_data_array(PinData *array, uint32_t length)
+{
+    for (uint32_t i = 0; i < length; ++i)
+    {
+        array[i].pin = (uint8_t)i;
         array[i].steps = 0;
         array[i].num_false_responses = 0;
         array[i].num_tries = 0;
         array[i].error_reason = 0;
-        array[i].last_falling_edge = -1;
+        array[i].last_falling_edge = INVALID_TIMESTAMP;
     }
 }
 
-/** 
+/**
+ * @brief Print the contents of a PinData array for debugging
+ *
+ * @param array Pointer to the array of PinData structures
+ * @param length Number of elements in the array
+ */
+void print_pin_data_array(PinData *array, uint32_t length)
+{
+    for (uint32_t i = 0; i < length; ++i)
+    {
+        printf("PinData[%u]: pin=%u, steps=0x%X, num_false_responses=%u, num_tries=%u, error_reason=%u, last_falling_edge=%lld\n",
+               i,
+               array[i].pin,
+               array[i].steps,
+               array[i].num_false_responses,
+               array[i].num_tries,
+               array[i].error_reason,
+               (long long)array[i].last_falling_edge);
+    }
+}
+
+/**
  * @brief Set or clear the ACK signal flag (bit 0)
  *
  * @param data Pointer to the PinData structure
  * @param value True to set the flag, false to clear it
  *
-*/
-void set_ack(PinData *data, bool value) {
+ */
+void set_ack(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 0);
     else
@@ -64,7 +93,8 @@ void set_ack(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @param value True to set the flag, false to clear it
  */
-void set_syn_ack(PinData *data, bool value) {
+void set_syn_ack(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 1);
     else
@@ -77,7 +107,8 @@ void set_syn_ack(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @param value True to set the flag, false to clear it
  */
-void set_syn(PinData *data, bool value) {
+void set_syn(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 2);
     else
@@ -90,7 +121,8 @@ void set_syn(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @param value True to set the flag (responder), false to clear it (initiator)
  */
-void set_role(PinData *data, bool value) {
+void set_role(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 3);
     else
@@ -103,7 +135,8 @@ void set_role(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @param value True to set the flag (blacklisted), false to clear it
  */
-void set_blacklisted(PinData *data, bool value) {
+void set_blacklisted(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 4);
     else
@@ -116,7 +149,8 @@ void set_blacklisted(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @param value True to set the flag (successful), false to clear it
  */
-void set_successful(PinData *data, bool value) {
+void set_successful(PinData *data, bool value)
+{
     if (value)
         data->steps |= (1 << 5);
     else
@@ -129,7 +163,8 @@ void set_successful(PinData *data, bool value) {
  * @param data Pointer to the PinData structure
  * @return true if ACK signal is set, false otherwise
  */
-bool is_ack(PinData *data) {
+bool is_ack(PinData *data)
+{
     return (data->steps & (1 << 0)) != 0;
 }
 
@@ -139,7 +174,8 @@ bool is_ack(PinData *data) {
  * @param data Pointer to the PinData structure
  * @return true if SYN-ACK signal is set, false otherwise
  */
-bool is_syn_ack(PinData *data) {
+bool is_syn_ack(PinData *data)
+{
     return (data->steps & (1 << 1)) != 0;
 }
 
@@ -149,7 +185,8 @@ bool is_syn_ack(PinData *data) {
  * @param data Pointer to the PinData structure
  * @return true if SYN signal is set, false otherwise
  */
-bool is_syn(PinData *data) {
+bool is_syn(PinData *data)
+{
     return (data->steps & (1 << 2)) != 0;
 }
 
@@ -159,7 +196,8 @@ bool is_syn(PinData *data) {
  * @param data Pointer to the PinData structure
  * @return true if role is responder, false if initiator
  */
-bool is_role_responder(PinData *data) {
+bool is_role_responder(PinData *data)
+{
     return (data->steps & (1 << 3)) != 0;
 }
 
@@ -169,7 +207,8 @@ bool is_role_responder(PinData *data) {
  * @param data Pointer to the PinData structure
  * @return true if pin is blacklisted, false otherwise
  */
-bool is_blacklisted(PinData *data) {
+bool is_blacklisted(PinData *data)
+{
     return (data->steps & (1 << 4)) != 0;
 }
 
@@ -179,7 +218,8 @@ bool is_blacklisted(PinData *data) {
  * @param data Pointer to the PinData structure
  * @return true if pin is successful, false otherwise
  */
-bool is_successful(PinData *data) {
+bool is_successful(PinData *data)
+{
     return (data->steps & (1 << 5)) != 0;
 }
 
@@ -191,8 +231,10 @@ bool is_successful(PinData *data) {
  * @param mask Pointer to the blacklist mask
  * @param pin Pin number to be blacklisted (0-63)
  */
-void set_blacklisted_in_mask(uint64_t *mask, uint32_t pin) {
-    if (pin < 64) {
+void set_blacklisted_in_mask(uint64_t *mask, uint32_t pin)
+{
+    if (pin < 64)
+    {
         *mask |= (1ULL << pin);
     }
 }

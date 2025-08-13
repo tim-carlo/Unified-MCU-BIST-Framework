@@ -9,6 +9,8 @@
         "msp430fr5994_helper.h": "c",
         "stdbool.h": "c",
         "printf.h": "c",
-        "manchester.h": "c"
+        "manchester.h": "c",
+        "__locale": "c",
+        "ios": "c"
     }
 }

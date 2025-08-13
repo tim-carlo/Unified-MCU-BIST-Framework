@@ -42,8 +42,11 @@
 #define SMCLK_HZ        16000000UL  // SMCLK frequency: 16 MHz
 
 // Timer configuration
-#define TIMER_DIVIDER   1           // Timer clock divider (ID__1)
-#define TIMER_FREQ_HZ   (SMCLK_HZ / TIMER_DIVIDER) // Effective timer frequency: 2 MHz
+#define TIMER_DIVIDER 8                           // Fixed divider setting (ID__8)
+#define TIMER_FREQ_HZ (SMCLK_HZ / TIMER_DIVIDER) // 16MHz / 8 = 2MHz
+#define TICKS_PER_OVERFLOW 65536                  // 16-bit Timer overflow (2^16)
+#define TICKS_PER_MS (TIMER_FREQ_HZ / 1000)      // 2000 ticks per millisecond
+#define TICKS_PER_US (TIMER_FREQ_HZ / 1000000)   // 2 ticks per microsecond
 
 // In this Version we leave the PJ Port out of the GPIO handling as
 // they are used for clocks and other functions!

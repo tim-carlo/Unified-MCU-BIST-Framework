@@ -73,13 +73,13 @@ uint8_t get_relative_pin(uint8_t abs_pin)
     return abs_pin % 8; // Return the pin number within the port
 }
 
-static void configure_timer(volatile uint16_t *timer_ctl)
+static void configure_timer(volatile uint16_t *timer_ctl, uint16_t divider_setting)
 {
-    *timer_ctl = TASSEL__SMCLK // Use SMCLK as clock source (z.B. 16 MHz)
-                 | ID__1       // Divide input clock by 1 (no division)
-                 | MC__STOP    // Timer stopped initially
-                 | TACLR       // Clear the timer
-                 | TAIE;       // Enable overflow interrupt
+    *timer_ctl = TASSEL__SMCLK     // Use SMCLK as clock source (16 MHz)
+                 | divider_setting // Variable divider setting
+                 | MC__STOP        // Timer stopped initially
+                 | TACLR           // Clear the timer
+                 | TAIE;           // Enable overflow interrupt
 }
 
 /**
@@ -115,10 +115,11 @@ void io_init()
     P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
     P2SEL1 |= BIT0 | BIT1;    // Set UART function
 
-    configure_timer((volatile uint16_t *)&TA1CTL); // Configure Timer A1
-    configure_timer((volatile uint16_t *)&TA2CTL); // Configure Timer A2
-    configure_timer((volatile uint16_t *)&TA4CTL); // Configure Timer A4
-    configure_timer((volatile uint16_t *)&TB0CTL); // Configure Timer B0
+    // Configure all timers with ID__8 (divide by 8)
+    configure_timer((volatile uint16_t *)&TA1CTL, ID__8); // Configure Timer A1
+    configure_timer((volatile uint16_t *)&TA2CTL, ID__8); // Configure Timer A2
+    configure_timer((volatile uint16_t *)&TA4CTL, ID__8); // Configure Timer A4
+    configure_timer((volatile uint16_t *)&TB0CTL, ID__8); // Configure Timer B0
 
     __enable_interrupt(); // Enable global interrupts
 }
@@ -242,6 +243,9 @@ void delay_ticks(uint32_t ticks)
     if (ticks == 0)
         return;
 
+    // Save current timer configuration
+    uint16_t saved_config = TA0CTL;
+
     // Stop and clear timer
     TA0CTL = TASSEL__SMCLK | ID__1 | MC__STOP | TACLR;
     TA0R = 0;
@@ -277,8 +281,11 @@ void delay_ticks(uint32_t ticks)
 
     // Cleanup
     TA0CCTL0 &= ~CCIE;
-    TA0CTL &= ~(TAIE | MC__UP);
-    TA0CTL |= TACLR;
+
+    // Restore previous timer configuration
+    TA0CTL = saved_config;
+    // TA0CTL &= ~(TAIE | MC__UP);
+    // TA0CTL |= TACLR;
 }
 
 // This is needed to quit the delay loop when the timer reaches the target ticks
@@ -335,6 +342,18 @@ void delay_us(uint32_t us)
     {
         __delay_cycles(DELAY_1US_CYCLES);
     }
+}
+
+void debug_timer_issue(uint32_t start_ticks, uint32_t end_ticks)
+{
+    printf("=== TIMER DEBUG ===\n");
+    printf("TIMER_FREQ_HZ: %lu\n", (uint32_t)TIMER_FREQ_HZ);
+    printf("Divisor (TIMER_FREQ_HZ/1000): %lu\n", (uint32_t)(TIMER_FREQ_HZ / 1000UL));
+
+    // Check Timer B configuration
+    printf("Timer B0 CTL: 0x%04X\n", TB0CTL);
+    printf("Timer B0 R: %u\n", TB0R);
+    printf("Timer B0 overflows: %u\n", timer_overflows_b0);
 }
 
 /**
@@ -598,17 +617,9 @@ void __attribute__((interrupt(TIMER0_B1_VECTOR))) TIMER0_B1_ISR(void)
     }
 }
 
-uint32_t get_elapsed_time(uint32_t start, uint32_t current)
+uint32_t ticks_elapsed(uint32_t start, uint32_t end)
 {
-    if (current >= start)
-    {
-        return current - start; // Normal case
-    }
-    else
-    {
-        // Handle wrap-around case
-        return (UINT32_MAX - start) + current + 1;
-    }
+    return (uint32_t)(end - start); 
 }
 
 /**
@@ -641,15 +652,24 @@ uint32_t get_timer_ticks(timer_type timer)
 
     return ((uint32_t)overflows * TICKS_PER_OVERFLOW) + counter;
 }
+/**
+ * @brief Convert timer ticks to milliseconds
+ * @param ticks Timer ticks
+ * @return Time in milliseconds
+ */
+uint32_t ticks_to_ms(uint32_t ticks) {
+    return (uint32_t)(((uint64_t)ticks * 1000u) / (uint64_t)TIMER_FREQ_HZ);
+}
 
 /**
- * @brief Convert timer ticks to microseconds (assumes 500 kHz clock)
+ * @brief Convert timer ticks to microseconds
  * @param ticks Timer ticks
  * @return Time in microseconds
  */
 uint32_t ticks_to_us(uint32_t ticks)
 {
-    return ticks / 16; // For 500kHz timer (1 tick = 2 µs)
+    // Convert ticks to microseconds using the actual timer frequency
+    return (uint32_t)(((uint64_t)ticks * 1000000u) / (uint64_t)TIMER_FREQ_HZ);
 }
 
 /**
@@ -657,32 +677,22 @@ uint32_t ticks_to_us(uint32_t ticks)
  * @param ticks Timer ticks
  * @return Time in milliseconds
  */
-uint32_t ticks_to_ms(uint32_t ticks)
+uint32_t timer_diff_ms(uint32_t start, uint32_t end)
 {
-    return ticks / (TIMER_FREQ_HZ / 1000);
+   return ticks_to_ms(ticks_elapsed(start, end));
 }
 
 /**
- * @brief Calculate time difference in microseconds
+ * @brief Calculate time difference in microseconds using get_elapsed_time
  * @param start Start tick count
  * @param end End tick count
  * @return Elapsed time in microseconds
  */
 uint32_t timer_diff_us(uint32_t start, uint32_t end)
 {
-    return (end - start) * 1000000UL / TIMER_FREQ_HZ;
+    return ticks_to_us(ticks_elapsed(start, end));
 }
 
-/**
- * @brief Calculate time difference in milliseconds
- * @param start Start tick count
- * @param end End tick count
- * @return Elapsed time in milliseconds
- */
-uint32_t timer_diff_ms(uint32_t start, uint32_t end)
-{
-    return (end - start) / (TIMER_FREQ_HZ / 1000UL);
-}
 
 /**
  * @brief Get the unique device ID from TLV memory
