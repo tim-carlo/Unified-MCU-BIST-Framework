@@ -380,7 +380,15 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
     {
         if ((blacklist_mask >> abs_pin) & 1)
             continue;
-        if (gpio_read(abs_pin) == expected_level)
+
+
+        bool sample_0 = gpio_read(abs_pin);
+        bool sample_1 = gpio_read(abs_pin); // Read twice to ensure stability
+        
+        if (sample_0 != sample_1)
+            continue; // Skip if the pin state is unstable
+            
+        if (sample_0 == expected_level)
         {
             printf("Pushing active pin %lu to stack\n", abs_pin);
             stack_push(stack, &abs_pin);
