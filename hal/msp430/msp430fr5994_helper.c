@@ -344,18 +344,6 @@ void delay_us(uint32_t us)
     }
 }
 
-void debug_timer_issue(uint32_t start_ticks, uint32_t end_ticks)
-{
-    printf("=== TIMER DEBUG ===\n");
-    printf("TIMER_FREQ_HZ: %lu\n", (uint32_t)TIMER_FREQ_HZ);
-    printf("Divisor (TIMER_FREQ_HZ/1000): %lu\n", (uint32_t)(TIMER_FREQ_HZ / 1000UL));
-
-    // Check Timer B configuration
-    printf("Timer B0 CTL: 0x%04X\n", TB0CTL);
-    printf("Timer B0 R: %u\n", TB0R);
-    printf("Timer B0 overflows: %u\n", timer_overflows_b0);
-}
-
 /**
  * @brief Busy-wait delay in milliseconds using Timer A0
  * @param ms Milliseconds to delay
