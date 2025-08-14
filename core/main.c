@@ -1,26 +1,3 @@
-// Include necessary headers depending on the platform
-#if defined(PICO_RP2040)
-#include "rp2040_helper.h"
-#include "pico/stdlib.h"
-#include <stdio.h>
-#include "pico/stdio.h"
-#include <stdint.h>
-#include <stdbool.h>
-
-// Define pin mappings for the RP2040
-#define LED_RED_PORT 0
-#define LED_RED_PIN 0
-#define LED_GREEN_PORT 0
-#define LED_GREEN_PIN 1
-#define TEST_PORT 0
-#define TEST_PIN 2
-
-// Replace printf to include chip family in the output
-#undef printf
-#define printf(fmt, ...) \
-    ((void)fprintf(stdout, "[%s] " fmt, get_chip_family_name(), ##__VA_ARGS__))
-#endif
-
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "printf.h"
@@ -67,6 +44,8 @@
 #include "pindata.h"
 #include "check_initial_state.h"
 #include "manchester.h"
+
+//#include "nrf52840_helper.h"
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
@@ -125,7 +104,7 @@ State state = INIT;
 
 // Flags controlled via interrupts
 
-volatile uint8_t current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Pin that is currently being driven by the self-driven signal
+volatile uint8_t current_driven_pin = INVALID_PIN; // Pin that is currently being driven by the self-driven signal
 volatile uint8_t selected_pin = 0;
 PinData *selected_pin_data = NULL;     // Pointer to the currently selected pin data
 volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
@@ -135,14 +114,16 @@ void rising_handler(uint32_t pin)
 {
     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
         return;
+
+    // Check if the signal is stable
+    if (gpio_read(pin) == 0)
+        return; // Ignore if the pin is low, we are looking for rising edges
+
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
-    printf("->> Rising edge detected on pin %u, duration: %lu ms\n",
-           (unsigned)pin, (unsigned long)signal_duration);
-
     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
 
-    if (signal_duration < MINIMUM_SIGNAL_DURATION_MS)
+    if (signal_duration < MINIMUM_SIGNAL_DURATION_MS || signal_duration > SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
         return;
 
     PinEvent event = {0};
@@ -152,7 +133,7 @@ void rising_handler(uint32_t pin)
     {
         event = (PinEvent){pin, false, false, true};
         last_event_valid = true;
-        printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, signal_duration);
+        printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= SYN_ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -160,7 +141,7 @@ void rising_handler(uint32_t pin)
     {
         last_event_valid = true;
         event = (PinEvent){pin, false, true, false};
-        printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", pin, signal_duration);
+        printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -168,7 +149,7 @@ void rising_handler(uint32_t pin)
     {
         event = (PinEvent){pin, true, false, false};
         last_event_valid = true;
-        printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, signal_duration);
+        printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
 }
@@ -177,61 +158,28 @@ void falling_handler(uint32_t pin)
 {
     if (pin == current_driven_pin)
         return;
+    // Check if the signal is stable
+    if (gpio_read(pin) == 1)
+        return; // Ignore if the pin is high, we are looking for falling edges
+
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     printf("Falling edge detected on pin %u\n", pin);
 
-    
     pin_data[pin].last_falling_edge = current_ticks;
 }
 
-void turn_off_leds(void)
+void send_signal(uint8_t pin, uint32_t duration)
 {
-    if (red_led_on)
-    {
-        gpio_drive_low(ABSOLUTE_PIN_RED);
-        red_led_on = false;
-    }
-    if (green_led_on)
-    {
-        gpio_drive_low(ABSOLUTE_PIN_GREEN);
-        green_led_on = false;
-    }
-}
+   // enter_critical_section(); // Enter critical section to prevent
 
-void led_test_routine(void)
-{
-    printf("Starting LED test...\n");
-
-    // Blink red LED 5 times
-    for (uint32_t i = 0; i < 5; i++)
-    {
-        gpio_drive_high(ABSOLUTE_PIN_GREEN);
-        delay_ms(200);
-        gpio_drive_low(ABSOLUTE_PIN_GREEN);
-        delay_ms(200);
-    }
-
-    // Blink green LED 5 times
-    for (uint32_t i = 0; i < 5; i++)
-    {
-        gpio_drive_high(ABSOLUTE_PIN_RED);
-        delay_ms(200);
-        gpio_drive_low(ABSOLUTE_PIN_RED);
-        delay_ms(200);
-    }
-
-    printf("LED test complete.\n");
-}
-
-void send_signal(uint8_t pin, uint32_t duration_ms)
-{
-    current_driven_pin = pin; // Set the flag to indicate self-driven signal
-    gpio_open_drain_drive(pin);
-    delay_ms(duration_ms);
+    current_driven_pin = pin; // Set the currently driven pin
+    gpio_open_drain_drive(pin); // Set the pin to open-drain mode
+    delay_ms(duration); // Drive the pin for the specified duration
     release_gpio_open_drain(pin); // Release the pin after sending the signal
-
-    current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
+    current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
+   // exit_critical_section(); // Exit critical section
 }
+
 
 void set_selected_pin(uint8_t pin)
 {
@@ -270,6 +218,34 @@ void print_active_pins_from_mask(uint64_t mask)
         }
     }
     printf("\n");
+}
+
+#if defined(__MSP430FR5994__)
+typedef uint16_t irq_state_t;
+#elif defined(NRF52840_XXAA)
+typedef uint32_t irq_state_t;
+#endif
+
+static irq_state_t irq_state;
+
+static inline void enter_critical_section(void)
+{
+#if defined(__MSP430FR5994__)
+    irq_state = __get_interrupt_state();
+    __disable_interrupt();
+#elif defined(NRF52840_XXAA)
+    irq_state = __get_PRIMASK();
+    __disable_irq();
+#endif
+}
+
+static inline void exit_critical_section(void)
+{
+#if defined(__MSP430FR5994__)
+    __set_interrupt_state(irq_state);
+#elif defined(NRF52840_XXAA)
+    __set_PRIMASK(irq_state);
+#endif
 }
 
 int main(void)
@@ -337,7 +313,6 @@ int main(void)
             set_selected_pin(random_pin);
 
             printf("Selected pin: %u\n", selected_pin);
-            printf("Selected pin data: %u\n", selected_pin_data->pin);
             printf("Initial delay: %lu ms\n", initial_delay);
 
             start_timer(TIMER_A);
@@ -366,8 +341,6 @@ int main(void)
 
             stop_timer(TIMER_A);
 
-            // Turn off LEDs
-            turn_off_leds();
 
             // Switch to the next mode depending on whether we saw a signal
             if (active_signal_detected)
@@ -492,7 +465,7 @@ int main(void)
             }
             release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
             printf("SYN signal sent on pin %u\n", selected_pin);
-            current_driven_pin = NUMBER_OF_GPIO_PINS + 1; // Reset the flag after sending the signal
+            current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
             stop_timer(TIMER_A);
 
             if (received_other_signal)
@@ -574,6 +547,7 @@ int main(void)
                     signal_received = true;
                     printf("Received ACK signal\n");
                     last_event_valid = false; // Reset after processing
+                    break;
                 }
             }
             stop_timer(TIMER_A);
@@ -638,7 +612,7 @@ int main(void)
         case SCANNED_ALL_PINS:
         {
             printf("All pins scanned, exiting...\n");
-            delay_ms(1000);
+            delay_ms(500);
             break;
         }
         }

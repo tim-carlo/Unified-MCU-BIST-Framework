@@ -51,6 +51,7 @@
 // In this Version we leave the PJ Port out of the GPIO handling as
 // they are used for clocks and other functions!
 #define NUMBER_OF_GPIO_PINS 64
+#define INVALID_PIN 255 // Invalid pin number
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
 // Timer configuration macros

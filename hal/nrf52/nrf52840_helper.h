@@ -24,6 +24,7 @@
 
 #define TIMER_A NRF_TIMER0
 #define TIMER_B NRF_TIMER1
+#define INVALID_PIN 255 // Invalid pin number
 
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
