@@ -1,5 +1,8 @@
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
+#include "msp430fr5994_gpio.h"
+#include "msp430fr5994_time.h"
+#include "msp430fr5994_utils.h"
 #include "printf.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,7 +24,10 @@
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
+#include "nrf52840_time.h"
 #include "nrf52840_helper.h"
+#include "nrf52840_utils.h"
+#include "nrf52840_gpio.h"
 
 #include "printf.h"
 #define TEST_PIN 3
@@ -158,6 +164,7 @@ void falling_handler(uint32_t pin)
 {
     if (pin == current_driven_pin)
         return;
+    printf("---> Falling edge detected on pin %u\n", pin);
     // Check if the signal is stable
     if (gpio_read(pin) == 1)
         return; // Ignore if the pin is high, we are looking for falling edges
@@ -288,6 +295,10 @@ int main(void)
     );
     // Send data to test the Manchester encoding
 
+    while (1)
+    {
+    }
+    
     // led_test_routine();
     while (1)
     {

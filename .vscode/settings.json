@@ -11,6 +11,8 @@
         "printf.h": "c",
         "manchester.h": "c",
         "__locale": "c",
-        "ios": "c"
+        "ios": "c",
+        "complex": "c",
+        "stdint.h": "c"
     }
 }

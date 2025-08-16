@@ -387,7 +387,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
         
         if (sample_0 != sample_1)
             continue; // Skip if the pin state is unstable
-            
+
         if (sample_0 == expected_level)
         {
             printf("Pushing active pin %lu to stack\n", abs_pin);
@@ -396,24 +396,8 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
     }
 }
 
-bool is_interupt_blacklisted(uint8_t abs_pin)
-{
-    return (gpio_blacklist_intern_mask >> abs_pin) & 1;
-}
 
-uint64_t read_all_gpio_states()
-{
-    uint64_t state = 0;
-    state |= (uint64_t)(*(volatile uint8_t *)&P1IN) << 0;
-    state |= (uint64_t)(*(volatile uint8_t *)&P2IN) << 8;
-    state |= (uint64_t)(*(volatile uint8_t *)&P3IN) << 16;
-    state |= (uint64_t)(*(volatile uint8_t *)&P4IN) << 24;
-    state |= (uint64_t)(*(volatile uint8_t *)&P5IN) << 32;
-    state |= (uint64_t)(*(volatile uint8_t *)&P6IN) << 40;
-    state |= (uint64_t)(*(volatile uint8_t *)&P7IN) << 48;
-    state |= (uint64_t)(*(volatile uint8_t *)&P8IN) << 56;
-    return state;
-}
+
 
 /**
  * @brief Listen on all GPIO pins for rising and falling edges
@@ -513,21 +497,6 @@ void gpio_open_drain(uint8_t abs_pin)
 {
     // TODO: rework the naming of this function
     release_gpio_open_drain(abs_pin); // Ensure pin is released from any previous state
-}
-/**
- * @brief Release GPIO pin from open-drain state (set as input) using absolute pin number
- * @param abs_pin Absolute pin number (0-47)
- */
-void release_gpio_open_drain(uint8_t abs_pin)
-{
-    gpio_pullup_init(abs_pin); // Set pin as input with pull-up resistor
-    gpio_input_init(abs_pin);  // Set pin as input
-}
-
-void gpio_open_drain_drive(uint8_t abs_pin)
-{
-    gpio_output_init(abs_pin); // Set pin as output
-    gpio_drive_low(abs_pin);   // Drive pin low
 }
 
 /**

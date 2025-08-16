@@ -92,14 +92,6 @@ extern "C"
 
     void io_init(void);
 
-    void gpio_pullup_init(uint8_t abs_pin);
-    void gpio_pulldown_init(uint8_t abs_pin);
-    void gpio_pullup_clear(uint8_t abs_pin);
-    void gpio_drive_low(uint8_t abs_pin);
-    void gpio_drive_high(uint8_t abs_pin);
-    void gpio_input_init(uint8_t abs_pin);
-    void gpio_output_init(uint8_t abs_pin);
-    bool gpio_read(uint8_t abs_pin);
     uint64_t read_all_gpio_states(void);
     void gpio_open_drain_drive(uint8_t abs_pin);
 
