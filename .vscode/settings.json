@@ -13,6 +13,7 @@
         "__locale": "c",
         "ios": "c",
         "complex": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "stack.h": "c"
     }
 }

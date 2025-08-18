@@ -41,49 +41,9 @@
 // Clock definitions
 #define SMCLK_HZ        16000000UL  // SMCLK frequency: 16 MHz
 
-// Timer configuration
-#define TIMER_DIVIDER 8                           // Fixed divider setting (ID__8)
-#define TIMER_FREQ_HZ (SMCLK_HZ / TIMER_DIVIDER) // 16MHz / 8 = 2MHz
-#define TICKS_PER_OVERFLOW 65536                  // 16-bit Timer overflow (2^16)
-#define TICKS_PER_MS (TIMER_FREQ_HZ / 1000)      // 2000 ticks per millisecond
-#define TICKS_PER_US (TIMER_FREQ_HZ / 1000000)   // 2 ticks per microsecond
+                                                                          
 
-// In this Version we leave the PJ Port out of the GPIO handling as
-// they are used for clocks and other functions!
-#define NUMBER_OF_GPIO_PINS 64
-#define INVALID_PIN 255 // Invalid pin number
-typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
-// Timer configuration macros
-typedef enum
-{
-    TIMER_A0,
-    TIMER_A1,
-    TIMER_A2,
-    TIMER_A4,
-    TIMER_B0
-} timer_type;
-
-#define GET_TxxCTL(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CTL : (timer) == TIMER_A1 ? &TA1CTL \
-                                                       : (timer) == TIMER_A2   ? &TA2CTL \
-                                                       : (timer) == TIMER_A4   ? &TA4CTL \
-                                                                               : &TB0CTL))
-
-#define GET_TxxR(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0R : (timer) == TIMER_A1 ? &TA1R \
-                                                   : (timer) == TIMER_A2   ? &TA2R \
-                                                   : (timer) == TIMER_A4   ? &TA4R \
-                                                                           : &TB0R))
-
-#define GET_TxxCCTL0(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CCTL0 : (timer) == TIMER_A1 ? &TA1CCTL0 \
-                                                           : (timer) == TIMER_A2   ? &TA2CCTL0 \
-                                                           : (timer) == TIMER_A4   ? &TA4CCTL0 \
-                                                                                   : &TB0CCTL0))
-#define GET_TxxCCR0(timer) ((volatile uint16_t *)((timer) == TIMER_A0 ? &TA0CCR0 : (timer) == TIMER_A1 ? &TA1CCR0 \
-                                                   : (timer) == TIMER_A2   ? &TA2CCR0 \
-                                                   : (timer) == TIMER_A4   ? &TA4CCR0 \
-                                                                           : &TB0CCR0))                                                                                   
-
-#define TICKS_PER_OVERFLOW 65536UL
 
 #ifdef __cplusplus
 extern "C"
@@ -91,47 +51,6 @@ extern "C"
 #endif
 
     void io_init(void);
-
-    uint64_t read_all_gpio_states(void);
-    void gpio_open_drain_drive(uint8_t abs_pin);
-
-    void push_active_pins_to_stack(Stack *stack, uint8_t level);
-    void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
-
-    void gpio_reset(uint8_t abs_pin);
-    void release_gpio_open_drain(uint8_t abs_pin);
-    void gpio_open_drain(uint8_t abs_pin);
-
-    bool is_interupt_blacklisted(uint8_t abs_pin);
-    void configure_pin_sense(uint8_t abs_pin, bool sense_low);
-    void gpio_listen_on_all_pins_polling(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
-    void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask, gpio_interrupt_handler_t rising_handler, gpio_interrupt_handler_t falling_handler);
-    uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
-
-
-    uint32_t get_elapsed_time(uint32_t start, uint32_t current);
-    void delay_us(uint32_t us);
-    void delay_ms(uint32_t ms);
-
-    uint32_t get_timer_ticks(timer_type timer_r);
-    void start_timer(timer_type timer);
-    void stop_timer(timer_type timer);
-    void reset_timer(timer_type timer);
-
-    uint32_t ticks_to_us(uint32_t ticks);
-    uint32_t ticks_to_ms(uint32_t ticks);
-    uint32_t timer_diff_us(uint32_t start, uint32_t end);
-    uint32_t timer_diff_ms(uint32_t start, uint32_t end);
-
-    uint32_t random32_lfsr(void);
-    uint32_t random32(void);
-
-    void init_software_serial(uint8_t abs_pin, uint32_t baudrate);
-    void software_serial_tx(uint8_t byte);
-
-    uint64_t get_unique_id(void);
-    const char *get_unique_id_str(void);
-    const char *get_chip_family_name(void);
 
 #ifdef __cplusplus
 }

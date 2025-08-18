@@ -13,8 +13,15 @@
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_helper.h"
+#include "nrf52840_gpio.h"
+#include "nrf52840_time.h"
+#include "nrf52840_utils.h"
 
 #elif defined(__MSP430FR5994__)
+#include "msp430fr5994_helper.h"
+#include "msp430fr5994_gpio.h"
+#include "msp430fr5994_time.h"
+#include "msp430fr5994_utils.h"
 #include "msp430fr5994_helper.h"
 #include <msp430.h>
 #endif

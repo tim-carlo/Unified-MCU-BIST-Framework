@@ -12,1328 +12,219 @@
   12              		.eabi_attribute 30, 2
   13              		.eabi_attribute 34, 1
   14              		.eabi_attribute 18, 4
-  15              		.file	"main.c"
+  15              		.file	"nrf52840_helper.c"
   16              		.text
   17              	.Ltext0:
   18              		.cfi_sections	.debug_frame
-  19              		.file 1 "/Users/timcarlo/Desktop/testsoftware/core/main.c"
-  20              		.section	.rodata.rising_handler.str1.4,"aMS",%progbits,1
-  21              		.align	2
-  22              	.LC0:
-  23 0000 2D3E2053 		.ascii	"-> SYN signal detected on pin %u, duration: %lu ms\012"
-  23      594E2073 
-  23      69676E61 
-  23      6C206465 
-  23      74656374 
-  24 0033 00       		.ascii	"\000"
-  25              		.align	2
-  26              	.LC1:
-  27 0034 2D3E2053 		.ascii	"-> SYN-ACK signal detected on pin %u, duration: %lu"
-  27      594E2D41 
-  27      434B2073 
-  27      69676E61 
-  27      6C206465 
-  28 0067 206D730A 		.ascii	" ms\012\000"
-  28      00
-  29              		.align	2
-  30              	.LC2:
-  31 006c 2D3E2041 		.ascii	"-> ACK signal detected on pin %u, duration: %lu ms\012"
-  31      434B2073 
-  31      69676E61 
-  31      6C206465 
-  31      74656374 
-  32 009f 00       		.ascii	"\000"
-  33              		.section	.text.rising_handler,"ax",%progbits
-  34              		.align	1
-  35              		.p2align 2,,3
-  36              		.global	rising_handler
-  37              		.syntax unified
-  38              		.thumb
-  39              		.thumb_func
-  41              	rising_handler:
-  42              	.LVL0:
-  43              	.LFB138:
-   1:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
-   2:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_helper.h"
-   3:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-   4:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdbool.h>
-   5:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdint.h>
-   6:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-   7:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Define pin mappings for MSP430
-   8:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT 1
-   9:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 0
-  10:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT 1
-  11:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 1
-  12:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
-  13:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
-  14:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  15:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_A TIMER_A4
-  16:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_B TIMER_B0
-  17:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  18:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
-  19:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
-  20:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  21:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  22:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
-  23:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840.h"
-  24:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_helper.h"
-  25:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  26:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-  27:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 3
-  28:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT NRF_P1
-  29:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  30:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 3
-  31:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT NRF_P0
-  32:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 4
-  33:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT NRF_P0
-  34:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  35:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
-  36:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
-  37:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  38:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN 12
-  39:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN 12
-  40:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  41:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  42:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  43:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "stack.h"
-  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "pindata.h"
-  45:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "check_initial_state.h"
-  46:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "manchester.h"
-  47:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  48:/Users/timcarlo/Desktop/testsoftware/core/main.c **** //#include "nrf52840_helper.h"
-  49:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  50:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Handshake timing constants
-  51:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIAL_DELAY_MAX_MS 10000
-  52:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  53:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MINIMUM_SIGNAL_DURATION_MS 90     // Minimum duration for a valid signal
-  54:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_SIGNAL_DURATION_MS 100        // Duration of SYN signal in ms
-  55:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ACK_SIGNAL_DURATION_MS 500        // Duration of ACK signal in ms
-  56:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_ACK_SIGNAL_DURATION_MS 1000   // Duration of SYN-ACK signal in ms
-  57:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SIGNAL_DURATION_TIME_INACURACY 10 // Allowed inaccuracy in signal duration in ms
-  58:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  59:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
-  60:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_SYN_ACK_MS 100         // Duration of ACK signal in ms
-  61:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMEOUT_ACK_MS 1000            // Duration of SYN-ACK signal in ms
-  62:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  63:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBOUNCE_DELAY_US 20
-  64:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  65:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklistin
-  66:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_TRIES 5           // Maximum number of tries for a pin before giving up
-  67:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  68:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIATOR_ROLE 0
-  69:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define RESPONDER_ROLE 1
-  70:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  71:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PIN_EVENT_QUEUE_SIZE 32
-  72:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  73:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef struct
-  74:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  75:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint8_t pin;     // Pin number
-  76:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_ack;     // True if this is an ACK signal, false otherwise
-  77:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_syn_ack; // True if this is a SYN-ACK signal, false otherwise
-  78:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     bool is_syn;     // True if this is a SYN signal, false otherwise
-  79:/Users/timcarlo/Desktop/testsoftware/core/main.c **** } PinEvent;
-  80:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  81:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Global variables
-  82:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
-  83:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  84:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State tracking
-  85:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool red_led_on = false;
-  86:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool green_led_on = false;
-  87:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  88:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile PinEvent last_event;
-  89:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile bool last_event_valid = false;
-  90:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  91:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State machine enum
-  92:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef enum
-  93:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  94:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     INIT,
-  95:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     MAYBE_RESPONDER,
-  96:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     INITIATOR,
-  97:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     RESPONDER,
-  98:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     SUCCESS,
-  99:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     FAILED,
- 100:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     SCANNED_ALL_PINS
- 101:/Users/timcarlo/Desktop/testsoftware/core/main.c **** } State;
- 102:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 103:/Users/timcarlo/Desktop/testsoftware/core/main.c **** State state = INIT;
- 104:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 105:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Flags controlled via interrupts
- 106:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 107:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t current_driven_pin = INVALID_PIN; // Pin that is currently being driven by the sel
- 108:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t selected_pin = 0;
- 109:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData *selected_pin_data = NULL;     // Pointer to the currently selected pin data
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
- 111:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 112:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Interrupt handler for rising/falling edges on test pin
- 113:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void rising_handler(uint32_t pin)
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  44              		.loc 1 114 1 view -0
-  45              		.cfi_startproc
-  46              		@ args = 0, pretend = 0, frame = 8
-  47              		@ frame_needed = 0, uses_anonymous_args = 0
- 115:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
-  48              		.loc 1 115 5 view .LVU1
-  49              		.loc 1 115 13 is_stmt 0 view .LVU2
-  50 0000 374B     		ldr	r3, .L21
-  51 0002 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
-  52              		.loc 1 115 8 view .LVU3
-  53 0004 8342     		cmp	r3, r0
-  54 0006 40D0     		beq	.L14
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
-  55              		.loc 1 114 1 view .LVU4
-  56 0008 70B5     		push	{r4, r5, r6, lr}
-  57              		.cfi_def_cfa_offset 16
-  58              		.cfi_offset 4, -16
-  59              		.cfi_offset 5, -12
-  60              		.cfi_offset 6, -8
-  61              		.cfi_offset 14, -4
-  62              		.loc 1 115 51 discriminator 1 view .LVU5
-  63 000a 364D     		ldr	r5, .L21+4
-  64 000c 00EB4003 		add	r3, r0, r0, lsl #1
-  65 0010 05EB8305 		add	r5, r5, r3, lsl #2
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
-  66              		.loc 1 114 1 view .LVU6
-  67 0014 82B0     		sub	sp, sp, #8
-  68              		.cfi_def_cfa_offset 24
-  69              		.loc 1 115 35 discriminator 1 view .LVU7
-  70 0016 AB68     		ldr	r3, [r5, #8]
-  71 0018 0133     		adds	r3, r3, #1
-  72 001a 0446     		mov	r4, r0
-  73 001c 04D0     		beq	.L1
-  74              	.LVL1:
-  75              	.LBB13:
-  76              	.LBI13:
- 113:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  77              		.loc 1 113 6 is_stmt 1 view .LVU8
-  78              	.LBB14:
- 116:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 117:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 118:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Check if the signal is stable
- 119:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (gpio_read(pin) == 0)
-  79              		.loc 1 119 5 view .LVU9
-  80              		.loc 1 119 9 is_stmt 0 view .LVU10
-  81 001e C6B2     		uxtb	r6, r0
-  82 0020 3046     		mov	r0, r6
-  83              	.LVL2:
-  84              		.loc 1 119 9 view .LVU11
-  85 0022 FFF7FEFF 		bl	gpio_read
-  86              	.LVL3:
-  87              		.loc 1 119 8 discriminator 1 view .LVU12
-  88 0026 08B9     		cbnz	r0, .L18
-  89              	.LVL4:
-  90              	.L1:
-  91              		.loc 1 119 8 discriminator 1 view .LVU13
-  92              	.LBE14:
-  93              	.LBE13:
- 120:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return; // Ignore if the pin is low, we are looking for rising edges
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t current_ticks = get_timer_ticks(TIMER_B);
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
- 124:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
- 125:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (signal_duration < MINIMUM_SIGNAL_DURATION_MS || signal_duration > SYN_ACK_SIGNAL_DURATION_M
- 127:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 128:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 129:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     PinEvent event = {0};
- 130:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (signal_duration >= SYN_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
- 132:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         signal_duration <= SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 133:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 134:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, false, true};
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 138:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else if (signal_duration >= SYN_ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 143:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)sign
- 145:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 146:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else if (signal_duration >= ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 150:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, true, false, false};
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 155:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
-  94              		.loc 1 155 1 view .LVU14
-  95 0028 02B0     		add	sp, sp, #8
-  96              		.cfi_remember_state
-  97              		.cfi_def_cfa_offset 16
-  98              		@ sp needed
-  99 002a 70BD     		pop	{r4, r5, r6, pc}
- 100              	.LVL5:
- 101              	.L18:
- 102              		.cfi_restore_state
- 103              	.LBB19:
- 104              	.LBB18:
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
- 105              		.loc 1 122 5 is_stmt 1 view .LVU15
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
- 106              		.loc 1 122 30 is_stmt 0 view .LVU16
- 107 002c 2E48     		ldr	r0, .L21+8
- 108 002e FFF7FEFF 		bl	get_timer_ticks
- 109              	.LVL6:
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
- 110              		.loc 1 123 32 view .LVU17
- 111 0032 0023     		movs	r3, #0
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
- 112              		.loc 1 122 30 view .LVU18
- 113 0034 0246     		mov	r2, r0
- 114              	.LVL7:
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
- 115              		.loc 1 123 5 is_stmt 1 view .LVU19
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
- 116              		.loc 1 123 32 is_stmt 0 view .LVU20
- 117 0036 1946     		mov	r1, r3
- 118 0038 A868     		ldr	r0, [r5, #8]
- 119              	.LVL8:
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
- 120              		.loc 1 123 32 view .LVU21
- 121 003a FFF7FEFF 		bl	timer_diff_ms
- 122              	.LVL9:
- 124:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 123              		.loc 1 124 5 is_stmt 1 view .LVU22
- 124:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 124              		.loc 1 124 37 is_stmt 0 view .LVU23
- 125 003e 4FF0FF33 		mov	r3, #-1
- 126 0042 AB60     		str	r3, [r5, #8]
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 127              		.loc 1 126 5 is_stmt 1 view .LVU24
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 128              		.loc 1 126 54 is_stmt 0 view .LVU25
- 129 0044 A0F15A03 		sub	r3, r0, #90
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 130              		.loc 1 126 8 view .LVU26
- 131 0048 B3F5667F 		cmp	r3, #920
- 132 004c ECD8     		bhi	.L1
- 129:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 133              		.loc 1 129 5 is_stmt 1 view .LVU27
- 134              	.LVL10:
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         signal_duration <= SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 135              		.loc 1 131 5 view .LVU28
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         signal_duration <= SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 136              		.loc 1 131 8 is_stmt 0 view .LVU29
- 137 004e 142B     		cmp	r3, #20
- 138 0050 1CD9     		bls	.L19
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 139              		.loc 1 139 10 is_stmt 1 view .LVU30
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 140              		.loc 1 139 93 is_stmt 0 view .LVU31
- 141 0052 A0F2DE33 		subw	r3, r0, #990
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 142              		.loc 1 139 13 view .LVU32
- 143 0056 142B     		cmp	r3, #20
- 144 0058 2ED9     		bls	.L20
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 145              		.loc 1 147 10 is_stmt 1 view .LVU33
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 146              		.loc 1 147 89 is_stmt 0 view .LVU34
- 147 005a A0F5F573 		sub	r3, r0, #490
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****              signal_duration <= ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
- 148              		.loc 1 147 13 view .LVU35
- 149 005e 142B     		cmp	r3, #20
- 150 0060 E2D8     		bhi	.L1
- 151              	.LBB15:
- 150:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 152              		.loc 1 150 9 is_stmt 1 view .LVU36
- 153              	.LVL11:
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 154              		.loc 1 151 9 view .LVU37
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 155              		.loc 1 151 26 is_stmt 0 view .LVU38
- 156 0062 224B     		ldr	r3, .L21+12
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 157              		.loc 1 152 9 view .LVU39
- 158 0064 0246     		mov	r2, r0
- 159 0066 2146     		mov	r1, r4
- 160 0068 2148     		ldr	r0, .L21+16
- 161              	.LVL12:
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 162              		.loc 1 151 26 view .LVU40
- 163 006a 0124     		movs	r4, #1
- 164              	.LVL13:
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 165              		.loc 1 151 26 view .LVU41
- 166 006c 1C70     		strb	r4, [r3]
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 167              		.loc 1 152 9 is_stmt 1 view .LVU42
- 168 006e FFF7FEFF 		bl	printf_
- 169              	.LVL14:
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 170              		.loc 1 153 9 view .LVU43
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 171              		.loc 1 153 20 is_stmt 0 view .LVU44
- 172 0072 4FF00002 		mov	r2, #0	@ movhi
- 173 0076 1F4B     		ldr	r3, .L21+20
- 174 0078 8DF80460 		strb	r6, [sp, #4]
- 175 007c 8DF80540 		strb	r4, [sp, #5]
- 176 0080 ADF80620 		strh	r2, [sp, #6]	@ movhi
- 177 0084 019A     		ldr	r2, [sp, #4]
- 178 0086 1A60     		str	r2, [r3]
- 179              	.LVL15:
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 180              		.loc 1 153 20 view .LVU45
- 181 0088 CEE7     		b	.L1
- 182              	.LVL16:
- 183              	.L14:
- 184              		.cfi_def_cfa_offset 0
- 185              		.cfi_restore 4
- 186              		.cfi_restore 5
- 187              		.cfi_restore 6
- 188              		.cfi_restore 14
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 189              		.loc 1 153 20 view .LVU46
- 190 008a 7047     		bx	lr
- 191              	.LVL17:
- 192              	.L19:
- 193              		.cfi_def_cfa_offset 24
- 194              		.cfi_offset 4, -16
- 195              		.cfi_offset 5, -12
- 196              		.cfi_offset 6, -8
- 197              		.cfi_offset 14, -4
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 198              		.loc 1 153 20 view .LVU47
- 199              	.LBE15:
- 200              	.LBB16:
- 134:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event_valid = true;
- 201              		.loc 1 134 9 is_stmt 1 view .LVU48
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 202              		.loc 1 135 9 view .LVU49
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 203              		.loc 1 135 26 is_stmt 0 view .LVU50
- 204 008c 174B     		ldr	r3, .L21+12
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 205              		.loc 1 136 9 view .LVU51
- 206 008e 0246     		mov	r2, r0
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 207              		.loc 1 135 26 view .LVU52
- 208 0090 0120     		movs	r0, #1
- 209              	.LVL18:
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_d
- 210              		.loc 1 135 26 view .LVU53
- 211 0092 1870     		strb	r0, [r3]
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 212              		.loc 1 136 9 is_stmt 1 view .LVU54
- 213 0094 2146     		mov	r1, r4
- 214 0096 1848     		ldr	r0, .L21+24
- 215 0098 FFF7FEFF 		bl	printf_
- 216              	.LVL19:
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 217              		.loc 1 137 9 view .LVU55
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 218              		.loc 1 137 20 is_stmt 0 view .LVU56
- 219 009c 4FF48072 		mov	r2, #256
- 220 00a0 4FF00001 		mov	r1, #0
- 221 00a4 134B     		ldr	r3, .L21+20
- 222 00a6 8DF80460 		strb	r6, [sp, #4]
- 223 00aa 8DF80510 		strb	r1, [sp, #5]
- 224 00ae ADF80620 		strh	r2, [sp, #6]	@ movhi
- 225 00b2 019A     		ldr	r2, [sp, #4]
- 226 00b4 1A60     		str	r2, [r3]
- 227              	.LBE16:
- 228 00b6 B7E7     		b	.L1
- 229              	.LVL20:
- 230              	.L20:
- 231              	.LBB17:
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 232              		.loc 1 142 9 is_stmt 1 view .LVU57
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 233              		.loc 1 142 26 is_stmt 0 view .LVU58
- 234 00b8 0C4B     		ldr	r3, .L21+12
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 235              		.loc 1 144 9 view .LVU59
- 236 00ba 0246     		mov	r2, r0
- 237 00bc 2146     		mov	r1, r4
- 238 00be 0F48     		ldr	r0, .L21+28
- 239              	.LVL21:
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 240              		.loc 1 142 26 view .LVU60
- 241 00c0 0124     		movs	r4, #1
- 242              	.LVL22:
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         event = (PinEvent){pin, false, true, false};
- 243              		.loc 1 142 26 view .LVU61
- 244 00c2 1C70     		strb	r4, [r3]
- 143:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)sign
- 245              		.loc 1 143 9 is_stmt 1 view .LVU62
- 246              	.LVL23:
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         last_event = event; // Store the last event for later processing
- 247              		.loc 1 144 9 view .LVU63
- 248 00c4 FFF7FEFF 		bl	printf_
- 249              	.LVL24:
- 145:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 250              		.loc 1 145 9 view .LVU64
- 145:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 251              		.loc 1 145 20 is_stmt 0 view .LVU65
- 252 00c8 4FF00002 		mov	r2, #0
- 253 00cc 094B     		ldr	r3, .L21+20
- 254 00ce 8DF80460 		strb	r6, [sp, #4]
- 255 00d2 8DF80520 		strb	r2, [sp, #5]
- 256 00d6 ADF80640 		strh	r4, [sp, #6]	@ movhi
- 257 00da 019A     		ldr	r2, [sp, #4]
- 258 00dc 1A60     		str	r2, [r3]
- 259              	.LBE17:
- 260 00de A3E7     		b	.L1
- 261              	.L22:
- 262              		.align	2
- 263              	.L21:
- 264 00e0 00000000 		.word	current_driven_pin
- 265 00e4 00000000 		.word	pin_data
- 266 00e8 00900040 		.word	1073778688
- 267 00ec 00000000 		.word	last_event_valid
- 268 00f0 6C000000 		.word	.LC2
- 269 00f4 00000000 		.word	last_event
- 270 00f8 00000000 		.word	.LC0
- 271 00fc 34000000 		.word	.LC1
- 272              	.LBE18:
- 273              	.LBE19:
- 274              		.cfi_endproc
- 275              	.LFE138:
- 277              		.section	.rodata.falling_handler.str1.4,"aMS",%progbits,1
- 278              		.align	2
- 279              	.LC3:
- 280 0000 2D2D2D3E 		.ascii	"---> Falling edge detected on pin %u\012\000"
- 280      2046616C 
- 280      6C696E67 
- 280      20656467 
- 280      65206465 
- 281 0026 0000     		.align	2
- 282              	.LC4:
- 283 0028 46616C6C 		.ascii	"Falling edge detected on pin %u\012\000"
- 283      696E6720 
- 283      65646765 
- 283      20646574 
- 283      65637465 
- 284              		.section	.text.falling_handler,"ax",%progbits
- 285              		.align	1
- 286              		.p2align 2,,3
- 287              		.global	falling_handler
- 288              		.syntax unified
- 289              		.thumb
- 290              		.thumb_func
- 292              	falling_handler:
- 293              	.LVL25:
- 294              	.LFB139:
- 156:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 157:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void falling_handler(uint32_t pin)
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 295              		.loc 1 158 1 is_stmt 1 view -0
- 296              		.cfi_startproc
- 297              		@ args = 0, pretend = 0, frame = 0
- 298              		@ frame_needed = 0, uses_anonymous_args = 0
- 159:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin)
- 299              		.loc 1 159 5 view .LVU67
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin == current_driven_pin)
- 300              		.loc 1 158 1 is_stmt 0 view .LVU68
- 301 0000 38B5     		push	{r3, r4, r5, lr}
- 302              		.cfi_def_cfa_offset 16
- 303              		.cfi_offset 3, -16
- 304              		.cfi_offset 4, -12
- 305              		.cfi_offset 5, -8
- 306              		.cfi_offset 14, -4
- 307              		.loc 1 159 13 view .LVU69
- 308 0002 0E4B     		ldr	r3, .L29
- 309 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
- 310              		.loc 1 159 8 view .LVU70
- 311 0006 8342     		cmp	r3, r0
- 312 0008 08D0     		beq	.L23
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return;
- 161:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("---> Falling edge detected on pin %u\n", pin);
- 313              		.loc 1 161 5 is_stmt 1 view .LVU71
- 314 000a 0446     		mov	r4, r0
- 315 000c 2146     		mov	r1, r4
- 316 000e 0C48     		ldr	r0, .L29+4
- 317              	.LVL26:
- 318              		.loc 1 161 5 is_stmt 0 view .LVU72
- 319 0010 FFF7FEFF 		bl	printf_
- 320              	.LVL27:
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Check if the signal is stable
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (gpio_read(pin) == 1)
- 321              		.loc 1 163 5 is_stmt 1 view .LVU73
- 322              		.loc 1 163 9 is_stmt 0 view .LVU74
- 323 0014 E0B2     		uxtb	r0, r4
- 324 0016 FFF7FEFF 		bl	gpio_read
- 325              	.LVL28:
- 326              		.loc 1 163 8 discriminator 1 view .LVU75
- 327 001a 00B1     		cbz	r0, .L28
- 328              	.LVL29:
- 329              	.L23:
- 164:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return; // Ignore if the pin is high, we are looking for falling edges
- 165:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint32_t current_ticks = get_timer_ticks(TIMER_B);
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Falling edge detected on pin %u\n", pin);
- 168:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     pin_data[pin].last_falling_edge = current_ticks;
- 170:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 330              		.loc 1 170 1 view .LVU76
- 331 001c 38BD     		pop	{r3, r4, r5, pc}
- 332              	.LVL30:
- 333              	.L28:
- 334              	.LBB22:
- 335              	.LBI22:
- 157:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 336              		.loc 1 157 6 is_stmt 1 view .LVU77
- 337              	.LBB23:
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Falling edge detected on pin %u\n", pin);
- 338              		.loc 1 166 5 view .LVU78
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Falling edge detected on pin %u\n", pin);
- 339              		.loc 1 166 30 is_stmt 0 view .LVU79
- 340 001e 0948     		ldr	r0, .L29+8
- 341 0020 FFF7FEFF 		bl	get_timer_ticks
- 342              	.LVL31:
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 343              		.loc 1 167 5 view .LVU80
- 344 0024 2146     		mov	r1, r4
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Falling edge detected on pin %u\n", pin);
- 345              		.loc 1 166 30 view .LVU81
- 346 0026 0546     		mov	r5, r0
- 347              	.LVL32:
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 348              		.loc 1 167 5 is_stmt 1 view .LVU82
- 349 0028 0748     		ldr	r0, .L29+12
- 350              	.LVL33:
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 351              		.loc 1 167 5 is_stmt 0 view .LVU83
- 352 002a FFF7FEFF 		bl	printf_
- 353              	.LVL34:
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 354              		.loc 1 169 5 is_stmt 1 view .LVU84
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 355              		.loc 1 169 37 is_stmt 0 view .LVU85
- 356 002e 074B     		ldr	r3, .L29+16
- 357 0030 04EB4404 		add	r4, r4, r4, lsl #1
- 358              	.LVL35:
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 359              		.loc 1 169 37 view .LVU86
- 360 0034 03EB8403 		add	r3, r3, r4, lsl #2
- 361 0038 9D60     		str	r5, [r3, #8]
- 362              	.LVL36:
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 363              		.loc 1 169 37 view .LVU87
- 364              	.LBE23:
- 365              	.LBE22:
- 366              		.loc 1 170 1 view .LVU88
- 367 003a 38BD     		pop	{r3, r4, r5, pc}
- 368              	.L30:
- 369              		.align	2
- 370              	.L29:
- 371 003c 00000000 		.word	current_driven_pin
- 372 0040 00000000 		.word	.LC3
- 373 0044 00900040 		.word	1073778688
- 374 0048 28000000 		.word	.LC4
- 375 004c 00000000 		.word	pin_data
- 376              		.cfi_endproc
- 377              	.LFE139:
- 379              		.section	.text.send_signal,"ax",%progbits
- 380              		.align	1
- 381              		.p2align 2,,3
- 382              		.global	send_signal
- 383              		.syntax unified
- 384              		.thumb
- 385              		.thumb_func
- 387              	send_signal:
- 388              	.LVL37:
- 389              	.LFB140:
- 171:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 172:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void send_signal(uint8_t pin, uint32_t duration)
- 173:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 390              		.loc 1 173 1 is_stmt 1 view -0
- 391              		.cfi_startproc
- 392              		@ args = 0, pretend = 0, frame = 0
- 393              		@ frame_needed = 0, uses_anonymous_args = 0
- 174:/Users/timcarlo/Desktop/testsoftware/core/main.c ****    // enter_critical_section(); // Enter critical section to prevent
- 175:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 176:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = pin; // Set the currently driven pin
- 394              		.loc 1 176 5 view .LVU90
- 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****    // enter_critical_section(); // Enter critical section to prevent
- 395              		.loc 1 173 1 is_stmt 0 view .LVU91
- 396 0000 70B5     		push	{r4, r5, r6, lr}
- 397              		.cfi_def_cfa_offset 16
- 398              		.cfi_offset 4, -16
- 399              		.cfi_offset 5, -12
- 400              		.cfi_offset 6, -8
- 401              		.cfi_offset 14, -4
- 402              		.loc 1 176 24 view .LVU92
- 403 0002 074E     		ldr	r6, .L33
- 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****    // enter_critical_section(); // Enter critical section to prevent
- 404              		.loc 1 173 1 view .LVU93
- 405 0004 0D46     		mov	r5, r1
- 406 0006 0446     		mov	r4, r0
- 407              		.loc 1 176 24 view .LVU94
- 408 0008 3070     		strb	r0, [r6]
- 177:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_open_drain_drive(pin); // Set the pin to open-drain mode
- 409              		.loc 1 177 5 is_stmt 1 view .LVU95
- 410 000a FFF7FEFF 		bl	gpio_open_drain_drive
- 411              	.LVL38:
- 178:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     delay_ms(duration); // Drive the pin for the specified duration
- 412              		.loc 1 178 5 view .LVU96
- 413 000e 2846     		mov	r0, r5
- 414 0010 FFF7FEFF 		bl	delay_ms
- 415              	.LVL39:
- 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     release_gpio_open_drain(pin); // Release the pin after sending the signal
- 416              		.loc 1 179 5 view .LVU97
- 417 0014 2046     		mov	r0, r4
- 418 0016 FFF7FEFF 		bl	release_gpio_open_drain
- 419              	.LVL40:
- 180:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
- 420              		.loc 1 180 5 view .LVU98
- 421              		.loc 1 180 24 is_stmt 0 view .LVU99
- 422 001a FF23     		movs	r3, #255
- 423 001c 3370     		strb	r3, [r6]
- 181:/Users/timcarlo/Desktop/testsoftware/core/main.c ****    // exit_critical_section(); // Exit critical section
- 182:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 424              		.loc 1 182 1 view .LVU100
- 425 001e 70BD     		pop	{r4, r5, r6, pc}
- 426              	.LVL41:
- 427              	.L34:
- 428              		.loc 1 182 1 view .LVU101
- 429              		.align	2
- 430              	.L33:
- 431 0020 00000000 		.word	current_driven_pin
- 432              		.cfi_endproc
- 433              	.LFE140:
- 435              		.section	.text.set_selected_pin,"ax",%progbits
- 436              		.align	1
- 437              		.p2align 2,,3
- 438              		.global	set_selected_pin
- 439              		.syntax unified
- 440              		.thumb
- 441              		.thumb_func
- 443              	set_selected_pin:
- 444              	.LVL42:
- 445              	.LFB141:
- 183:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 184:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 185:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_selected_pin(uint8_t pin)
- 186:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 446              		.loc 1 186 1 is_stmt 1 view -0
- 447              		.cfi_startproc
- 448              		@ args = 0, pretend = 0, frame = 0
- 449              		@ frame_needed = 0, uses_anonymous_args = 0
- 450              		@ link register save eliminated.
- 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (pin >= NUMBER_OF_GPIO_PINS)
- 451              		.loc 1 187 5 view .LVU103
- 452              		.loc 1 187 8 is_stmt 0 view .LVU104
- 453 0000 2F28     		cmp	r0, #47
- 454 0002 08D8     		bhi	.L35
- 188:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 189:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         return; // Invalid pin number, do nothing
- 190:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin = pin;
- 455              		.loc 1 191 5 is_stmt 1 view .LVU105
- 192:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 456              		.loc 1 192 25 is_stmt 0 view .LVU106
- 457 0004 044B     		ldr	r3, .L37
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 458              		.loc 1 191 18 view .LVU107
- 459 0006 0549     		ldr	r1, .L37+4
- 460              		.loc 1 192 23 view .LVU108
- 461 0008 054A     		ldr	r2, .L37+8
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
- 462              		.loc 1 191 18 view .LVU109
- 463 000a 0870     		strb	r0, [r1]
- 464              		.loc 1 192 5 is_stmt 1 view .LVU110
- 465              		.loc 1 192 25 is_stmt 0 view .LVU111
- 466 000c 00EB400C 		add	ip, r0, r0, lsl #1
- 467 0010 03EB8C03 		add	r3, r3, ip, lsl #2
- 468              		.loc 1 192 23 view .LVU112
- 469 0014 1360     		str	r3, [r2]
- 470              	.L35:
- 193:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 471              		.loc 1 193 1 view .LVU113
- 472 0016 7047     		bx	lr
- 473              	.L38:
- 474              		.align	2
- 475              	.L37:
- 476 0018 00000000 		.word	pin_data
- 477 001c 00000000 		.word	selected_pin
- 478 0020 00000000 		.word	selected_pin_data
- 479              		.cfi_endproc
- 480              	.LFE141:
- 482              		.section	.text.set_standart_blacklist_pins,"ax",%progbits
- 483              		.align	1
- 484              		.p2align 2,,3
- 485              		.global	set_standart_blacklist_pins
- 486              		.syntax unified
- 487              		.thumb
- 488              		.thumb_func
- 490              	set_standart_blacklist_pins:
- 491              	.LVL43:
- 492              	.LFB142:
- 194:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_standart_blacklist_pins(uint64_t *mask)
- 195:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 493              		.loc 1 195 1 is_stmt 1 view -0
- 494              		.cfi_startproc
- 495              		@ args = 0, pretend = 0, frame = 0
- 496              		@ frame_needed = 0, uses_anonymous_args = 0
- 497              		@ link register save eliminated.
- 196:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
- 498              		.loc 1 196 5 view .LVU115
- 197:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 198:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11);
- 499              		.loc 1 199 5 view .LVU116
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 12);
- 500              		.loc 1 200 5 view .LVU117
- 501              		.loc 1 200 11 is_stmt 0 view .LVU118
- 502 0000 6FF4C052 		mvn	r2, #6144
- 503 0004 4FF0FF33 		mov	r3, #-1
- 504 0008 C0E90023 		strd	r2, [r0]
- 201:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 202:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 14);
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
- 204:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 7));
- 205:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 6));
- 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  *mask &= ~(1ULL << ABS_PIN(3, 2));
- 207:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  *mask &= ~(1ULL << ABS_PIN(3, 3));
- 208:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 209:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 505              		.loc 1 209 1 view .LVU119
- 506 000c 7047     		bx	lr
- 507              		.cfi_endproc
- 508              	.LFE142:
- 510 000e 00BF     		.section	.rodata.print_active_pins_from_mask.str1.4,"aMS",%progbits,1
- 511              		.align	2
- 512              	.LC5:
- 513 0000 426C6163 		.ascii	"Blacklist mask: \000"
- 513      6B6C6973 
- 513      74206D61 
- 513      736B3A20 
- 513      00
- 514 0011 000000   		.align	2
- 515              	.LC6:
- 516 0014 25752000 		.ascii	"%u \000"
- 517              		.align	2
- 518              	.LC7:
- 519 0018 0A00     		.ascii	"\012\000"
- 520              		.section	.text.print_active_pins_from_mask,"ax",%progbits
- 521              		.align	1
- 522              		.p2align 2,,3
- 523              		.global	print_active_pins_from_mask
- 524              		.syntax unified
- 525              		.thumb
- 526              		.thumb_func
- 528              	print_active_pins_from_mask:
- 529              	.LVL44:
- 530              	.LFB143:
- 210:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 211:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void print_active_pins_from_mask(uint64_t mask)
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 531              		.loc 1 212 1 is_stmt 1 view -0
- 532              		.cfi_startproc
- 533              		@ args = 0, pretend = 0, frame = 0
- 534              		@ frame_needed = 0, uses_anonymous_args = 0
- 213:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 535              		.loc 1 213 5 view .LVU121
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 536              		.loc 1 212 1 is_stmt 0 view .LVU122
- 537 0000 70B5     		push	{r4, r5, r6, lr}
- 538              		.cfi_def_cfa_offset 16
- 539              		.cfi_offset 4, -16
- 540              		.cfi_offset 5, -12
- 541              		.cfi_offset 6, -8
- 542              		.cfi_offset 14, -4
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 543              		.loc 1 212 1 view .LVU123
- 544 0002 0646     		mov	r6, r0
- 545              		.loc 1 213 5 view .LVU124
- 546 0004 1148     		ldr	r0, .L46
- 547              	.LVL45:
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 548              		.loc 1 212 1 view .LVU125
- 549 0006 0D46     		mov	r5, r1
- 550              	.LBB24:
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint32_t pin = 0; pin < 64; ++pin)
- 551              		.loc 1 214 19 view .LVU126
- 552 0008 0024     		movs	r4, #0
- 553              	.LBE24:
- 213:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Blacklist mask: ");
- 554              		.loc 1 213 5 view .LVU127
- 555 000a FFF7FEFF 		bl	printf_
- 556              	.LVL46:
- 557              		.loc 1 214 5 is_stmt 1 view .LVU128
- 558              	.LBB25:
- 559              		.loc 1 214 10 view .LVU129
- 560              		.loc 1 214 32 discriminator 1 view .LVU130
- 561 000e 02E0     		b	.L42
- 562              	.LVL47:
- 563              	.L41:
- 564              		.loc 1 214 38 discriminator 2 view .LVU131
- 565 0010 0134     		adds	r4, r4, #1
- 566              	.LVL48:
- 567              		.loc 1 214 32 discriminator 1 view .LVU132
- 568 0012 402C     		cmp	r4, #64
- 569 0014 15D0     		beq	.L45
- 570              	.LVL49:
- 571              	.L42:
- 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if ((mask >> pin) & 1)
- 572              		.loc 1 216 9 view .LVU133
- 573              		.loc 1 216 19 is_stmt 0 view .LVU134
- 574 0016 C4F1200C 		rsb	ip, r4, #32
- 575 001a A4F12002 		sub	r2, r4, #32
- 576 001e 26FA04F3 		lsr	r3, r6, r4
- 577 0022 05FA0CFC 		lsl	ip, r5, ip
- 578 0026 43EA0C03 		orr	r3, r3, ip
- 579 002a 25FA02F2 		lsr	r2, r5, r2
- 580 002e 1343     		orrs	r3, r3, r2
- 581              		.loc 1 216 12 view .LVU135
- 582 0030 DB07     		lsls	r3, r3, #31
- 583 0032 EDD5     		bpl	.L41
- 217:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
- 218:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             printf("%u ", pin);
- 584              		.loc 1 218 13 is_stmt 1 view .LVU136
- 585 0034 2146     		mov	r1, r4
- 586 0036 0648     		ldr	r0, .L46+4
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 587              		.loc 1 214 38 is_stmt 0 discriminator 2 view .LVU137
- 588 0038 0134     		adds	r4, r4, #1
- 589              	.LVL50:
- 590              		.loc 1 218 13 view .LVU138
- 591 003a FFF7FEFF 		bl	printf_
- 592              	.LVL51:
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 593              		.loc 1 214 38 is_stmt 1 discriminator 2 view .LVU139
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 594              		.loc 1 214 32 discriminator 1 view .LVU140
- 595 003e 402C     		cmp	r4, #64
- 596 0040 E9D1     		bne	.L42
- 597              	.L45:
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 598              		.loc 1 214 32 is_stmt 0 discriminator 1 view .LVU141
- 599              	.LBE25:
- 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
- 220:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 221:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("\n");
- 600              		.loc 1 221 5 is_stmt 1 view .LVU142
- 222:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 601              		.loc 1 222 1 is_stmt 0 view .LVU143
- 602 0042 BDE87040 		pop	{r4, r5, r6, lr}
- 603              		.cfi_restore 14
- 604              		.cfi_restore 6
- 605              		.cfi_restore 5
- 606              		.cfi_restore 4
- 607              		.cfi_def_cfa_offset 0
- 608              	.LVL52:
- 221:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 609              		.loc 1 221 5 view .LVU144
- 610 0046 0348     		ldr	r0, .L46+8
- 611 0048 FFF7FEBF 		b	printf_
- 612              	.LVL53:
- 613              	.L47:
- 614              		.align	2
- 615              	.L46:
- 616 004c 00000000 		.word	.LC5
- 617 0050 14000000 		.word	.LC6
- 618 0054 18000000 		.word	.LC7
- 619              		.cfi_endproc
- 620              	.LFE143:
- 622              		.section	.rodata.main.str1.4,"aMS",%progbits,1
- 623              		.align	2
- 624              	.LC8:
- 625 0000 52756E6E 		.ascii	"Running on %s\012\000"
- 625      696E6720 
- 625      6F6E2025 
- 625      730A00
- 626 000f 00       		.align	2
- 627              	.LC9:
- 628 0010 43686970 		.ascii	"Chip UID: %s\012\000"
- 628      20554944 
- 628      3A202573 
- 628      0A00
- 629 001e 0000     		.align	2
- 630              	.LC10:
- 631 0020 496E6974 		.ascii	"Initial pin state: 0x%016llx\012\000"
- 631      69616C20 
- 631      70696E20 
- 631      73746174 
- 631      653A2030 
- 632              		.section	.text.startup.main,"ax",%progbits
- 633              		.align	1
- 634              		.p2align 2,,3
- 635              		.global	main
- 636              		.syntax unified
- 637              		.thumb
- 638              		.thumb_func
- 640              	main:
- 641              	.LFB146:
- 223:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 224:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
- 225:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef uint16_t irq_state_t;
- 226:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(NRF52840_XXAA)
- 227:/Users/timcarlo/Desktop/testsoftware/core/main.c **** typedef uint32_t irq_state_t;
- 228:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 229:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 230:/Users/timcarlo/Desktop/testsoftware/core/main.c **** static irq_state_t irq_state;
- 231:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 232:/Users/timcarlo/Desktop/testsoftware/core/main.c **** static inline void enter_critical_section(void)
- 233:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 234:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
- 235:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     irq_state = __get_interrupt_state();
- 236:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     __disable_interrupt();
- 237:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(NRF52840_XXAA)
- 238:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     irq_state = __get_PRIMASK();
- 239:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     __disable_irq();
- 240:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 241:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 242:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 243:/Users/timcarlo/Desktop/testsoftware/core/main.c **** static inline void exit_critical_section(void)
- 244:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 245:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
- 246:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     __set_interrupt_state(irq_state);
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(NRF52840_XXAA)
- 248:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     __set_PRIMASK(irq_state);
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 250:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 251:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 252:/Users/timcarlo/Desktop/testsoftware/core/main.c **** int main(void)
- 253:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 642              		.loc 1 253 1 is_stmt 1 view -0
- 643              		.cfi_startproc
- 644              		@ args = 0, pretend = 0, frame = 0
- 645              		@ frame_needed = 0, uses_anonymous_args = 0
- 254:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 646              		.loc 1 254 5 view .LVU146
- 253:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 647              		.loc 1 253 1 is_stmt 0 view .LVU147
- 648 0000 38B5     		push	{r3, r4, r5, lr}
- 649              		.cfi_def_cfa_offset 16
- 650              		.cfi_offset 3, -16
- 651              		.cfi_offset 4, -12
- 652              		.cfi_offset 5, -8
- 653              		.cfi_offset 14, -4
- 654              		.loc 1 254 5 view .LVU148
- 655 0002 FFF7FEFF 		bl	io_init
- 656              	.LVL54:
- 255:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
- 657              		.loc 1 255 5 is_stmt 1 view .LVU149
- 658 0006 3021     		movs	r1, #48
- 659 0008 2548     		ldr	r0, .L54
- 660              	.LBB26:
- 661              	.LBB27:
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 662              		.loc 1 200 11 is_stmt 0 view .LVU150
- 663 000a 264D     		ldr	r5, .L54+4
- 664              	.LBE27:
- 665              	.LBE26:
- 666              		.loc 1 255 5 view .LVU151
- 667 000c FFF7FEFF 		bl	initialize_pin_data_array
- 668              	.LVL55:
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Running on %s\n", get_chip_family_name());
- 669              		.loc 1 256 5 is_stmt 1 view .LVU152
- 670 0010 FFF7FEFF 		bl	get_chip_family_name
- 671              	.LVL56:
- 672 0014 0146     		mov	r1, r0
- 673              		.loc 1 256 5 is_stmt 0 discriminator 1 view .LVU153
- 674 0016 2448     		ldr	r0, .L54+8
- 675 0018 FFF7FEFF 		bl	printf_
- 676              	.LVL57:
- 257:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Chip UID: %s\n", get_unique_id_str());
- 677              		.loc 1 257 5 is_stmt 1 view .LVU154
- 678 001c FFF7FEFF 		bl	get_unique_id_str
- 679              	.LVL58:
- 680 0020 0146     		mov	r1, r0
- 681              		.loc 1 257 5 is_stmt 0 discriminator 1 view .LVU155
- 682 0022 2248     		ldr	r0, .L54+12
- 683 0024 FFF7FEFF 		bl	printf_
- 684              	.LVL59:
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 259:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_timer(TIMER_B);
- 685              		.loc 1 259 5 is_stmt 1 view .LVU156
- 686 0028 2148     		ldr	r0, .L54+16
- 687 002a FFF7FEFF 		bl	start_timer
- 688              	.LVL60:
- 260:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 261:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(ABSOLUTE_PIN_GREEN);
- 689              		.loc 1 261 5 view .LVU157
- 690 002e 0420     		movs	r0, #4
- 691 0030 FFF7FEFF 		bl	gpio_output_init
- 692              	.LVL61:
- 262:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(ABSOLUTE_PIN_RED);
- 693              		.loc 1 262 5 view .LVU158
- 694 0034 0320     		movs	r0, #3
- 695 0036 FFF7FEFF 		bl	gpio_output_init
- 696              	.LVL62:
- 263:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 264:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Since the Out Register is initialized to 1, we need to set the LEDs to low
- 265:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
- 266:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(ABSOLUTE_PIN_GREEN);
- 267:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(ABSOLUTE_PIN_RED);
- 268:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     set_standart_blacklist_pins(&black_list_mask); // Set standard blacklist pins
- 697              		.loc 1 270 5 view .LVU159
- 698              	.LBB30:
- 699              	.LBI26:
- 194:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 700              		.loc 1 194 6 view .LVU160
- 701              	.LBB28:
- 196:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 702              		.loc 1 196 5 view .LVU161
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 12);
- 703              		.loc 1 199 5 view .LVU162
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 704              		.loc 1 200 5 view .LVU163
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 705              		.loc 1 200 11 is_stmt 0 view .LVU164
- 706 003a 6FF4C052 		mvn	r2, #6144
- 707 003e 4FF0FF33 		mov	r3, #-1
- 708 0042 C5E90023 		strd	r2, [r5]
- 709              	.LVL63:
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 710              		.loc 1 200 11 view .LVU165
- 711              	.LBE28:
- 712              	.LBE30:
- 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                                                    // print_active_pins_from_mask(black_list_mask);
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
- 713              		.loc 1 272 5 is_stmt 1 view .LVU166
- 714              	.LBB31:
- 715              		.loc 1 272 10 view .LVU167
- 716              		.loc 1 272 31 discriminator 1 view .LVU168
- 717              	.LBE31:
- 718              	.LBB32:
- 719              	.LBB29:
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 720              		.loc 1 200 11 is_stmt 0 view .LVU169
- 721 0046 0024     		movs	r4, #0
- 722              	.LVL64:
- 723              	.L50:
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // *mask &= ~(1ULL << 13);
- 724              		.loc 1 200 11 view .LVU170
- 725              	.LBE29:
- 726              	.LBE32:
- 727              	.LBB33:
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (black_list_mask & (1ULL << pin))
- 728              		.loc 1 274 9 is_stmt 1 view .LVU171
- 275:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;          // Skip blacklisted pins (bit = 1)
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_pullup_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
- 729              		.loc 1 276 9 view .LVU172
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;          // Skip blacklisted pins (bit = 1)
- 730              		.loc 1 274 13 is_stmt 0 view .LVU173
- 731 0048 D5E90001 		ldrd	r0, [r5]
- 732 004c C4F1200C 		rsb	ip, r4, #32
- 733 0050 20FA04F3 		lsr	r3, r0, r4
- 734 0054 A4F12002 		sub	r2, r4, #32
- 735 0058 01FA0CFC 		lsl	ip, r1, ip
- 736 005c 43EA0C03 		orr	r3, r3, ip
- 737 0060 21FA02F2 		lsr	r2, r1, r2
- 738 0064 1343     		orrs	r3, r3, r2
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;          // Skip blacklisted pins (bit = 1)
- 739              		.loc 1 274 12 view .LVU174
- 740 0066 13F0010F 		tst	r3, #1
- 741              		.loc 1 276 9 view .LVU175
- 742 006a E0B2     		uxtb	r0, r4
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;          // Skip blacklisted pins (bit = 1)
- 743              		.loc 1 274 12 view .LVU176
- 744 006c 01D1     		bne	.L49
- 745              		.loc 1 276 9 view .LVU177
- 746 006e FFF7FEFF 		bl	gpio_pullup_init
- 747              	.LVL65:
- 748              	.L49:
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 749              		.loc 1 272 54 is_stmt 1 discriminator 2 view .LVU178
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 750              		.loc 1 272 31 discriminator 1 view .LVU179
- 751 0072 0134     		adds	r4, r4, #1
- 752              	.LVL66:
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 753              		.loc 1 272 31 is_stmt 0 discriminator 1 view .LVU180
- 754 0074 302C     		cmp	r4, #48
- 755 0076 E7D1     		bne	.L50
- 756              	.LBE33:
- 277:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 278:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint64_t get_initial_state = get_initial_pin_state(0);
- 757              		.loc 1 279 5 is_stmt 1 view .LVU181
- 758              		.loc 1 279 34 is_stmt 0 view .LVU182
- 759 0078 0020     		movs	r0, #0
- 760 007a FFF7FEFF 		bl	get_initial_pin_state
- 761              	.LVL67:
- 762 007e 0246     		mov	r2, r0
- 763 0080 0B46     		mov	r3, r1
- 764              	.LVL68:
- 280:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  black_list_mask |= ~get_initial_state; // Add initial state to the blacklist mask
- 281:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 282:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     printf("Initial pin state: 0x%016llx\n", get_initial_state);
- 765              		.loc 1 282 5 is_stmt 1 view .LVU183
- 766 0082 0C48     		ldr	r0, .L54+20
- 767 0084 FFF7FEFF 		bl	printf_
- 768              	.LVL69:
- 283:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     print_active_pins_from_mask(black_list_mask);
- 769              		.loc 1 283 5 view .LVU184
- 770 0088 D5E90001 		ldrd	r0, [r5]
- 771 008c FFF7FEFF 		bl	print_active_pins_from_mask
- 772              	.LVL70:
- 284:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_listen_on_all_pins_interrupt(
- 773              		.loc 1 285 5 view .LVU185
- 774 0090 D5E90001 		ldrd	r0, [r5]
- 775 0094 084B     		ldr	r3, .L54+24
- 776 0096 094A     		ldr	r2, .L54+28
- 777 0098 FFF7FEFF 		bl	gpio_listen_on_all_pins_interrupt
- 778              	.LVL71:
- 779              	.L51:
- 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         black_list_mask,
- 287:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         falling_handler, // Falling edge handler
- 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         rising_handler   // Rising edge handler
- 289:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     );
- 290:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Send data to test the Manchester encoding
- 291:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     while (1)
- 780              		.loc 1 292 5 view .LVU186
- 293:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 294:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 781              		.loc 1 294 5 view .LVU187
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 782              		.loc 1 292 11 view .LVU188
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 783              		.loc 1 292 5 view .LVU189
- 784              		.loc 1 294 5 view .LVU190
- 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 785              		.loc 1 292 11 view .LVU191
- 786 009c FEE7     		b	.L51
- 787              	.L55:
- 788 009e 00BF     		.align	2
- 789              	.L54:
- 790 00a0 00000000 		.word	pin_data
- 791 00a4 00000000 		.word	black_list_mask
- 792 00a8 00000000 		.word	.LC8
- 793 00ac 10000000 		.word	.LC9
- 794 00b0 00900040 		.word	1073778688
- 795 00b4 20000000 		.word	.LC10
- 796 00b8 00000000 		.word	rising_handler
- 797 00bc 00000000 		.word	falling_handler
- 798              		.cfi_endproc
- 799              	.LFE146:
- 801              		.global	black_list_mask
- 802              		.section	.bss.black_list_mask,"aw",%nobits
- 803              		.align	3
- 806              	black_list_mask:
- 807 0000 00000000 		.space	8
- 807      00000000 
- 808              		.global	selected_pin_data
- 809              		.section	.bss.selected_pin_data,"aw",%nobits
- 810              		.align	2
- 813              	selected_pin_data:
- 814 0000 00000000 		.space	4
- 815              		.global	selected_pin
- 816              		.section	.bss.selected_pin,"aw",%nobits
- 819              	selected_pin:
- 820 0000 00       		.space	1
- 821              		.global	current_driven_pin
- 822              		.section	.data.current_driven_pin,"aw"
- 825              	current_driven_pin:
- 826 0000 FF       		.byte	-1
- 827              		.global	state
- 828              		.section	.bss.state,"aw",%nobits
- 831              	state:
- 832 0000 00       		.space	1
- 833              		.global	last_event_valid
- 834              		.section	.bss.last_event_valid,"aw",%nobits
- 837              	last_event_valid:
- 838 0000 00       		.space	1
- 839              		.global	last_event
- 840              		.section	.bss.last_event,"aw",%nobits
- 841              		.align	2
- 844              	last_event:
- 845 0000 00000000 		.space	4
- 846              		.global	green_led_on
- 847              		.section	.bss.green_led_on,"aw",%nobits
- 850              	green_led_on:
- 851 0000 00       		.space	1
- 852              		.global	red_led_on
- 853              		.section	.bss.red_led_on,"aw",%nobits
- 856              	red_led_on:
- 857 0000 00       		.space	1
- 858              		.global	pin_data
- 859              		.section	.bss.pin_data,"aw",%nobits
- 860              		.align	2
- 863              	pin_data:
- 864 0000 00000000 		.space	576
- 864      00000000 
- 864      00000000 
- 864      00000000 
- 864      00000000 
- 865              		.text
- 866              	.Letext0:
- 867              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
- 868              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
- 869              		.file 4 "Include/nrf52840.h"
- 870              		.file 5 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/lib/gcc/arm-none-eabi/14.2.1/includ
- 871              		.file 6 "/Users/timcarlo/Desktop/testsoftware/common/include/stack.h"
- 872              		.file 7 "/Users/timcarlo/Desktop/testsoftware/common/include/pindata.h"
- 873              		.file 8 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
- 874              		.file 9 "/Users/timcarlo/Desktop/testsoftware/common/include/check_initial_state.h"
- 875              		.file 10 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/stdio.h"
- 876              		.file 11 "/Users/timcarlo/Desktop/testsoftware/common/include/manchester.h"
+  19              		.file 1 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c"
+  20              		.section	.text.io_init,"ax",%progbits
+  21              		.align	1
+  22              		.p2align 2,,3
+  23              		.global	io_init
+  24              		.syntax unified
+  25              		.thumb
+  26              		.thumb_func
+  28              	io_init:
+  29              	.LFB135:
+   1:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** #include "nrf52840_helper.h"
+   2:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+   3:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+   4:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+   5:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+   6:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** uint64_t gpio_blacklist_intern_mask = 0; // Global blacklist for GPIO pins
+   7:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** gpio_interrupt_handler_t rising_handler_global = NULL;
+   8:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** gpio_interrupt_handler_t falling_handler_global = NULL;
+   9:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+  10:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** static volatile uint32_t prev_input_state_p0 = 0;
+  11:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** static volatile uint32_t prev_input_state_p1 = 0;
+  12:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** 
+  13:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** /**
+  14:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****  * @brief Initialize the IO peripherals
+  15:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****  *
+  16:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****  * This function initializes the UART for printf output and starts the HFCLK.
+  17:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****  * It should be called at the beginning of the main function.
+  18:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****  */
+  19:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** void io_init(void)
+  20:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** {
+  30              		.loc 1 20 1 view -0
+  31              		.cfi_startproc
+  32              		@ args = 0, pretend = 0, frame = 0
+  33              		@ frame_needed = 0, uses_anonymous_args = 0
+  34              		@ link register save eliminated.
+  21:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     // Start HFCLK if not running
+  22:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     if (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
+  35              		.loc 1 22 5 view .LVU1
+  36              		.loc 1 22 18 is_stmt 0 view .LVU2
+  37 0000 4FF08042 		mov	r2, #1073741824
+  20:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     // Start HFCLK if not running
+  38              		.loc 1 20 1 view .LVU3
+  39 0004 10B4     		push	{r4}
+  40              		.cfi_def_cfa_offset 4
+  41              		.cfi_offset 4, -4
+  42              		.loc 1 22 18 view .LVU4
+  43 0006 D2F80031 		ldr	r3, [r2, #256]
+  44              		.loc 1 22 8 view .LVU5
+  45 000a 2BB9     		cbnz	r3, .L2
+  23:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     {
+  24:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         NRF_CLOCK->TASKS_HFCLKSTART = 1;
+  46              		.loc 1 24 9 is_stmt 1 view .LVU6
+  47              		.loc 1 24 37 is_stmt 0 view .LVU7
+  48 000c 0123     		movs	r3, #1
+  49 000e 1360     		str	r3, [r2]
+  25:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
+  50              		.loc 1 25 9 is_stmt 1 view .LVU8
+  51              	.L3:
+  26:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         {
+  27:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         }
+  52              		.loc 1 27 9 view .LVU9
+  25:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
+  53              		.loc 1 25 47 discriminator 1 view .LVU10
+  25:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
+  54              		.loc 1 25 25 is_stmt 0 discriminator 1 view .LVU11
+  55 0010 D2F80031 		ldr	r3, [r2, #256]
+  25:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****         while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
+  56              		.loc 1 25 47 discriminator 1 view .LVU12
+  57 0014 002B     		cmp	r3, #0
+  58 0016 FBD0     		beq	.L3
+  59              	.L2:
+  28:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     }
+  29:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     // Set up UART0 for printf
+  30:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELTXD = UART_PIN_TX;                                         // TX pin
+  60              		.loc 1 30 5 is_stmt 1 view .LVU13
+  61              		.loc 1 30 24 is_stmt 0 view .LVU14
+  62 0018 0A4B     		ldr	r3, .L8
+  31:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELRXD = UART_PIN_RX;                                         // RX pin
+  32:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->BAUDRATE = UART_BAUDRATE_BAUDRATE_Baud9600;                    // Set baud rate to 9
+  63              		.loc 1 32 25 view .LVU15
+  64 001a 0B4C     		ldr	r4, .L8+4
+  30:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELRXD = UART_PIN_RX;                                         // RX pin
+  65              		.loc 1 30 24 view .LVU16
+  66 001c 0620     		movs	r0, #6
+  31:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELRXD = UART_PIN_RX;                                         // RX pin
+  67              		.loc 1 31 24 view .LVU17
+  68 001e 0821     		movs	r1, #8
+  30:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELRXD = UART_PIN_RX;                                         // RX pin
+  69              		.loc 1 30 24 view .LVU18
+  70 0020 C3F80C05 		str	r0, [r3, #1292]
+  31:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->PSELRXD = UART_PIN_RX;                                         // RX pin
+  71              		.loc 1 31 5 is_stmt 1 view .LVU19
+  33:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos; // Enable UART
+  34:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->CONFIG = (UART_CONFIG_PARITY_Excluded << UART_CONFIG_PARITY_Pos) |
+  35:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****                         (UART_CONFIG_HWFC_Disabled << UART_CONFIG_HWFC_Pos); // No parity, no flow 
+  36:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTTX = 1;                                            // Start UART transmis
+  72              		.loc 1 36 30 is_stmt 0 view .LVU20
+  73 0024 0122     		movs	r2, #1
+  31:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->BAUDRATE = UART_BAUDRATE_BAUDRATE_Baud9600;                    // Set baud rate to 9
+  74              		.loc 1 31 24 view .LVU21
+  75 0026 C3F81415 		str	r1, [r3, #1300]
+  32:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos; // Enable UART
+  76              		.loc 1 32 5 is_stmt 1 view .LVU22
+  33:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos; // Enable UART
+  77              		.loc 1 33 23 is_stmt 0 view .LVU23
+  78 002a 0420     		movs	r0, #4
+  34:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****                         (UART_CONFIG_HWFC_Disabled << UART_CONFIG_HWFC_Pos); // No parity, no flow 
+  79              		.loc 1 34 23 view .LVU24
+  80 002c 0021     		movs	r1, #0
+  32:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos; // Enable UART
+  81              		.loc 1 32 25 view .LVU25
+  82 002e C3F82445 		str	r4, [r3, #1316]
+  33:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->CONFIG = (UART_CONFIG_PARITY_Excluded << UART_CONFIG_PARITY_Pos) |
+  83              		.loc 1 33 5 is_stmt 1 view .LVU26
+  33:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->CONFIG = (UART_CONFIG_PARITY_Excluded << UART_CONFIG_PARITY_Pos) |
+  84              		.loc 1 33 23 is_stmt 0 view .LVU27
+  85 0032 C3F80005 		str	r0, [r3, #1280]
+  34:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****                         (UART_CONFIG_HWFC_Disabled << UART_CONFIG_HWFC_Pos); // No parity, no flow 
+  86              		.loc 1 34 5 is_stmt 1 view .LVU28
+  37:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTRX = 1;                                            // Start UART receptio
+  38:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c **** }
+  87              		.loc 1 38 1 is_stmt 0 view .LVU29
+  88 0036 5DF8044B 		ldr	r4, [sp], #4
+  89              		.cfi_restore 4
+  90              		.cfi_def_cfa_offset 0
+  34:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****                         (UART_CONFIG_HWFC_Disabled << UART_CONFIG_HWFC_Pos); // No parity, no flow 
+  91              		.loc 1 34 23 view .LVU30
+  92 003a C3F86C15 		str	r1, [r3, #1388]
+  36:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTRX = 1;                                            // Start UART receptio
+  93              		.loc 1 36 5 is_stmt 1 view .LVU31
+  36:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTRX = 1;                                            // Start UART receptio
+  94              		.loc 1 36 30 is_stmt 0 view .LVU32
+  95 003e 9A60     		str	r2, [r3, #8]
+  37:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTRX = 1;                                            // Start UART receptio
+  96              		.loc 1 37 5 is_stmt 1 view .LVU33
+  37:/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.c ****     NRF_UART0->TASKS_STARTRX = 1;                                            // Start UART receptio
+  97              		.loc 1 37 30 is_stmt 0 view .LVU34
+  98 0040 1A60     		str	r2, [r3]
+  99              		.loc 1 38 1 view .LVU35
+ 100 0042 7047     		bx	lr
+ 101              	.L9:
+ 102              		.align	2
+ 103              	.L8:
+ 104 0044 00200040 		.word	1073750016
+ 105 0048 00502700 		.word	2576384
+ 106              		.cfi_endproc
+ 107              	.LFE135:
+ 109              		.section	.bss.prev_input_state_p1,"aw",%nobits
+ 110              		.align	2
+ 113              	prev_input_state_p1:
+ 114 0000 00000000 		.space	4
+ 115              		.section	.bss.prev_input_state_p0,"aw",%nobits
+ 116              		.align	2
+ 119              	prev_input_state_p0:
+ 120 0000 00000000 		.space	4
+ 121              		.global	falling_handler_global
+ 122              		.section	.bss.falling_handler_global,"aw",%nobits
+ 123              		.align	2
+ 126              	falling_handler_global:
+ 127 0000 00000000 		.space	4
+ 128              		.global	rising_handler_global
+ 129              		.section	.bss.rising_handler_global,"aw",%nobits
+ 130              		.align	2
+ 133              	rising_handler_global:
+ 134 0000 00000000 		.space	4
+ 135              		.global	gpio_blacklist_intern_mask
+ 136              		.section	.bss.gpio_blacklist_intern_mask,"aw",%nobits
+ 137              		.align	3
+ 140              	gpio_blacklist_intern_mask:
+ 141 0000 00000000 		.space	8
+ 141      00000000 
+ 142              		.text
+ 143              	.Letext0:
+ 144              		.file 2 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
+ 145              		.file 3 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
+ 146              		.file 4 "Include/nrf52840.h"
+ 147              		.file 5 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
 DEFINED SYMBOLS
-                            *ABS*:00000000 main.c
-/var/tmp//ccOWGkOM.s:21     .rodata.rising_handler.str1.4:00000000 $d
-/var/tmp//ccOWGkOM.s:34     .text.rising_handler:00000000 $t
-/var/tmp//ccOWGkOM.s:41     .text.rising_handler:00000000 rising_handler
-/var/tmp//ccOWGkOM.s:264    .text.rising_handler:000000e0 $d
-/var/tmp//ccOWGkOM.s:825    .data.current_driven_pin:00000000 current_driven_pin
-/var/tmp//ccOWGkOM.s:863    .bss.pin_data:00000000 pin_data
-/var/tmp//ccOWGkOM.s:837    .bss.last_event_valid:00000000 last_event_valid
-/var/tmp//ccOWGkOM.s:844    .bss.last_event:00000000 last_event
-/var/tmp//ccOWGkOM.s:278    .rodata.falling_handler.str1.4:00000000 $d
-/var/tmp//ccOWGkOM.s:285    .text.falling_handler:00000000 $t
-/var/tmp//ccOWGkOM.s:292    .text.falling_handler:00000000 falling_handler
-/var/tmp//ccOWGkOM.s:371    .text.falling_handler:0000003c $d
-/var/tmp//ccOWGkOM.s:380    .text.send_signal:00000000 $t
-/var/tmp//ccOWGkOM.s:387    .text.send_signal:00000000 send_signal
-/var/tmp//ccOWGkOM.s:431    .text.send_signal:00000020 $d
-/var/tmp//ccOWGkOM.s:436    .text.set_selected_pin:00000000 $t
-/var/tmp//ccOWGkOM.s:443    .text.set_selected_pin:00000000 set_selected_pin
-/var/tmp//ccOWGkOM.s:476    .text.set_selected_pin:00000018 $d
-/var/tmp//ccOWGkOM.s:819    .bss.selected_pin:00000000 selected_pin
-/var/tmp//ccOWGkOM.s:813    .bss.selected_pin_data:00000000 selected_pin_data
-/var/tmp//ccOWGkOM.s:483    .text.set_standart_blacklist_pins:00000000 $t
-/var/tmp//ccOWGkOM.s:490    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
-/var/tmp//ccOWGkOM.s:511    .rodata.print_active_pins_from_mask.str1.4:00000000 $d
-/var/tmp//ccOWGkOM.s:521    .text.print_active_pins_from_mask:00000000 $t
-/var/tmp//ccOWGkOM.s:528    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
-/var/tmp//ccOWGkOM.s:616    .text.print_active_pins_from_mask:0000004c $d
-/var/tmp//ccOWGkOM.s:623    .rodata.main.str1.4:00000000 $d
-/var/tmp//ccOWGkOM.s:633    .text.startup.main:00000000 $t
-/var/tmp//ccOWGkOM.s:640    .text.startup.main:00000000 main
-/var/tmp//ccOWGkOM.s:790    .text.startup.main:000000a0 $d
-/var/tmp//ccOWGkOM.s:806    .bss.black_list_mask:00000000 black_list_mask
-/var/tmp//ccOWGkOM.s:803    .bss.black_list_mask:00000000 $d
-/var/tmp//ccOWGkOM.s:810    .bss.selected_pin_data:00000000 $d
-/var/tmp//ccOWGkOM.s:820    .bss.selected_pin:00000000 $d
-/var/tmp//ccOWGkOM.s:831    .bss.state:00000000 state
-/var/tmp//ccOWGkOM.s:832    .bss.state:00000000 $d
-/var/tmp//ccOWGkOM.s:838    .bss.last_event_valid:00000000 $d
-/var/tmp//ccOWGkOM.s:841    .bss.last_event:00000000 $d
-/var/tmp//ccOWGkOM.s:850    .bss.green_led_on:00000000 green_led_on
-/var/tmp//ccOWGkOM.s:851    .bss.green_led_on:00000000 $d
-/var/tmp//ccOWGkOM.s:856    .bss.red_led_on:00000000 red_led_on
-/var/tmp//ccOWGkOM.s:857    .bss.red_led_on:00000000 $d
-/var/tmp//ccOWGkOM.s:860    .bss.pin_data:00000000 $d
+                            *ABS*:00000000 nrf52840_helper.c
+/var/tmp//ccfPiSkP.s:21     .text.io_init:00000000 $t
+/var/tmp//ccfPiSkP.s:28     .text.io_init:00000000 io_init
+/var/tmp//ccfPiSkP.s:104    .text.io_init:00000044 $d
+/var/tmp//ccfPiSkP.s:110    .bss.prev_input_state_p1:00000000 $d
+/var/tmp//ccfPiSkP.s:113    .bss.prev_input_state_p1:00000000 prev_input_state_p1
+/var/tmp//ccfPiSkP.s:116    .bss.prev_input_state_p0:00000000 $d
+/var/tmp//ccfPiSkP.s:119    .bss.prev_input_state_p0:00000000 prev_input_state_p0
+/var/tmp//ccfPiSkP.s:126    .bss.falling_handler_global:00000000 falling_handler_global
+/var/tmp//ccfPiSkP.s:123    .bss.falling_handler_global:00000000 $d
+/var/tmp//ccfPiSkP.s:133    .bss.rising_handler_global:00000000 rising_handler_global
+/var/tmp//ccfPiSkP.s:130    .bss.rising_handler_global:00000000 $d
+/var/tmp//ccfPiSkP.s:140    .bss.gpio_blacklist_intern_mask:00000000 gpio_blacklist_intern_mask
+/var/tmp//ccfPiSkP.s:137    .bss.gpio_blacklist_intern_mask:00000000 $d
                            .group:00000000 wm4.0.c78fe9a012b08da15ba0560431b6d537
-                           .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4._newlib_version.h.4.411db44ea2338a62eca2f0777f81481b
                            .group:00000000 wm4.features.h.33.d554620bb17bd3b714c3fb5c268772bc
                            .group:00000000 wm4._default_types.h.15.247e5cd201eca3442cbf5404108c4935
                            .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
                            .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
                            .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.stdbool.h.29.c08aa3eec75cf5b9b5003883f43253f0
+                           .group:00000000 wm4.stddef.h.39.0dc9006b34572d4d9cae4c8b422c4971
+                           .group:00000000 wm4.nrf.h.36.2c9771b922e05998cb98cd38e577d26d
+                           .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4.cmsis_version.h.32.0ac195c83bb4537824e6ad1c47474b79
                            .group:00000000 wm4.core_cm4.h.66.d954c01095d518cd043caf62225efced
                            .group:00000000 wm4.cmsis_gcc.h.26.ec732d7dec3e44b4b15b499f7fbfba3f
                            .group:00000000 wm4.core_cm4.h.186.369ba2229bf6f92b71e2ad1ae8388018
                            .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
                            .group:00000000 wm4.nrf52840.h.2760.94facbe4f0b1a63284aed08b8635f538
-                           .group:00000000 wm4.stdbool.h.29.c08aa3eec75cf5b9b5003883f43253f0
-                           .group:00000000 wm4.stddef.h.39.0dc9006b34572d4d9cae4c8b422c4971
-                           .group:00000000 wm4.nrf.h.36.2c9771b922e05998cb98cd38e577d26d
                            .group:00000000 wm4.nrf52840_bitfields.h.36.6f0372e47edb7eb297e4f285382d0a6c
                            .group:00000000 wm4.nrf51_to_nrf52840.h.36.a52984f77ed625f80506d6aa3574a54b
                            .group:00000000 wm4.nrf52_to_nrf52840.h.36.718b4211de2aa9d86eb1b548550c2d83
@@ -1358,28 +249,5 @@ DEFINED SYMBOLS
                            .group:00000000 wm4.stdarg.h.31.f7f4f3bfddce9ed034956076d59396f7
                            .group:00000000 wm4.printf.h.60.4e905941388f8572eb1bb13f71697bea
                            .group:00000000 wm4.nrf52840_helper.h.14.676cbb3490b988068df56b3025249c65
-                           .group:00000000 wm4.check_initial_state.h.34.73cd76ffb6bd9fd22e1b58d2667ddb90
-                           .group:00000000 wm4.stdio.h.27.3fc80220048df77954e38daec3bb9670
-                           .group:00000000 wm4.stdio.h.39.ae2a25052646cadc7c97f9a7a14353d0
-                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
-                           .group:00000000 wm4.stdio.h.87.a1e20d2651f9bfb66e51bfbe849db00a
-                           .group:00000000 wm4.spooky_decoder.h.2.f0f5220d70513594fd13941d6a45e5ae
-                           .group:00000000 wm4.manchester.h.22.abb4277b7d39a8ec9852c31bf81a1fa6
 
-UNDEFINED SYMBOLS
-gpio_read
-get_timer_ticks
-timer_diff_ms
-printf_
-gpio_open_drain_drive
-delay_ms
-release_gpio_open_drain
-io_init
-initialize_pin_data_array
-get_chip_family_name
-get_unique_id_str
-start_timer
-gpio_output_init
-gpio_pullup_init
-get_initial_pin_state
-gpio_listen_on_all_pins_interrupt
+NO UNDEFINED SYMBOLS

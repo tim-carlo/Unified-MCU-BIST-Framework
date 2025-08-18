@@ -1,31 +1,26 @@
 #ifndef CHECK_INITIAL_STATE_H
 #define CHECK_INITIAL_STATE_H
 
-// Platform-specific includes
-#if defined(PICO_RP2040)
-#include "rp2040_helper.h"
-#include "pico/stdlib.h"
-#include <stdio.h>
-#include "pico/stdio.h"
-#include <stdint.h>
-#include <stdbool.h>
-
-// Replace printf to include chip family in the output
-#undef printf
-#define printf(fmt, ...) \
-    ((void)fprintf(stdout, "[%s] " fmt, get_chip_family_name(), ##__VA_ARGS__))
-#endif
 
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
+#include "msp430fr5994_gpio.h"
+#include "msp430fr5994_time.h"
+#include "msp430fr5994_utils.h"
 #include "printf.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840_helper.h"
+#include "nrf52840_gpio.h"
+#include "nrf52840_time.h"
+#include "nrf52840_utils.h"
 #include "printf.h"
+#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
 #endif
 
 #include "stack.h"

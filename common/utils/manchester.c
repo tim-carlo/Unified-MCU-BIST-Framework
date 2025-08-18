@@ -153,7 +153,7 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
     rx_pin = Rx;
 
     gpio_open_drain(tx_pin);
-    gpio_input_init(rx_pin);
+    gpio_open_drain(rx_pin);
 
     if (rate >= 7 || rate < 0)
         return;

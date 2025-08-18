@@ -50,6 +50,7 @@
 #include "pindata.h"
 #include "check_initial_state.h"
 #include "manchester.h"
+#include "random_utils.h"
 
 //#include "nrf52840_helper.h"
 
@@ -116,7 +117,7 @@ PinData *selected_pin_data = NULL;     // Pointer to the currently selected pin 
 volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
 
 // Interrupt handler for rising/falling edges on test pin
-void rising_handler(uint32_t pin)
+void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
 {
     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
         return;
@@ -139,7 +140,7 @@ void rising_handler(uint32_t pin)
     {
         event = (PinEvent){pin, false, false, true};
         last_event_valid = true;
-        printf("-> SYN signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
+        printf("-> SYN signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= SYN_ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -147,7 +148,7 @@ void rising_handler(uint32_t pin)
     {
         last_event_valid = true;
         event = (PinEvent){pin, false, true, false};
-        printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
+        printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -155,22 +156,22 @@ void rising_handler(uint32_t pin)
     {
         event = (PinEvent){pin, true, false, false};
         last_event_valid = true;
-        printf("-> ACK signal detected on pin %u, duration: %lu ms\n", pin, (unsigned long)signal_duration);
+        printf("-> ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
 }
 
-void falling_handler(uint32_t pin)
+void falling_handler(uint8_t pin)  // ← uint8_t statt uint32_t
 {
     if (pin == current_driven_pin)
         return;
-    printf("---> Falling edge detected on pin %u\n", pin);
+    printf("---> Falling edge detected on pin %u\n", (unsigned int)pin);
     // Check if the signal is stable
     if (gpio_read(pin) == 1)
         return; // Ignore if the pin is high, we are looking for falling edges
 
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
-    printf("Falling edge detected on pin %u\n", pin);
+    printf("Falling edge detected on pin %u\n", (unsigned int)pin);
 
     pin_data[pin].last_falling_edge = current_ticks;
 }
@@ -180,9 +181,9 @@ void send_signal(uint8_t pin, uint32_t duration)
    // enter_critical_section(); // Enter critical section to prevent
 
     current_driven_pin = pin; // Set the currently driven pin
-    gpio_open_drain_drive(pin); // Set the pin to open-drain mode
+    gpio_od_hold_low(pin); // Set the pin to open-drain mode
     delay_ms(duration); // Drive the pin for the specified duration
-    release_gpio_open_drain(pin); // Release the pin after sending the signal
+    gpio_od_release(pin); // Release the pin after sending the signal
     current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
    // exit_critical_section(); // Exit critical section
 }
@@ -197,31 +198,27 @@ void set_selected_pin(uint8_t pin)
     selected_pin = pin;
     selected_pin_data = &pin_data[pin]; // Update the pointer to the selected pin data
 }
-void set_standart_blacklist_pins(uint64_t *mask)
+void set_standart_blacklist_pins(volatile uint64_t *mask)  // ← volatile hinzufügen
 {
     *mask = 0xFFFFFFFFFFFFFFFFULL;
 
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 11);
     *mask &= ~(1ULL << 12);
-    // *mask &= ~(1ULL << 13);
-    // *mask &= ~(1ULL << 14);
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7));
     *mask &= ~(1ULL << ABS_PIN(3, 6));
-    //  *mask &= ~(1ULL << ABS_PIN(3, 2));
-    //  *mask &= ~(1ULL << ABS_PIN(3, 3));
 #endif
 }
 
 void print_active_pins_from_mask(uint64_t mask)
 {
     printf("Blacklist mask: ");
-    for (uint32_t pin = 0; pin < 64; ++pin)
+    for (uint8_t pin = 0; pin < 64; ++pin)  // ← uint8_t statt uint32_t
     {
         if ((mask >> pin) & 1)
         {
-            printf("%u ", pin);
+            printf("%u ", (unsigned int)pin);  // ← %u und cast
         }
     }
     printf("\n");
@@ -452,7 +449,7 @@ int main(void)
             printf("INITIATOR_MODE: Sending SYN signal\n");
             uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
 
-            gpio_open_drain_drive(selected_pin);
+            gpio_od_hold_low(selected_pin);
             printf("Sending SYN signal on pin %u \n", selected_pin);
             bool received_other_signal = false;
 
@@ -474,7 +471,7 @@ int main(void)
                 }
                 free_stack(active_pins_stack);
             }
-            release_gpio_open_drain(selected_pin); // Release the pin after sending the signal
+            gpio_od_release(selected_pin); // Release the pin after sending the signal
             printf("SYN signal sent on pin %u\n", selected_pin);
             current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
             stop_timer(TIMER_A);
