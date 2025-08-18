@@ -1,100 +1,130 @@
 #include "msp430fr5994_gpio.h"
+#include <stdint.h> 
 
 static volatile uint64_t s_blacklist_mask = 0;
 static gpio_interrupt_handler_t s_falling = NULL;
 static gpio_interrupt_handler_t s_rising = NULL;
 
-
 static volatile uint8_t *const PxIE[] = {&P1IE, &P2IE, &P3IE, &P4IE, &P5IE, &P6IE, &P7IE, &P8IE};
 static volatile uint8_t *const PxIFG[] = {&P1IFG, &P2IFG, &P3IFG, &P4IFG, &P5IFG, &P6IFG, &P7IFG, &P8IFG};
 static volatile uint8_t *const PxIES[] = {&P1IES, &P2IES, &P3IES, &P4IES, &P5IES, &P6IES, &P7IES, &P8IES};
+
+static inline uintptr_t get_port_base_of_absolute_pin(uint8_t abs_pin)
+{
+    if (abs_pin < 8)
+        return P1_BASE;
+    else if (abs_pin < 16)
+        return P2_BASE;
+    else if (abs_pin < 24)
+        return P3_BASE;
+    else if (abs_pin < 32)
+        return P4_BASE;
+    else if (abs_pin < 40)
+        return P5_BASE;
+    else if (abs_pin < 48)
+        return P6_BASE;
+    else if (abs_pin < 56)
+        return P7_BASE;
+    else if (abs_pin < 64)
+        return P8_BASE;
+    return 0; // invalid pin
+}
 
 static inline uint8_t abs_to_pinidx(uint8_t abs_pin)
 {
     return abs_pin % 8; // Pin index is abs_pin % 8
 }
+
 static inline uint8_t abs_to_port(uint8_t abs_pin)
 {
     return abs_pin / 8; // Port number is abs_pin / 8
 }
 
-static volatile uint8_t *get_dir_register(uint8_t port)
-{
-    return (volatile uint8_t *)((uintptr_t)(P1_BASE + PORT_DIR_OFFSET + port * 0x100));
-}
-
-static volatile uint8_t *get_out_register(uint8_t port)
-{
-    return (volatile uint8_t *)((uintptr_t)(P1_BASE + PORT_OUT_OFFSET + port * 0x100));
-}
-
-static volatile uint8_t *get_ren_register(uint8_t port)
-{
-    return (volatile uint8_t *)((uintptr_t)(P1_BASE + PORT_REN_OFFSET + port * 0x100));
-}
-
-static volatile uint8_t *get_in_register(uint8_t port)
-{
-    return (volatile uint8_t *)((uintptr_t)(P1_BASE + PORT_IN_OFFSET + port * 0x100));
-}
-
 void gpio_output_init(uint8_t abs_pin)
 {
-    uint8_t port = abs_to_port(abs_pin);
-    uint8_t pin = abs_to_pinidx(abs_pin);
-    volatile uint8_t *dir_reg = get_dir_register(port);
-    *dir_reg |= (1 << pin); // Set pin as output
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← uintptr_t statt uint16_t
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) |= mask; // output
+}
+
+void gpio_set_pull(uint8_t abs_pin, gpio_pull_t pull)
+{
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← uintptr_t statt uint16_t
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+
+    switch (pull)
+    {
+    case GPIO_PULL_UP:
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask; // enable resistor
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask; // pull-up
+        break;
+
+    case GPIO_PULL_DOWN:
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;  // enable resistor
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask; // pull-down
+        break;
+
+    case GPIO_PULL_NONE:
+    default:
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) &= ~mask; // disable resistor
+        break;
+    }
 }
 
 void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 {
-    uint8_t port = abs_to_port(abs_pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t pin = abs_to_pinidx(abs_pin);
-    volatile uint8_t *dir_reg = get_dir_register(port);
-    volatile uint8_t *ren_reg = get_ren_register(port);
-    volatile uint8_t *out_reg = get_out_register(port);
+    // uint8_t port = abs_to_port(abs_pin);  // ← Unbenutzte Variable entfernen
+    uint8_t mask = (1 << pin);
 
-    *dir_reg &= ~(1 << pin); // Set pin as input
+    // Configure pin as input as described here: https://www.ocfreaks.com/msp430-gpio-programming-tutorial/
+    // Set as input
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) &= ~mask;
 
-    // Pull-up Settings
-    if (pull == GPIO_PULL_UP)
+    switch (pull)
     {
-        *ren_reg |= (1 << pin);
-        *out_reg |= (1 << pin);
-    }
-    else if (pull == GPIO_PULL_DOWN)
-    {
-        *ren_reg |= (1 << pin);
-        *out_reg &= ~(1 << pin);
-    }
-    else
-    {
-        *ren_reg &= ~(1 << pin);
+    case GPIO_PULL_NONE:
+        // Disable resistor
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) &= ~mask;
+        break;
+
+    case GPIO_PULL_DOWN:
+        // Enable resistor
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
+        // OUT=0
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
+        break;
+
+    case GPIO_PULL_UP:
+        // Enable resistor
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
+        // OUT=1
+        *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
+        break;
     }
 }
 
 void gpio_drive_high(uint8_t abs_pin)
 {
-    uint8_t port = abs_to_port(abs_pin);
-    uint8_t pin = abs_to_pinidx(abs_pin);
-    volatile uint8_t *out_reg = get_out_register(port);
-    *out_reg |= (1 << pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
 }
 
 void gpio_drive_low(uint8_t abs_pin)
 {
-    uint8_t port = abs_to_port(abs_pin);
-    uint8_t pin = abs_to_pinidx(abs_pin);
-    volatile uint8_t *out_reg = get_out_register(port);
-    *out_reg &= ~(1 << pin);
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
 }
 
 bool gpio_read(uint8_t abs_pin)
 {
-    uint8_t port = abs_to_port(abs_pin);
-    uint8_t pin = abs_to_pinidx(abs_pin);
-    volatile uint8_t *in_reg = get_in_register(port);
-    return (*in_reg & (1 << pin)) ? true : false;
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    return (*(volatile uint8_t *)((uintptr_t)(base + PORT_IN_OFFSET)) & mask) != 0;
 }
 
 uint64_t gpio_read_all_pins_state()
@@ -158,7 +188,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask,
                 uint8_t abs_pin = ((port - 1) << 3) | pin;                      \
                                                                                 \
                 /* Skip if this pin is blacklisted */                           \
-                if (is_interupt_blacklisted(abs_pin))                          \
+                if (is_interupt_blacklisted(abs_pin))                           \
                     continue;                                                   \
                 /* Check if the current edge setting is falling */              \
                 bool is_falling = (P##port##IES >> pin) & 1;                    \
@@ -207,15 +237,14 @@ void gpio_od_init(uint8_t abs_pin)
 
 /**
  * @brief Hold GPIO pin in open-drain state (drive low) using absolute pin number
- * 
- * @param abs_pin 
+ *
+ * @param abs_pin
  */
 void gpio_od_hold_low(uint8_t abs_pin)
 {
     gpio_output_init(abs_pin); // Set pin as output
     gpio_drive_low(abs_pin);   // Drive pin low
 }
-
 
 /**
  * @brief Release GPIO pin from open-drain state (set as input) using absolute pin number
@@ -224,17 +253,25 @@ void gpio_od_hold_low(uint8_t abs_pin)
  */
 void gpio_od_release(uint8_t abs_pin)
 {
-    gpio_input_init(abs_pin, GPIO_PULL_UP); // Reset the pin to input mode
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← abs_pin statt port verwenden
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+
+    // DIR = 0
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) &= ~mask;
+    // REN = 1 
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
+    // OUT = 1
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
 }
 
 /**
  * @brief Push active pins to stack except those in the blacklist
- * 
+ *
  * @param stack Pointer to the stack where active pins will be pushed
  * @param expected_level Expected level of the pins (true for high, false for low)
  * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
  */
-void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask) 
+void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask)
 {
     for (uint8_t abs_pin = 0; abs_pin < MSP430_NUM_ABS_PINS; abs_pin++)
     {
@@ -242,7 +279,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
             continue; // Skip blacklisted pins
         if (gpio_read(abs_pin) == expected_level)
         {
-            printf("Pushing active pin %lu to stack\n", abs_pin);
+            printf("Pushing active pin %u to stack\n", (unsigned int)abs_pin);  // ← %u statt %lu
             stack_push(stack, &abs_pin);
         }
     }
