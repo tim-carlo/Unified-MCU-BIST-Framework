@@ -1,6 +1,5 @@
 #include "manchester.h"
 #include "printf.h"
-
 #if defined(NRF52840_XXAA)
 #include "nrf52840_helper.h"
 #elif defined(__MSP430FR5994__)
@@ -45,11 +44,11 @@ static void set_TX(bool state)
 {
     if (state)
     {
-        release_gpio_open_drain(tx_pin);
+        gpio_od_release(tx_pin); // Release the pin to drive high
     }
     else
     {
-        gpio_open_drain_drive(tx_pin);
+        gpio_drive_low(tx_pin); // Drive the pin low
     }
 }
 
@@ -203,14 +202,12 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
 #endif
 
     // Ensure TX pin is in released state initially
-    release_gpio_open_drain(tx_pin);
     LOG("NRF52840 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #elif defined(__MSP430FR5994__)
 #if DEBUG == 1
     gpio_output_init(ABS_PIN(3, 5));
 #endif
     // Ensure TX pin is in released state initially
-    release_gpio_open_drain(tx_pin);
     LOG("MSP430 Manchester TX pin %u configured as open-drain\n", tx_pin);
 #endif
 }
