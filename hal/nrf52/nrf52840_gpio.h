@@ -20,7 +20,8 @@ extern "C" {
 #define ABS_TO_PINIDX(abs)    ((uint32_t)((abs) & 31U))
 #define ABS_BIT(abs)          (1ULL << (uint64_t)(abs))
 
-typedef void (*gpio_interrupt_handler_t)(uint32_t abs_pin);
+typedef void (*gpio_interrupt_handler_t)(uint8_t abs_pin);  // ← uint8_t statt uint32_t
+
 typedef enum {
     GPIO_PULL_NONE = 0,
     GPIO_PULL_DOWN = 1,
@@ -28,16 +29,16 @@ typedef enum {
 } gpio_pull_t;
 
 // Configuration for GPIO pins
-void gpio_output_init(uint32_t abs_pin);
-void gpio_input_init(uint32_t abs_pin, gpio_pull_t pull);
-void gpio_pullup_init(uint32_t abs_pin);
-void gpio_pulldown_init(uint32_t abs_pin);
+void gpio_output_init(uint8_t abs_pin);  
+void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull);  
+void gpio_pullup_init(uint8_t abs_pin); 
+void gpio_pulldown_init(uint8_t abs_pin); 
 
 // Functions to drive GPIO pins
-void gpio_drive_high(uint32_t abs_pin);
-void gpio_drive_low(uint32_t abs_pin);
-void gpio_toggle(uint32_t abs_pin);
-bool gpio_read(uint32_t abs_pin);
+void gpio_drive_high(uint8_t abs_pin); 
+void gpio_drive_low(uint8_t abs_pin); 
+void gpio_toggle(uint8_t abs_pin); 
+bool gpio_read(uint8_t abs_pin); 
 uint64_t gpio_read_all_pins_state(void);
 
 // Interrupt handling
@@ -46,11 +47,10 @@ void gpio_listen_on_all_pins_interrupt(
     gpio_interrupt_handler_t falling_handler,
     gpio_interrupt_handler_t rising_handler);
 
-
 // Open-Drain Functions
-void gpio_od_init(uint32_t abs_pin);
-void gpio_od_hold_low(uint32_t abs_pin);
-void gpio_od_release(uint32_t abs_pin);
+void gpio_od_init(uint8_t abs_pin); 
+void gpio_od_hold_low(uint8_t abs_pin); 
+void gpio_od_release(uint8_t abs_pin); 
 
 void gpio_disable_all_interrupts(void);
 void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);

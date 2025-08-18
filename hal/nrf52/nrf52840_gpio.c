@@ -51,53 +51,50 @@ static inline uint32_t pin_level(NRF_GPIO_Type *p, uint32_t idx)
     return (p->IN >> idx) & 1u;
 }
 
-void gpio_output_init(uint32_t abs_pin)
+void gpio_output_init(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
     cfg_pin_output(port_ptr(port), idx);
 }
 
-void gpio_input_init(uint32_t abs_pin, gpio_pull_t pull)
+void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
     cfg_pin_input(port_ptr(port), idx, pull);
 }
 
-void gpio_pullup_init(uint32_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_UP); }
-void gpio_pulldown_init(uint32_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_DOWN); }
+void gpio_pullup_init(uint8_t abs_pin)   { gpio_input_init(abs_pin, GPIO_PULL_UP); }
+void gpio_pulldown_init(uint8_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_DOWN); }
 
-void gpio_drive_high(uint32_t abs_pin)
+void gpio_drive_high(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
     port_ptr(port)->OUTSET = (1UL << idx);
 }
 
-void gpio_drive_low(uint32_t abs_pin)
+void gpio_drive_low(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
     port_ptr(port)->OUTCLR = (1UL << idx);
 }
 
-void gpio_toggle(uint32_t abs_pin)
+void gpio_toggle(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type *p = port_ptr(port);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type* p = port_ptr(port);
     uint32_t m = (1UL << idx);
-    if (p->OUT & m)
-        p->OUTCLR = m;
-    else
-        p->OUTSET = m;
+    if (p->OUT & m) p->OUTCLR = m; else p->OUTSET = m;
 }
 
-bool gpio_read(uint32_t abs_pin)
+bool gpio_read(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
     return pin_level(port_ptr(port), idx) ? true : false;
 }
 /**
@@ -216,7 +213,7 @@ void GPIOTE_IRQHandler(void)
  * @brief GPIO open-drain initialization using absolute pin number
  * @param abs_pin Absolute pin number (0-47)
  */
-void gpio_od_init(uint32_t abs_pin)
+void gpio_od_init(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
     uint32_t idx = ABS_TO_PINIDX(abs_pin);
@@ -236,13 +233,21 @@ void gpio_od_init(uint32_t abs_pin)
  *
  * @param abs_pin
  */
-void gpio_od_hold_low(uint32_t abs_pin)
+void gpio_od_hold_low(uint8_t abs_pin)
 {
-    uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type *p = port_ptr(port);
+    uint32_t port_num = ABS_TO_PORT(abs_pin);
+    uint32_t idx      = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p  = port_ptr(port_num);
 
-    p->OUTCLR = (1UL << idx); // Drive pin low
+    // Disable SENSE to prevent self-trigger while driving low
+    uint32_t cnf = p->PIN_CNF[idx];
+    cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
+    cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    p->PIN_CNF[idx] = cnf;
+
+    // Set as output and drive low
+    p->DIRSET = (1UL << idx);
+    p->OUTCLR = (1UL << idx);
 }
 
 /**
@@ -250,21 +255,25 @@ void gpio_od_hold_low(uint32_t abs_pin)
  * And reset the sense configuration
  * @param abs_pin
  */
-void gpio_od_release(uint32_t abs_pin)
+void gpio_od_release(uint8_t abs_pin)
 {
-    uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type *p = port_ptr(port);
+    uint32_t port_num = ABS_TO_PORT(abs_pin);
+    uint32_t idx      = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p  = port_ptr(port_num);
 
-    // Is questionable if this is needed
-    p->PIN_CNF[idx] =
-        BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
-        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
-        BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
-        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) |
-        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
+    // Ensure pin is set high before switching to input
     p->OUTSET = (1UL << idx);
+
+    // Back to input (High-Z with pull-up)
+    p->DIRCLR = (1UL << idx);
+
+    // Re-enable SENSE=Low so the pin can trigger on falling edges again
+    uint32_t cnf = p->PIN_CNF[idx];
+    cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
+    cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
+    p->PIN_CNF[idx] = cnf;
 }
+
 
 /**
  * @brief stack_push all active GPIO pins except the specified one to a stack using absolute pin numbers
