@@ -27,20 +27,20 @@ extern volatile uint16_t timer_overflows_a4;
 extern volatile uint16_t timer_overflows_b0;
 
 #define GET_TxxCTL(timer) ( \
-    (timer) == TIMER_A0 ? &TA0CTL : \
-    (timer) == TIMER_A1 ? &TA1CTL : \
-    (timer) == TIMER_A2 ? &TA2CTL : \
-    (timer) == TIMER_A4 ? &TA4CTL : \
-    (timer) == TIMER_B0 ? &TB0CTL : \
+    (timer) == TIMER_A0 ? (volatile uint16_t*)&TA0CTL : \
+    (timer) == TIMER_A1 ? (volatile uint16_t*)&TA1CTL : \
+    (timer) == TIMER_A2 ? (volatile uint16_t*)&TA2CTL : \
+    (timer) == TIMER_A4 ? (volatile uint16_t*)&TA4CTL : \
+    (timer) == TIMER_B0 ? (volatile uint16_t*)&TB0CTL : \
     (volatile uint16_t*)0 \
 )
 
 #define GET_TxxR(timer) ( \
-    (timer) == TIMER_A0 ? &TA0R : \
-    (timer) == TIMER_A1 ? &TA1R : \
-    (timer) == TIMER_A2 ? &TA2R : \
-    (timer) == TIMER_A4 ? &TA4R : \
-    (timer) == TIMER_B0 ? &TB0R : \
+    (timer) == TIMER_A0 ? (volatile uint16_t*)&TA0R : \
+    (timer) == TIMER_A1 ? (volatile uint16_t*)&TA1R : \
+    (timer) == TIMER_A2 ? (volatile uint16_t*)&TA2R : \
+    (timer) == TIMER_A4 ? (volatile uint16_t*)&TA4R : \
+    (timer) == TIMER_B0 ? (volatile uint16_t*)&TB0R : \
     (volatile uint16_t*)0 \
 )
 

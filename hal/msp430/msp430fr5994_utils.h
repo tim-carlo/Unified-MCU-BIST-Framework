@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <msp430.h>
 #include <msp430fr5994.h>
+#include "printf.h"
 
 #ifdef __cplusplus
 extern "C" {
