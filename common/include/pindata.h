@@ -47,6 +47,5 @@ bool is_syn(PinData *data);
 bool is_role_responder(PinData *data);
 bool is_blacklisted(PinData *data);
 bool is_successful(PinData *data);
-void set_blacklisted_in_mask(uint64_t *mask, uint32_t pin);
-
+void set_blacklisted_in_mask(volatile uint64_t *mask, uint32_t pin);
 #endif // PINDATA_H

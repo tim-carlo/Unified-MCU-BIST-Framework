@@ -231,7 +231,7 @@ bool is_successful(PinData *data)
  * @param mask Pointer to the blacklist mask
  * @param pin Pin number to be blacklisted (0-63)
  */
-void set_blacklisted_in_mask(uint64_t *mask, uint32_t pin)
+void set_blacklisted_in_mask(volatile uint64_t *mask, uint32_t pin)
 {
     if (pin < 64)
     {
