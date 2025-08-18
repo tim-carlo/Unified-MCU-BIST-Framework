@@ -59,8 +59,8 @@
 
 #define MINIMUM_SIGNAL_DURATION_MS 90     // Minimum duration for a valid signal
 #define SYN_SIGNAL_DURATION_MS 100        // Duration of SYN signal in ms
-#define ACK_SIGNAL_DURATION_MS 500        // Duration of ACK signal in ms
-#define SYN_ACK_SIGNAL_DURATION_MS 1000   // Duration of SYN-ACK signal in ms
+#define SYN_ACK_SIGNAL_DURATION_MS 500   // Duration of SYN-ACK signal in ms
+#define ACK_SIGNAL_DURATION_MS 1000        // Duration of ACK signal in ms
 #define SIGNAL_DURATION_TIME_INACURACY 10 // Allowed inaccuracy in signal duration in ms
 
 #define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
@@ -117,7 +117,7 @@ PinData *selected_pin_data = NULL;     // Pointer to the currently selected pin 
 volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
 
 // Interrupt handler for rising/falling edges on test pin
-void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
+void rising_handler(uint8_t pin) 
 {
     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
         return;
@@ -130,9 +130,6 @@ void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
 
-    printf("Rising edge detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
-
-
     if (signal_duration < MINIMUM_SIGNAL_DURATION_MS || signal_duration > SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
         return;
 
@@ -144,7 +141,7 @@ void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
     {
         event = (PinEvent){pin, false, false, true};
         last_event_valid = true;
-        printf("-> SYN signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
+       // printf("-> SYN signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= SYN_ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -152,7 +149,7 @@ void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
     {
         last_event_valid = true;
         event = (PinEvent){pin, false, true, false};
-        printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
+      //  printf("-> SYN-ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
     }
     else if (signal_duration >= ACK_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
@@ -160,8 +157,11 @@ void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
     {
         event = (PinEvent){pin, true, false, false};
         last_event_valid = true;
-        printf("-> ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
+      //  printf("-> ACK signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event = event; // Store the last event for later processing
+    } else {
+     //  printf("-> Unknown signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
+        last_event_valid = false; 
     }
 }
 
@@ -174,7 +174,7 @@ void falling_handler(uint8_t pin)  // ← uint8_t statt uint32_t
         return; // Ignore if the pin is high, we are looking for falling edges
 
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
-    printf("Falling edge detected on pin %u\n", (unsigned int)pin);
+   // printf("Falling edge detected on pin %u\n", (unsigned int)pin);
 
     pin_data[pin].last_falling_edge = current_ticks;
 }
