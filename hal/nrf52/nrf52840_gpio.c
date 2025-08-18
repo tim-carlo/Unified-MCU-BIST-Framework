@@ -137,9 +137,9 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
                                        gpio_interrupt_handler_t falling_handler,
                                        gpio_interrupt_handler_t rising_handler)
 {
-    gpio_blacklist_intern_mask = blacklist;
-    falling_handler_global = falling_handler;
-    rising_handler_global = rising_handler;
+    s_blacklist_mask = blacklist;
+    s_falling = falling_handler;
+    s_rising = rising_handler;
 
     for (uint8_t abs_pin = 0; abs_pin < 48; abs_pin++)
     {
@@ -187,7 +187,10 @@ void GPIOTE_IRQHandler(void)
 
         if (port->LATCH & (1UL << pin_idx))
         {
-            bool pin_state = pin_level(port, pin_idx);
+            bool sample0 = pin_level(port, pin_idx);
+            bool sample1 = pin_level(port, pin_idx);
+            bool pin_state = sample0 && sample1; // Sample twice for debouncing
+
             // Depending on the current state, call the appropriate handler
             if (!pin_state)
             {
@@ -209,6 +212,42 @@ void GPIOTE_IRQHandler(void)
         }
     }
 }
+
+/**
+ * @brief Hold GPIO pin in open-drain state (drive low) using absolute pin number
+ *
+ * @param abs_pin
+ */
+void gpio_od_hold_low(uint32_t abs_pin)
+{
+    uint32_t port = ABS_TO_PORT(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port);
+
+    p->OUTCLR = (1UL << idx); // Drive pin low
+}
+
+/**
+ * @brief Release GPIO pin from open-drain state (set as input) using absolute pin number
+ * And reset the sense configuration
+ * @param abs_pin
+ */
+void gpio_od_release(uint32_t abs_pin)
+{
+    uint32_t port = ABS_TO_PORT(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port);
+
+    // Is questionable if this is needed
+    p->PIN_CNF[idx] =
+        BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+        BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
+        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) |
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
+    p->OUTSET = (1UL << idx);
+}
+
 /**
  * @brief stack_push all active GPIO pins except the specified one to a stack using absolute pin numbers
  *

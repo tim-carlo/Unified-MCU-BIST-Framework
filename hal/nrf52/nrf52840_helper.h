@@ -29,9 +29,6 @@
 typedef void (*gpio_interrupt_handler_t)(uint32_t gpio);
 
 
-// Function prototypes
-const uint32_t get_absolute_pin_number(NRF_GPIO_Type *PORT, uint8_t pin);
-
 void io_init(void);
 
 #endif // NRF52840_HELPER_H

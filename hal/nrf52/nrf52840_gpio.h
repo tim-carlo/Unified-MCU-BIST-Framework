@@ -5,6 +5,7 @@
 #include "nrf52840.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "stack.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +46,11 @@ void gpio_listen_on_all_pins_interrupt(
     gpio_interrupt_handler_t falling_handler,
     gpio_interrupt_handler_t rising_handler);
 
+void gpio_od_hold_low(uint32_t abs_pin);
+void gpio_od_release(uint32_t abs_pin);
+
 void gpio_disable_all_interrupts(void);
+void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
 
 #ifdef __cplusplus
 }
