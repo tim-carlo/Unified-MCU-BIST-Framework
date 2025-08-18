@@ -63,6 +63,7 @@ bool gpio_read(uint8_t abs_pin);
 uint64_t gpio_read_all_pins_state(void);
 
 // Open-Drain Functions
+void gpio_od_init(uint8_t abs_pin);
 void gpio_od_hold_low(uint8_t abs_pin);
 void gpio_od_release(uint8_t abs_pin);
 

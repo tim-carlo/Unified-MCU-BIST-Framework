@@ -212,6 +212,24 @@ void GPIOTE_IRQHandler(void)
         }
     }
 }
+/**
+ * @brief GPIO open-drain initialization using absolute pin number
+ * @param abs_pin Absolute pin number (0-47)
+ */
+void gpio_od_init(uint32_t abs_pin)
+{
+    uint32_t port = ABS_TO_PORT(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port);
+    // Set pin as input with pull-up
+    p->PIN_CNF[idx] =
+        BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+        BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+        BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
+        BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0D1) |
+        BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    p->OUTSET = (1UL << idx); // Set the pin high
+}
 
 /**
  * @brief Hold GPIO pin in open-drain state (drive low) using absolute pin number

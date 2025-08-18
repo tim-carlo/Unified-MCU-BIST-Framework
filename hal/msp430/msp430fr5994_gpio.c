@@ -196,6 +196,16 @@ DEFINE_PORT_ISR(7)
 DEFINE_PORT_ISR(8)
 
 /**
+ * @brief Initialize GPIO pin in open-drain mode using absolute pin number
+ *
+ * @param abs_pin Absolute pin number (0-63)
+ */
+void gpio_od_init(uint8_t abs_pin)
+{
+    gpio_input_init(abs_pin, GPIO_PULL_UP); // Set pin as input with pull-up
+}
+
+/**
  * @brief Hold GPIO pin in open-drain state (drive low) using absolute pin number
  * 
  * @param abs_pin 

@@ -46,6 +46,9 @@ void gpio_listen_on_all_pins_interrupt(
     gpio_interrupt_handler_t falling_handler,
     gpio_interrupt_handler_t rising_handler);
 
+
+// Open-Drain Functions
+void gpio_od_init(uint32_t abs_pin);
 void gpio_od_hold_low(uint32_t abs_pin);
 void gpio_od_release(uint32_t abs_pin);
 
