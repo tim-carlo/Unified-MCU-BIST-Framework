@@ -130,10 +130,14 @@ void rising_handler(uint8_t pin)  // ← uint8_t statt uint32_t
     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
 
+    printf("Rising edge detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
+
+
     if (signal_duration < MINIMUM_SIGNAL_DURATION_MS || signal_duration > SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
         return;
 
     PinEvent event = {0};
+
 
     if (signal_duration >= SYN_SIGNAL_DURATION_MS - SIGNAL_DURATION_TIME_INACURACY &&
         signal_duration <= SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
@@ -165,7 +169,6 @@ void falling_handler(uint8_t pin)  // ← uint8_t statt uint32_t
 {
     if (pin == current_driven_pin)
         return;
-    printf("---> Falling edge detected on pin %u\n", (unsigned int)pin);
     // Check if the signal is stable
     if (gpio_read(pin) == 1)
         return; // Ignore if the pin is high, we are looking for falling edges
@@ -252,6 +255,8 @@ static inline void exit_critical_section(void)
 #endif
 }
 
+
+
 int main(void)
 {
     io_init();
@@ -292,9 +297,6 @@ int main(void)
     );
     // Send data to test the Manchester encoding
 
-    while (1)
-    {
-    }
     
     // led_test_routine();
     while (1)
