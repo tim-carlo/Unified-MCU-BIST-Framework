@@ -151,8 +151,8 @@ void manchester_init(uint8_t Tx, uint8_t Rx, uint8_t rate)
     tx_pin = Tx;
     rx_pin = Rx;
 
-    gpio_open_drain(tx_pin);
-    gpio_open_drain(rx_pin);
+    gpio_od_init(tx_pin); // Initialize TX pin in open-drain mode
+    gpio_od_init(rx_pin); // Initialize RX pin in open-drain mode
 
     if (rate >= 7 || rate < 0)
         return;
