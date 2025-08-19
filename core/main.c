@@ -519,6 +519,7 @@ int main(void)
             {
                 printf("SYN signal sent, waiting for SYN-ACK signal...\n");
                 start_timer(TIMER_A);
+                ticks_at_starting_point = get_timer_ticks(TIMER_A);
                 uint32_t syn_ack_timeout = TIMEOUT_SYN_ACK_MS;
                 bool timeout_inceased = false;
                 bool signal_received = false;
