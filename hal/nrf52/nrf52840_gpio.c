@@ -54,47 +54,50 @@ static inline uint32_t pin_level(NRF_GPIO_Type *p, uint32_t idx)
 void gpio_output_init(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
     cfg_pin_output(port_ptr(port), idx);
 }
 
 void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
     cfg_pin_input(port_ptr(port), idx, pull);
 }
 
-void gpio_pullup_init(uint8_t abs_pin)   { gpio_input_init(abs_pin, GPIO_PULL_UP); }
+void gpio_pullup_init(uint8_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_UP); }
 void gpio_pulldown_init(uint8_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_DOWN); }
 
 void gpio_drive_high(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
     port_ptr(port)->OUTSET = (1UL << idx);
 }
 
 void gpio_drive_low(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
     port_ptr(port)->OUTCLR = (1UL << idx);
 }
 
 void gpio_toggle(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type* p = port_ptr(port);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port);
     uint32_t m = (1UL << idx);
-    if (p->OUT & m) p->OUTCLR = m; else p->OUTSET = m;
+    if (p->OUT & m)
+        p->OUTCLR = m;
+    else
+        p->OUTSET = m;
 }
 
 bool gpio_read(uint8_t abs_pin)
 {
     uint32_t port = ABS_TO_PORT(abs_pin);
-    uint32_t idx  = ABS_TO_PINIDX(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
     return pin_level(port_ptr(port), idx) ? true : false;
 }
 /**
@@ -162,7 +165,7 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
 
     NRF_GPIOTE->EVENTS_PORT = 0;
     NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
-    NVIC_SetPriority(GPIOTE_IRQn, 0);
+  //  NVIC_SetPriority(GPIOTE_IRQn, 0);
     NVIC_EnableIRQ(GPIOTE_IRQn);
 }
 
@@ -173,7 +176,7 @@ void GPIOTE_IRQHandler(void)
 
     NRF_GPIOTE->EVENTS_PORT = 0; // Clear the event
 
-    for (uint8_t abs_pin = 0; abs_pin < 48; abs_pin++)
+    for (uint8_t abs_pin = 0; abs_pin < NRF52_NUM_ABS_PINS; abs_pin++)
     {
         if (is_interupt_blacklisted(abs_pin))
             continue;
@@ -186,13 +189,15 @@ void GPIOTE_IRQHandler(void)
         {
             bool sample0 = pin_level(port, pin_idx);
             bool sample1 = pin_level(port, pin_idx);
-            bool pin_state = sample0 && sample1; // Sample twice for debouncing
-
+            if(sample0 != sample1)
+            {
+                return; // Ignore if the pin state is not stable
+            }
             // Depending on the current state, call the appropriate handler
-            if (!pin_state)
+            if (!sample0)
             {
                 if (s_falling)
-                    s_falling(abs_pin);
+                   s_falling(abs_pin);
                 // Next: SENSE_High (for Rising)
                 configure_pin_sense(abs_pin, false);
             }
@@ -236,18 +241,24 @@ void gpio_od_init(uint8_t abs_pin)
 void gpio_od_hold_low(uint8_t abs_pin)
 {
     uint32_t port_num = ABS_TO_PORT(abs_pin);
-    uint32_t idx      = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type *p  = port_ptr(port_num);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port_num);
 
-    // Disable SENSE to prevent self-trigger while driving low
+    // Temporarily disable GPIOTE interrupt
+    NVIC_DisableIRQ(GPIOTE_IRQn);
+
+    // Disable SENSE to prevent spurious events while driving low
     uint32_t cnf = p->PIN_CNF[idx];
     cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
     cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
     p->PIN_CNF[idx] = cnf;
 
-    // Set as output and drive low
-    p->DIRSET = (1UL << idx);
+    // Configure as output and drive low
     p->OUTCLR = (1UL << idx);
+    p->DIRSET = (1UL << idx);
+
+    // Re-enable GPIOTE interrupt
+    NVIC_EnableIRQ(GPIOTE_IRQn);
 }
 
 /**
@@ -258,22 +269,27 @@ void gpio_od_hold_low(uint8_t abs_pin)
 void gpio_od_release(uint8_t abs_pin)
 {
     uint32_t port_num = ABS_TO_PORT(abs_pin);
-    uint32_t idx      = ABS_TO_PINIDX(abs_pin);
-    NRF_GPIO_Type *p  = port_ptr(port_num);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+    NRF_GPIO_Type *p = port_ptr(port_num);
 
-    // Ensure pin is set high before switching to input
+    NVIC_DisableIRQ(GPIOTE_IRQn);
     p->OUTSET = (1UL << idx);
 
-    // Back to input (High-Z with pull-up)
+    // Switch to input (high-Z, pull-up)
     p->DIRCLR = (1UL << idx);
 
-    // Re-enable SENSE=Low so the pin can trigger on falling edges again
+    // Clear any latched state before enabling SENSE
+    p->LATCH = (1UL << idx);
+
+    // Re-enable SENSE=Low for future falling edges
     uint32_t cnf = p->PIN_CNF[idx];
     cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
     cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Low);
     p->PIN_CNF[idx] = cnf;
-}
 
+    NVIC_EnableIRQ(GPIOTE_IRQn);
+
+}
 
 /**
  * @brief stack_push all active GPIO pins except the specified one to a stack using absolute pin numbers

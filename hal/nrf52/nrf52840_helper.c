@@ -1,12 +1,5 @@
 #include "nrf52840_helper.h"
 
-uint64_t gpio_blacklist_intern_mask = 0; // Global blacklist for GPIO pins
-gpio_interrupt_handler_t rising_handler_global = NULL;
-gpio_interrupt_handler_t falling_handler_global = NULL;
-
-static volatile uint32_t prev_input_state_p0 = 0;
-static volatile uint32_t prev_input_state_p1 = 0;
-
 /**
  * @brief Initialize the IO peripherals
  *

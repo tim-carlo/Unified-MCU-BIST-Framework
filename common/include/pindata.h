@@ -48,4 +48,8 @@ bool is_role_responder(PinData *data);
 bool is_blacklisted(PinData *data);
 bool is_successful(PinData *data);
 void set_blacklisted_in_mask(volatile uint64_t *mask, uint32_t pin);
+void debug_pin_data_complete(PinData *data);
+void debug_pin_data_array_analysis(PinData *array, uint32_t length);
+
+
 #endif // PINDATA_H
