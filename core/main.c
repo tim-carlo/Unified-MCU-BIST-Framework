@@ -1,3 +1,5 @@
+
+
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_gpio.h"
@@ -64,7 +66,7 @@
 #define SIGNAL_DURATION_TIME_INACURACY 10 // Allowed inaccuracy in signal duration in ms
 
 #define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
-#define TIMEOUT_SYN_ACK_MS 100         // Duration of ACK signal in ms
+#define TIMEOUT_SYN_ACK_MS 1000         // Duration of ACK signal in ms
 #define TIMEOUT_ACK_MS 1000            // Duration of SYN-ACK signal in ms
 
 #define DEBOUNCE_DELAY_US 20
@@ -122,13 +124,11 @@ uint32_t number_of_falls = 0; // Counter for the number of falling edges
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint8_t pin)
 {
+
     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
         return;
-
     // Check if the signal is stable
-    if (gpio_read(pin) == 0)
-        return; // Ignore if the pin is low, we are looking for rising edges
-
+    number_of_rises++;
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
@@ -167,23 +167,16 @@ void rising_handler(uint8_t pin)
         //  printf("-> Unknown signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event_valid = false;
     }
-    number_of_rises++;
 }
 
 void falling_handler(uint8_t pin) // ← uint8_t statt uint32_t
 {
     if (pin == current_driven_pin)
         return;
-    // Check if the signal is stable
-    if (gpio_read(pin) == 1)
-        return; // Ignore if the pin is high, we are looking for falling edges
-
+    number_of_falls++;
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     last_rising_pin = pin; // Store the last rising pin event
-                           // printf("Falling edge detected on pin %u\n", (unsigned int)pin);
-
     pin_data[pin].last_falling_edge = current_ticks;
-    number_of_falls++;
 }
 
 void send_signal(uint8_t pin, uint32_t duration)
@@ -284,8 +277,8 @@ int main(void)
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (black_list_mask & (1ULL << pin))
-            continue;          // Skip blacklisted pins (bit = 1)
-        gpio_pullup_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
+            continue;      // Skip blacklisted pins (bit = 1)
+        gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
 
     uint64_t get_initial_state = get_initial_pin_state(0);
@@ -344,20 +337,6 @@ int main(void)
 
                     last_rising_pin = INVALID_PIN; // Reset the last rising pin flag after processing
                 }
-                /*   Stack *active_pins_stack = create_stack(NUMBER_OF_GPIO_PINS, sizeof(uint8_t));
-                  uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
-                  push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
-
-                  if (!is_stack_empty(active_pins_stack))
-                  {
-                      uint8_t pin;
-                      stack_pop(active_pins_stack, &pin);
-
-                      set_selected_pin(pin); // Set the selected pin to the active pin
-                      printf("Active pin detected: %u\n", selected_pin);
-                      active_signal_detected = true;
-                  }
-                  free_stack(active_pins_stack); */
             }
 
             stop_timer(TIMER_A);
@@ -388,33 +367,15 @@ int main(void)
 
             bool another_active_pin_detected = false;
 
-            while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received)
+            while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received && !another_active_pin_detected)
             {
-                // Check for active pins except the selected one
-                /*                 Stack *active_pins_stack = create_stack(NUMBER_OF_GPIO_PINS, sizeof(uint8_t));
-                                uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin); // Exclude the selected pin from the search
-                                push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
-
-                                if (!is_stack_empty(active_pins_stack))
-                                {
-                                    uint8_t pin;
-                                    stack_pop(active_pins_stack, &pin);
-
-                                    printf("Another active pin detected: %u\n", pin);
-                                    another_active_pin_detected = true;
-                                    set_selected_pin(pin); // Set the selected pin to the active pin
-                                }
-                                free_stack(active_pins_stack); */
                 if (last_rising_pin != INVALID_PIN && last_rising_pin != selected_pin)
                 {
                     printf("Another active pin detected: %u\n", last_rising_pin);
                     another_active_pin_detected = true;
                     set_selected_pin(last_rising_pin);
                     last_rising_pin = INVALID_PIN; // Reset the last rising pin flag after processing
-                }
-                else if (last_rising_pin != INVALID_PIN && last_rising_pin == selected_pin)
-                {
-                    last_rising_pin = INVALID_PIN; // Reset the last rising pin flag after processing
+                    break;                         // Exit the loop to process the new selected pin
                 }
 
                 // Check for SYN event in the pin_events
@@ -431,15 +392,10 @@ int main(void)
 
             if (signal_received && !another_active_pin_detected)
             {
-                // We received a SYN signal, so we become the responder
-                printf("Received SYN signal, becoming RESPONDER\n");
                 state = RESPONDER;
             }
-            else if (another_active_pin_detected)
+            else if (another_active_pin_detected && !signal_received)
             {
-                // Another active pin was detected, we become the initiator
-                printf("Another active pin detected, going back to MAYBE_RESPONDER.\n");
-
                 state = MAYBE_RESPONDER;
             }
             else
@@ -464,35 +420,24 @@ int main(void)
         {
             set_role(selected_pin_data, INITIATOR_ROLE);
 
-            start_timer(TIMER_A);
+            
 
             // Send SYN signal as initiator
             current_driven_pin = selected_pin; // Set the flag to indicate self-driven signal
             printf("CURRENT_DRIVEN_PIN: %u \n", current_driven_pin);
             printf("INITIATOR_MODE: Sending SYN signal\n");
-            uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
+
+            start_timer(TIMER_A);
+            
 
             gpio_od_hold_low(selected_pin);
+            uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
             printf("Sending SYN signal on pin %u \n", selected_pin);
             bool received_other_signal = false;
+            
 
             while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < SYN_SIGNAL_DURATION_MS) && !received_other_signal)
             {
-                /*                 Stack *active_pins_stack = create_stack(NUMBER_OF_GPIO_PINS, sizeof(uint8_t));
-                                uint64_t tmp_mask = black_list_mask | (1ULL << selected_pin);
-                                push_active_pins_except_blacklist_to_stack(active_pins_stack, 0, tmp_mask);
-
-                                if (!is_stack_empty(active_pins_stack))
-                                {
-                                    uint8_t pin;
-                                    stack_pop(active_pins_stack, &pin);
-                                    set_selected_pin(pin);
-                                    printf("Another pin is high: %u, switching to MAYBE_RESPONDER\n", selected_pin);
-                                    received_other_signal = true;
-                                    free_stack(active_pins_stack);
-                                    break;
-                                }
-                                free_stack(active_pins_stack); */
                 if (last_rising_pin != INVALID_PIN && last_rising_pin != selected_pin)
                 {
                     printf("Another pin is high: %u, switching to MAYBE_RESPONDER\n", last_rising_pin);
@@ -544,7 +489,6 @@ int main(void)
                     if (last_event_valid && last_event.is_syn_ack && last_event.pin == selected_pin)
                     {
                         signal_received = true;
-                        printf("Received SYN-ACK signal\n");
                         break;
                     }
                 }
@@ -595,7 +539,8 @@ int main(void)
                         // Log the increase as this should be done only once
                         timeout_inceased = true;
                         printf("Increased ACK timeout to %lu ms\n", ack_timeout);
-                    } else
+                    }
+                    else
                     {
                         printf("Received signal on pin %u, but it is not the expected pin %u\n", last_rising_pin, selected_pin);
                     }
@@ -618,6 +563,8 @@ int main(void)
             else
             {
                 printf("No final signal received, switching to ERROR_MODE.\n");
+                if (timeout_inceased)
+                    printf("Timeout was increased to %lu ms\n", ack_timeout);
                 state = FAILED;
             }
 
@@ -663,6 +610,9 @@ int main(void)
             gpio_drive_high(ABSOLUTE_PIN_GREEN);
             green_led_on = true;
 
+
+            printf("Handshake successful on pin %u!\n", selected_pin);
+
             delay_ms(1000);
 
             // Reset state
@@ -675,6 +625,8 @@ int main(void)
             printf("Number of rises: %lu, Number of falls: %lu\n", (unsigned long)number_of_rises, (unsigned long)number_of_falls);
             delay_ms(500);
             break;
+
+
         }
         }
     }
