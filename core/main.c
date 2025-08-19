@@ -22,6 +22,8 @@
 
 #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
 #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
+
+#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -46,6 +48,8 @@
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
 
+#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #endif
 
 #include "stack.h"
@@ -63,10 +67,12 @@
 #define SYN_SIGNAL_DURATION_MS 100        // Duration of SYN signal in ms
 #define SYN_ACK_SIGNAL_DURATION_MS 500    // Duration of SYN-ACK signal in ms
 #define ACK_SIGNAL_DURATION_MS 1000       // Duration of ACK signal in ms
-#define SIGNAL_DURATION_TIME_INACURACY 10 // Allowed inaccuracy in signal duration in ms
+#define SIGNAL_DURATION_TIME_INACURACY 50 // Allowed inaccuracy in signal duration in ms
+
+#define SIGNAL_BUFFER_DURATION_MS 500 // Duration for which the signal is buffered
 
 #define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
-#define TIMEOUT_SYN_ACK_MS 1000         // Duration of ACK signal in ms
+#define TIMEOUT_SYN_ACK_MS 1000        // Duration of ACK signal in ms
 #define TIMEOUT_ACK_MS 1000            // Duration of SYN-ACK signal in ms
 
 #define DEBOUNCE_DELAY_US 20
@@ -103,6 +109,7 @@ typedef enum
     INIT,
     MAYBE_RESPONDER,
     INITIATOR,
+    SEND_SYN,
     RESPONDER,
     SUCCESS,
     FAILED,
@@ -120,6 +127,8 @@ volatile uint64_t black_list_mask = 0; // Global blacklist mask for GPIO pins
 
 uint32_t number_of_rises = 0; // Counter for the number of rising edges detected
 uint32_t number_of_falls = 0; // Counter for the number of falling edges
+
+uint32_t number_of_successful_handshakes = 0; // Counter for successful handshakes
 
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint8_t pin)
@@ -362,12 +371,12 @@ int main(void)
             start_timer(TIMER_A);
             bool signal_received = false;
 
-            uint64_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
+            uint64_t start_ticks = get_timer_ticks(TIMER_A);
             // Create a stack to hold active pins
 
             bool another_active_pin_detected = false;
 
-            while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received && !another_active_pin_detected)
+            while ((timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < TIMEOUT_RESPONDER_MODE_MS) && !signal_received && !another_active_pin_detected)
             {
                 if (last_rising_pin != INVALID_PIN && last_rising_pin != selected_pin)
                 {
@@ -420,23 +429,19 @@ int main(void)
         {
             set_role(selected_pin_data, INITIATOR_ROLE);
 
-            
-
             // Send SYN signal as initiator
             current_driven_pin = selected_pin; // Set the flag to indicate self-driven signal
             printf("CURRENT_DRIVEN_PIN: %u \n", current_driven_pin);
             printf("INITIATOR_MODE: Sending SYN signal\n");
 
             start_timer(TIMER_A);
-            
 
             gpio_od_hold_low(selected_pin);
-            uint32_t ticks_at_starting_point = get_timer_ticks(TIMER_A);
+            uint32_t start_ticks = get_timer_ticks(TIMER_A);
             printf("Sending SYN signal on pin %u \n", selected_pin);
             bool received_other_signal = false;
-            
 
-            while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < SYN_SIGNAL_DURATION_MS) && !received_other_signal)
+            while ((timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < SYN_SIGNAL_DURATION_MS))
             {
                 if (last_rising_pin != INVALID_PIN && last_rising_pin != selected_pin)
                 {
@@ -451,7 +456,9 @@ int main(void)
                     last_rising_pin = INVALID_PIN; // Reset the last rising pin flag after processing
                 }
             }
-            gpio_od_release(selected_pin); // Release the pin after sending the signal
+            gpio_od_release(selected_pin);    // Release the pin after sending the signal
+            set_syn(selected_pin_data, true); // Set the SYN flag in the pin data
+
             printf("SYN signal sent on pin %u\n", selected_pin);
             current_driven_pin = INVALID_PIN; // Reset the flag after sending the signal
             stop_timer(TIMER_A);
@@ -464,31 +471,35 @@ int main(void)
             {
                 printf("SYN signal sent, waiting for SYN-ACK signal...\n");
                 start_timer(TIMER_A);
-                ticks_at_starting_point = get_timer_ticks(TIMER_A);
+                start_ticks = get_timer_ticks(TIMER_A);
                 uint32_t syn_ack_timeout = TIMEOUT_SYN_ACK_MS;
                 bool timeout_inceased = false;
                 bool signal_received = false;
 
-                while ((timer_diff_ms(ticks_at_starting_point, get_timer_ticks(TIMER_A)) < syn_ack_timeout) && !signal_received)
+                while ((timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < syn_ack_timeout))
                 {
                     if (last_rising_pin != INVALID_PIN)
                     {
                         if ((last_rising_pin == selected_pin) && !timeout_inceased)
                         {
+                            start_ticks = get_timer_ticks(TIMER_A); // Reset the start ticks to the current time
+
                             // If the line is low, increase the timeout
-                            syn_ack_timeout += SYN_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY; // Increase timeout by SYN signal duration
+                            syn_ack_timeout += SYN_SIGNAL_DURATION_MS + SIGNAL_BUFFER_DURATION_MS; // Increase timeout by SYN signal duration
                             // Log the increase as this should be done only once
                             timeout_inceased = true;
                         }
                         else
                         {
                             printf("Received signal on pin %u, but it is not the expected pin %u\n", last_rising_pin, selected_pin);
+                            // TODO: Handle unexpected pin signal
                         }
                         last_rising_pin = INVALID_PIN; // Reset the last rising pin flag after processing
                     }
                     if (last_event_valid && last_event.is_syn_ack && last_event.pin == selected_pin)
                     {
                         signal_received = true;
+                        last_event_valid = false; // Reset after processing
                         break;
                     }
                 }
@@ -498,6 +509,7 @@ int main(void)
                     set_syn_ack(selected_pin_data, true);
                     // Acknowledge the SYN-ACK signal
                     send_signal(selected_pin, ACK_SIGNAL_DURATION_MS);
+                    set_ack(selected_pin_data, true);
                     state = SUCCESS;
                 }
                 else
@@ -519,6 +531,7 @@ int main(void)
 
             // Acknowledge the initial signal
             send_signal(selected_pin, SYN_ACK_SIGNAL_DURATION_MS);
+            set_syn_ack(selected_pin_data, true);
 
             bool signal_received = false;
             start_timer(TIMER_A);
@@ -528,17 +541,17 @@ int main(void)
             bool timeout_inceased = false;
 
             // Wait for final signal from initiator
-            while ((timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < ack_timeout) && !signal_received)
+            while ((timer_diff_ms(start_ticks, get_timer_ticks(TIMER_A)) < ack_timeout))
             {
                 if (last_rising_pin != INVALID_PIN)
                 {
                     if ((last_rising_pin == selected_pin) && !timeout_inceased)
                     {
                         // If the line is low, increase the timeout
-                        ack_timeout += ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY; // Increase timeout by ACK signal duration
+                        start_ticks = get_timer_ticks(TIMER_A);                                // Reset the start ticks to the current time
+                        ack_timeout = ACK_SIGNAL_DURATION_MS + SIGNAL_BUFFER_DURATION_MS; // Increase timeout by ACK signal duration
                         // Log the increase as this should be done only once
                         timeout_inceased = true;
-                        printf("Increased ACK timeout to %lu ms\n", ack_timeout);
                     }
                     else
                     {
@@ -550,6 +563,7 @@ int main(void)
                 if (last_event_valid && last_event.is_ack && last_event.pin == selected_pin)
                 {
                     signal_received = true;
+                    set_ack(selected_pin_data, true);
                     printf("Received ACK signal\n");
                     last_event_valid = false; // Reset after processing
                     break;
@@ -607,13 +621,11 @@ int main(void)
             set_successful(selected_pin_data, true);
             set_blacklisted(selected_pin_data, false); // Ensure the pin is not blacklisted
             set_blacklisted_in_mask(&black_list_mask, selected_pin);
-            gpio_drive_high(ABSOLUTE_PIN_GREEN);
             green_led_on = true;
-
+            gpio_drive_high(ABSOLUTE_PIN_GREEN); // Turn on the green LED
+            number_of_successful_handshakes++;
 
             printf("Handshake successful on pin %u!\n", selected_pin);
-
-            delay_ms(1000);
 
             // Reset state
             state = INIT;
@@ -622,11 +634,13 @@ int main(void)
         case SCANNED_ALL_PINS:
         {
             printf("All pins scanned, exiting...\n");
+
+            // Print final statistics
+            debug_pin_data_array_analysis(pin_data, NUMBER_OF_GPIO_PINS);
             printf("Number of rises: %lu, Number of falls: %lu\n", (unsigned long)number_of_rises, (unsigned long)number_of_falls);
             delay_ms(500);
+            printf("Number of successful handshakes: %lu\n", (unsigned long)number_of_successful_handshakes);
             break;
-
-
         }
         }
     }
