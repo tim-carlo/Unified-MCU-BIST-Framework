@@ -1,8 +1,6 @@
 #include "PinData.h"
 #include "printf.h"
 
-
-
 /**
  * @brief Reset the PinData structure to its initial state
  *
@@ -240,48 +238,6 @@ void set_blacklisted_in_mask(volatile uint64_t *mask, uint32_t pin)
 }
 
 /**
- * @brief Debug function to decode and print all step flags
- *
- * @param data Pointer to the PinData structure
- */
-void debug_pin_steps(PinData *data)
-{
-    printf("=== PIN %u STEPS DEBUG ===\n", data->pin);
-    printf("Raw steps value: 0x%02X (binary: ", data->steps);
-    
-    // Binary representation
-    for (int i = 7; i >= 0; i--) {
-        printf("%d", (data->steps >> i) & 1);
-    }
-    printf(")\n");
-    
-    // Individual flags
-    printf("Step flags breakdown:\n");
-    printf("  Bit 0 - ACK signal:      %s\n", is_ack(data) ? "SET" : "CLEAR");
-    printf("  Bit 1 - SYN-ACK signal: %s\n", is_syn_ack(data) ? "SET" : "CLEAR");
-    printf("  Bit 2 - SYN signal:     %s\n", is_syn(data) ? "SET" : "CLEAR");
-    printf("  Bit 3 - Role:           %s\n", is_role_responder(data) ? "RESPONDER" : "INITIATOR");
-    printf("  Bit 4 - Blacklisted:    %s\n", is_blacklisted(data) ? "YES" : "NO");
-    printf("  Bit 5 - Successful:     %s\n", is_successful(data) ? "YES" : "NO");
-    printf("  Bit 6 - Reserved:       %s\n", (data->steps & (1 << 6)) ? "SET" : "CLEAR");
-    printf("  Bit 7 - Reserved:       %s\n", (data->steps & (1 << 7)) ? "SET" : "CLEAR");
-    
-    // Signal sequence analysis
-    printf("Signal sequence: ");
-    if (is_syn(data) && is_syn_ack(data) && is_ack(data)) {
-        printf("COMPLETE (SYN -> SYN-ACK -> ACK)\n");
-    } else if (is_syn(data) && is_syn_ack(data)) {
-        printf("PARTIAL (SYN -> SYN-ACK, waiting for ACK)\n");
-    } else if (is_syn(data)) {
-        printf("INITIATED (SYN sent, waiting for SYN-ACK)\n");
-    } else {
-        printf("NONE or INVALID\n");
-    }
-    
-    printf("========================\n");
-}
-
-/**
  * @brief Debug function to print complete PinData with detailed analysis
  *
  * @param data Pointer to the PinData structure
@@ -291,40 +247,44 @@ void debug_pin_data_complete(PinData *data)
     printf("\n=== COMPLETE PIN DATA DEBUG ===\n");
     printf("Pin Number: %u\n", data->pin);
     printf("Error Reason: %u (", data->error_reason);
-    
-    switch (data->error_reason) {
-        case ERROR_REASON_NONE:
-            printf("NONE");
-            break;
-        case ERROR_REASON_TIMEOUT:
-            printf("TIMEOUT");
-            break;
-        case ERROR_REASON_BLACKLISTED:
-            printf("BLACKLISTED");
-            break;
-        case ERROR_REASON_DISTURBED:
-            printf("DISTURBED");
-            break;
-        case ERROR_REASON_TRIES_EXCEEDED:
-            printf("TRIES_EXCEEDED");
-            break;
-        default:
-            printf("UNKNOWN");
-            break;
+
+    switch (data->error_reason)
+    {
+    case ERROR_REASON_NONE:
+        printf("NONE");
+        break;
+    case ERROR_REASON_TIMEOUT:
+        printf("TIMEOUT");
+        break;
+    case ERROR_REASON_BLACKLISTED:
+        printf("BLACKLISTED");
+        break;
+    case ERROR_REASON_DISTURBED:
+        printf("DISTURBED");
+        break;
+    case ERROR_REASON_TRIES_EXCEEDED:
+        printf("TRIES_EXCEEDED");
+        break;
+    default:
+        printf("UNKNOWN");
+        break;
     }
     printf(")\n");
-    
+
     printf("Number of tries: %u\n", data->num_tries);
     printf("False responses: %u\n", data->num_false_responses);
     printf("Last falling edge: %lu (", (unsigned long)data->last_falling_edge);
-    
-    if (data->last_falling_edge == INVALID_TIMESTAMP) {
+
+    if (data->last_falling_edge == INVALID_TIMESTAMP)
+    {
         printf("INVALID");
-    } else {
+    }
+    else
+    {
         printf("valid timestamp");
     }
     printf(")\n");
-    
+
     debug_pin_steps(data);
     printf("==============================\n\n");
 }
@@ -337,177 +297,73 @@ void debug_pin_data_complete(PinData *data)
  */
 void debug_pin_data_array_analysis(PinData *array, uint32_t length)
 {
-    printf("\n=== PIN DATA ARRAY ANALYSIS ===\n");
-    printf("Total pins: %u\n", length);
-    
-    // Statistics
-    uint32_t active_pins = 0;
-    uint32_t blacklisted_pins = 0;
-    uint32_t successful_pins = 0;
-    uint32_t syn_pins = 0;
-    uint32_t syn_ack_pins = 0;
-    uint32_t ack_pins = 0;
-    uint32_t complete_handshakes = 0;
-    uint32_t initiator_pins = 0;
-    uint32_t responder_pins = 0;
-    uint32_t error_pins = 0;
-    
+    uint32_t active = 0;
+    uint32_t blacklisted = 0;
+    uint32_t success = 0;
+    uint32_t syn = 0, syn_ack = 0, ack = 0;
+    uint32_t handshakes = 0;
+    uint32_t initiators = 0, responders = 0;
+    uint32_t errors = 0;
+
     for (uint32_t i = 0; i < length; i++) {
-        PinData *pin = &array[i];
-        
-        if (pin->steps != 0 || pin->num_tries > 0 || pin->error_reason != ERROR_REASON_NONE) {
-            active_pins++;
-        }
-        
-        if (is_blacklisted(pin)) blacklisted_pins++;
-        if (is_successful(pin)) successful_pins++;
-        if (is_syn(pin)) syn_pins++;
-        if (is_syn_ack(pin)) syn_ack_pins++;
-        if (is_ack(pin)) ack_pins++;
-        if (is_syn(pin) && is_syn_ack(pin) && is_ack(pin)) complete_handshakes++;
-        if (is_role_responder(pin)) responder_pins++;
-        else if (pin->steps != 0) initiator_pins++;
-        if (pin->error_reason != ERROR_REASON_NONE) error_pins++;
+        PinData *p = &array[i];
+
+        if (p->steps || p->num_tries > 0 || p->error_reason != ERROR_REASON_NONE)
+            active++;
+
+        if (is_blacklisted(p)) blacklisted++;
+        if (is_successful(p))  success++;
+        if (is_syn(p))         syn++;
+        if (is_syn_ack(p))     syn_ack++;
+        if (is_ack(p))         ack++;
+
+        if (is_syn(p) && is_syn_ack(p) && is_ack(p))
+            handshakes++;
+
+        if (is_role_responder(p))
+            responders++;
+        else if (p->steps)
+            initiators++;
     }
-    
-    printf("\n--- STATISTICS ---\n");
-    printf("Active pins:         %u / %u (%.1f%%)\n", active_pins, length, 
-           (float)active_pins * 100.0f / length);
-    printf("Blacklisted pins:    %u (%.1f%%)\n", blacklisted_pins, 
-           (float)blacklisted_pins * 100.0f / length);
-    printf("Successful pins:     %u (%.1f%%)\n", successful_pins, 
-           (float)successful_pins * 100.0f / length);
-    printf("Complete handshakes: %u\n", complete_handshakes);
-    printf("SYN signals:         %u\n", syn_pins);
-    printf("SYN-ACK signals:     %u\n", syn_ack_pins);
-    printf("ACK signals:         %u\n", ack_pins);
-    printf("Initiator pins:      %u\n", initiator_pins);
-    printf("Responder pins:      %u\n", responder_pins);
-    printf("Pins with errors:    %u\n", error_pins);
-    
-    printf("\n--- DETAILED PIN STATUS ---\n");
+
+    printf("Active pins:     %u / %u\n", active, length);
+    printf("Blacklisted:     %u\n", blacklisted);
+    printf("Successful:      %u\n", success);
+    printf("Handshakes:      %u\n", handshakes);
+    printf("SYN:             %u\n", syn);
+    printf("SYN-ACK:         %u\n", syn_ack);
+    printf("ACK:             %u\n", ack);
+    printf("Initiators:      %u\n", initiators);
+    printf("Responders:      %u\n", responders);
+    printf("Errors:          %u\n", errors);
+
     for (uint32_t i = 0; i < length; i++) {
-        PinData *pin = &array[i];
-        
-        // Nur aktive Pins anzeigen
-        if (pin->steps != 0 || pin->num_tries > 0 || pin->error_reason != ERROR_REASON_NONE) {
-            printf("Pin %2u: ", pin->pin);
-            
-            if (is_blacklisted(pin)) printf("[BLACKLISTED] ");
-            if (is_successful(pin)) printf("[SUCCESS] ");
-            
-            printf("Steps=0x%02X ", pin->steps);
-            printf("(");
-            if (is_syn(pin)) printf("S");
-            if (is_syn_ack(pin)) printf("A");
-            if (is_ack(pin)) printf("K");
-            printf(") ");
-            
-            printf("%s ", is_role_responder(pin) ? "RESP" : "INIT");
-            printf("Tries=%u ", pin->num_tries);
-            printf("Errors=%u ", pin->num_false_responses);
-            
-            if (pin->error_reason != ERROR_REASON_NONE) {
-                printf("ERR=%u ", pin->error_reason);
-            }
-            
-            if (pin->last_falling_edge != INVALID_TIMESTAMP) {
-                printf("LastEdge=%lu", (unsigned long)pin->last_falling_edge);
-            }
-            
-            printf("\n");
-        }
+        PinData *p = &array[i];
+
+        // show only active pins with some data
+        if (!(p->steps || p->num_tries > 0 || p->error_reason != ERROR_REASON_NONE))
+            continue;
+
+        printf("Pin %2u: ", p->pin);
+
+        if (is_blacklisted(p)) printf("[BL] ");
+        if (is_successful(p))  printf("[OK] ");
+
+        if (is_syn(p))     printf("S");
+        if (is_syn_ack(p)) printf("A");
+        if (is_ack(p))     printf("K");
+        printf(") ");
+
+        printf("%s ", is_role_responder(p) ? "RESP" : "INIT");
+        printf("Tries=%u ", p->num_tries);
+        printf("ErrCnt=%u ", p->num_false_responses);
+
+        if (p->error_reason != ERROR_REASON_NONE)
+            printf("Err=%u ", p->error_reason);
+
+        if (p->last_falling_edge != INVALID_TIMESTAMP)
+            printf("LastEdge=%lu", (unsigned long)p->last_falling_edge);
+
+        printf("\n");
     }
-    printf("===============================\n\n");
 }
-
-/**
- * @brief Real-time monitor function for pin data changes
- *
- * @param array Pointer to the array of PinData structures
- * @param length Number of elements in the array
- * @param pin_index Specific pin to monitor (or -1 for all active pins)
- */
-void monitor_pin_data_changes(PinData *array, uint32_t length, int32_t pin_index)
-{
-    static PinData previous_state[64];  // Assuming max 64 pins
-    static bool first_call = true;
-    
-    if (first_call) {
-        // Initialize previous state
-        for (uint32_t i = 0; i < length && i < 64; i++) {
-            previous_state[i] = array[i];
-        }
-        first_call = false;
-        printf("=== PIN DATA MONITOR STARTED ===\n");
-        return;
-    }
-    
-    printf("\n=== PIN DATA CHANGES ===\n");
-    bool changes_detected = false;
-    
-    for (uint32_t i = 0; i < length && i < 64; i++) {
-        if (pin_index >= 0 && (uint32_t)pin_index != i) continue;
-        
-        PinData *current = &array[i];
-        PinData *previous = &previous_state[i];
-        
-        if (current->steps != previous->steps ||
-            current->num_tries != previous->num_tries ||
-            current->num_false_responses != previous->num_false_responses ||
-            current->error_reason != previous->error_reason ||
-            current->last_falling_edge != previous->last_falling_edge) {
-            
-            changes_detected = true;
-            printf("Pin %u changed:\n", i);
-            
-            if (current->steps != previous->steps) {
-                printf("  Steps: 0x%02X -> 0x%02X\n", previous->steps, current->steps);
-                printf("    Old flags: ");
-                if (previous->steps & (1<<0)) printf("ACK ");
-                if (previous->steps & (1<<1)) printf("SYN-ACK ");
-                if (previous->steps & (1<<2)) printf("SYN ");
-                if (previous->steps & (1<<3)) printf("RESP ");
-                if (previous->steps & (1<<4)) printf("BLACK ");
-                if (previous->steps & (1<<5)) printf("SUCCESS ");
-                printf("\n");
-                printf("    New flags: ");
-                if (current->steps & (1<<0)) printf("ACK ");
-                if (current->steps & (1<<1)) printf("SYN-ACK ");
-                if (current->steps & (1<<2)) printf("SYN ");
-                if (current->steps & (1<<3)) printf("RESP ");
-                if (current->steps & (1<<4)) printf("BLACK ");
-                if (current->steps & (1<<5)) printf("SUCCESS ");
-                printf("\n");
-            }
-            
-            if (current->num_tries != previous->num_tries) {
-                printf("  Tries: %u -> %u\n", previous->num_tries, current->num_tries);
-            }
-            
-            if (current->num_false_responses != previous->num_false_responses) {
-                printf("  False responses: %u -> %u\n", previous->num_false_responses, current->num_false_responses);
-            }
-            
-            if (current->error_reason != previous->error_reason) {
-                printf("  Error reason: %u -> %u\n", previous->error_reason, current->error_reason);
-            }
-            
-            if (current->last_falling_edge != previous->last_falling_edge) {
-                printf("  Last falling edge: %lu -> %lu\n", 
-                       (unsigned long)previous->last_falling_edge, 
-                       (unsigned long)current->last_falling_edge);
-            }
-            
-            // Update previous state
-            previous_state[i] = *current;
-        }
-    }
-    
-    if (!changes_detected) {
-        printf("No changes detected.\n");
-    }
-    printf("=======================\n\n");
-}
-
-
