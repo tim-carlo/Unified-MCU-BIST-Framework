@@ -14,6 +14,9 @@
         "ios": "c",
         "complex": "c",
         "stdint.h": "c",
-        "stack.h": "c"
+        "stack.h": "c",
+        "nrf52840_utils.h": "c",
+        "nrf52840_time.h": "c",
+        "msp430fr5994_gpio.h": "c"
     }
 }

@@ -22,9 +22,15 @@
 
 #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
 #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
+#define PINA ABS_PIN(3, 6)
+#define PINB ABS_PIN(3, 7)
+
+#define DEBUG_PIN ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
 
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
+
+// #include "nrf52840_gpio.h"
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
@@ -44,6 +50,11 @@
 
 #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
 #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
+
+#define PINA 11
+#define PINB 12
+
+#define DEBUG_PIN 26 // Pin used for debugging, can be changed as needed
 
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
@@ -71,7 +82,7 @@
 
 #define SIGNAL_BUFFER_DURATION_MS 500 // Duration for which the signal is buffered
 
-#define TIMEOUT_RESPONDER_MODE_MS 2000 // Timeout for responder mode in ms
+#define TIMEOUT_RESPONDER_MODE_MS 1000 // Timeout for responder mode in ms
 #define TIMEOUT_SYN_ACK_MS 1200        // Timeout for SYN-ACK signal in ms
 #define TIMEOUT_ACK_MS 2000            // Timeout for ACK signal in ms
 
@@ -142,32 +153,29 @@ bool disable_interrupts = false; // Flag to disable interrupts during critical s
 // Interrupt handler for rising/falling edges on test pin
 void rising_handler(uint8_t pin)
 {
+
     if (disable_interrupts)
-        return; // Ignore rising edges if interrupts are disabled
+    {
+       // gpio_drive_low(DEBUG_PIN); // Turn off debug pin if interrupts are disabled
+        return;                    // Ignore rising edges if interrupts are disabled
+    }
     // Check if pin is valid for processing
     if (pin == current_driven_pin || pin_data[pin].last_falling_edge == INVALID_TIMESTAMP)
+    {
+      //  gpio_drive_low(DEBUG_PIN); // Turn off debug pin if pin is not valid
         return;
-
-    // Debounce: read the pin 50 times, require all to be high (1)
-    // bool stable = true;
-    // for (int i = 0; i < 50; ++i)
-    // {
-    //     if (!gpio_read(pin))
-    //     {
-    //         stable = false;
-    //         break;
-    //     }
-    // }
-    // if (!stable)
-    //     return; // Ignore unstable signals
-    // Check if the signal is stable
+    }
+    gpio_drive_high(DEBUG_PIN); // Turn on debug pin to indicate rising edge detected
     number_of_rises++;
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     uint32_t signal_duration = timer_diff_ms(pin_data[pin].last_falling_edge, current_ticks);
     pin_data[pin].last_falling_edge = INVALID_TIMESTAMP;
 
     if (signal_duration < MINIMUM_SIGNAL_DURATION_MS || signal_duration > SYN_ACK_SIGNAL_DURATION_MS + SIGNAL_DURATION_TIME_INACURACY)
+    {
+        gpio_drive_low(DEBUG_PIN); // Turn off debug pin if signal duration is invalid
         return;
+    }
 
     PinEvent event = {0};
 
@@ -200,36 +208,37 @@ void rising_handler(uint8_t pin)
         //  printf("-> Unknown signal detected on pin %u, duration: %lu ms\n", (unsigned int)pin, (unsigned long)signal_duration);
         last_event_valid = false;
     }
+    gpio_drive_low(DEBUG_PIN); // Turn off debug pin after processing the rising edge
 }
 
 void falling_handler(uint8_t pin)
 {
+
     if (disable_interrupts)
-        return; // Ignore rising edges if interrupts are disabled
+    {
+      //  gpio_drive_low(DEBUG_PIN); // Turn off debug pin if interrupts are disabled
+        return;                    // Ignore rising edges if interrupts are disabled
+    }
 
     if (pin == current_driven_pin)
-        return; // Ignore falling edges on the currently driven pin
-
-    // Debounce: read the pin 50 times, require all to be low (0)
-    // bool stable = true;
-    // for (int i = 0; i < 50; ++i)
-    // {
-    //     if (gpio_read(pin))
-    //     {
-    //         stable = false;
-    //         break;
-    //     }
-    // }
-    // if (!stable)
-    //     return; // Ignore unstable signals
+    {
+     //   gpio_drive_low(DEBUG_PIN); // Turn off debug pin if pin is currently driven
+        return;                    // Ignore falling edges on the currently driven pin
+    }
+    
+    gpio_drive_high(DEBUG_PIN); // Turn on debug pin to indicate falling edge detected
 
     if (pin_data[pin].last_falling_edge != INVALID_TIMESTAMP)
-        return; // Ignore if already processing a falling edge for this pin
-    
+    {
+        gpio_drive_low(DEBUG_PIN); // Turn off debug pin if already processing a falling edge for this pin
+        return;                    // Ignore if already processing a falling edge for this pin
+    }
+
     number_of_falls++;
     uint32_t current_ticks = get_timer_ticks(TIMER_B);
     last_rising_pin = pin; // Store the last rising pin event
     pin_data[pin].last_falling_edge = current_ticks;
+    gpio_drive_low(DEBUG_PIN); // Turn off debug pin after processing the falling edge
 }
 
 void send_signal(uint8_t pin, uint32_t duration)
@@ -317,6 +326,15 @@ int main(void)
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
     LOG("Running on %s\n", get_chip_family_name());
     LOG("Chip UID: %s\n", get_unique_id_str());
+
+    gpio_output_init(DEBUG_PIN);
+
+    // for (uint8_t i = 1; i < 11; ++i)
+    // {
+    //     uint32_t test_duration = i * 100; // Duration in ms
+    //     send_signal(PINA, test_duration); // Send a test signal on PINA for 1000 ms
+    //     send_signal(PINB, test_duration); // Send a test signal on PINB for 1000 ms
+    // }
 
     start_timer(TIMER_B);
     start_timer(TIMER_A);

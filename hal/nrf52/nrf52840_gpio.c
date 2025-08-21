@@ -248,10 +248,10 @@ void gpio_od_hold_low(uint8_t abs_pin)
     NVIC_DisableIRQ(GPIOTE_IRQn);
 
     // Disable SENSE to prevent spurious events while driving low
-    uint32_t cnf = p->PIN_CNF[idx];
-    cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
-    cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
-    p->PIN_CNF[idx] = cnf;
+    //uint32_t cnf = p->PIN_CNF[idx];
+    //cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
+    //cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    //p->PIN_CNF[idx] = cnf;
 
     // Configure as output and drive low
     p->OUTCLR = (1UL << idx);

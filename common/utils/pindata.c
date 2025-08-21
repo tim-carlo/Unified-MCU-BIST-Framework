@@ -237,57 +237,6 @@ void set_blacklisted_in_mask(volatile uint64_t *mask, uint32_t pin)
     }
 }
 
-/**
- * @brief Debug function to print complete PinData with detailed analysis
- *
- * @param data Pointer to the PinData structure
- */
-void debug_pin_data_complete(PinData *data)
-{
-    printf("\n=== COMPLETE PIN DATA DEBUG ===\n");
-    printf("Pin Number: %u\n", data->pin);
-    printf("Error Reason: %u (", data->error_reason);
-
-    switch (data->error_reason)
-    {
-    case ERROR_REASON_NONE:
-        printf("NONE");
-        break;
-    case ERROR_REASON_TIMEOUT:
-        printf("TIMEOUT");
-        break;
-    case ERROR_REASON_BLACKLISTED:
-        printf("BLACKLISTED");
-        break;
-    case ERROR_REASON_DISTURBED:
-        printf("DISTURBED");
-        break;
-    case ERROR_REASON_TRIES_EXCEEDED:
-        printf("TRIES_EXCEEDED");
-        break;
-    default:
-        printf("UNKNOWN");
-        break;
-    }
-    printf(")\n");
-
-    printf("Number of tries: %u\n", data->num_tries);
-    printf("False responses: %u\n", data->num_false_responses);
-    printf("Last falling edge: %lu (", (unsigned long)data->last_falling_edge);
-
-    if (data->last_falling_edge == INVALID_TIMESTAMP)
-    {
-        printf("INVALID");
-    }
-    else
-    {
-        printf("valid timestamp");
-    }
-    printf(")\n");
-
-    debug_pin_steps(data);
-    printf("==============================\n\n");
-}
 
 /**
  * @brief Debug function to analyze the entire pin data array with statistics

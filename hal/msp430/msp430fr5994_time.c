@@ -26,11 +26,12 @@ void delay_ticks(uint32_t ticks)
     // Save current timer configuration
     uint16_t saved_config = TA0CTL;
 
-    // Stop and clear timer
-    TA0CTL = TASSEL__SMCLK | ID__1 | MC__STOP | TACLR;
+    // Stop and clear timer, set divider to 8
+    TA0CTL = TASSEL__SMCLK | ID__8 | MC__STOP | TACLR;
     TA0R = 0;
 
-    remaining_ticks = ticks;
+    // Adjust ticks for divider
+    remaining_ticks = (ticks + 7) / 8; 
 
     // Calculate the number of overflows needed
     if (remaining_ticks <= 0x10000)
@@ -63,8 +64,6 @@ void delay_ticks(uint32_t ticks)
 
     // Restore previous timer configuration
     TA0CTL = saved_config;
-    // TA0CTL &= ~(TAIE | MC__UP);
-    // TA0CTL |= TACLR;
 }
 
 // This is needed to quit the delay loop when the timer reaches the target ticks
