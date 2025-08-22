@@ -182,6 +182,7 @@ void reader_isr(void)
         if (task != TASK_NONE)
         {
             something_done = true; // At least one task is being done
+            //data->waiting_counter = 0;
             // Collision detection:
             // Before sending, check if the pin is high and we are sending
             if (data->sending_counter == 0 && !pin_state)
@@ -193,12 +194,25 @@ void reader_isr(void)
                 uint16_t required_cycles = required_cycles_lut[task];
                 if (data->sending_counter >= required_cycles)
                 {
-                    gpio_drive_high(DEBUG_PIN2); // Drive pin high to send signal
                     // Reset when task is complete
                     gpio_od_release(pin); // Release the pin
                     data->sending_counter = 0;
                     set_task(data, TASK_NONE);
-                    gpio_drive_low(DEBUG_PIN2); // Drive pin high to send signal
+
+/*                     switch (task)
+                    {
+                    case TASK_JOB_SYN:
+                        set_syn(data, true); // Set SYN flag
+                        break;
+                    case TASK_JOB_SYN_ACK:
+                        set_ack(data, true); // Set ACK as well
+                        break;
+                    case TASK_JOB_ACK:
+                        set_ack(data, true); // Set ACK flag
+                        break;
+                    default:
+                        break;
+                    } */
                 }
                 else
                 {
@@ -218,7 +232,6 @@ void reader_isr(void)
         }
         if (pin_state) // if no signal is received, reset the receiving counter
         {
-
             uint16_t receive_counter = data->receiving_counter;
             if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLES + CYCLE_INACCURACY))
             {
@@ -227,6 +240,7 @@ void reader_isr(void)
                 set_task(data, TASK_JOB_SYN_ACK);
                 debug_output_binary(2);
                 data->receiving_counter = 0; // Reset receiving counter after SYN
+                //something_done = true;       // Mark that something was done
             }
             else if (receive_counter >= (SYN_ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_ACK_CYCLES + CYCLE_INACCURACY))
             {
@@ -235,17 +249,27 @@ void reader_isr(void)
                 set_task(data, TASK_JOB_ACK);
                 debug_output_binary(3);
                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
+                //something_done = true;       // Mark that something was done
             }
             else if (receive_counter >= (ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (ACK_CYCLES + CYCLE_INACCURACY))
             {
                 // ACK signal detected
                 set_ack(data, true);
                 data->receiving_counter = 0; // Reset receiving counter after ACK
+                //something_done = true;       // Mark that something was done
             }
             else if (receive_counter > (ACK_CYCLES + CYCLE_INACCURACY))
             {
                 // Signal too long, reset counters
                 data->receiving_counter = 0;
+            }
+        }
+        if (is_successful(data))
+        {
+            data->successfull_handshakes++; // Increment successful handshakes counter
+            if (data->successfull_handshakes >= 5)
+            {
+                initial_state_mask |= (1ULL << pin);
             }
         }
 
