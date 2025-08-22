@@ -182,9 +182,9 @@ void reader_isr(void)
         if (task != TASK_NONE)
         {
             something_done = true; // At least one task is being done
-            //data->waiting_counter = 0;
-            // Collision detection:
-            // Before sending, check if the pin is high and we are sending
+            // data->waiting_counter = 0;
+            //  Collision detection:
+            //  Before sending, check if the pin is high and we are sending
             if (data->sending_counter == 0 && !pin_state)
             {
                 set_task(data, TASK_NONE); // Reset task
@@ -195,24 +195,35 @@ void reader_isr(void)
                 if (data->sending_counter >= required_cycles)
                 {
                     // Reset when task is complete
+                    gpio_drive_high(DEBUG_PIN2);
                     gpio_od_release(pin); // Release the pin
                     data->sending_counter = 0;
                     set_task(data, TASK_NONE);
 
-/*                     switch (task)
+                    switch (task)
                     {
                     case TASK_JOB_SYN:
                         set_syn(data, true); // Set SYN flag
                         break;
                     case TASK_JOB_SYN_ACK:
-                        set_ack(data, true); // Set ACK as well
+                        set_syn_ack(data, true); // Set ACK as well
                         break;
                     case TASK_JOB_ACK:
                         set_ack(data, true); // Set ACK flag
+                        if (is_successful(data))
+                        {
+                            data->successfull_handshakes++; // Increment successful handshakes counter
+                            if (data->successfull_handshakes >= 5)
+                            {
+                                initial_state_mask |= (1ULL << pin);
+                            }
+                        }
+
                         break;
                     default:
                         break;
-                    } */
+                    }
+                    gpio_drive_low(DEBUG_PIN2); // Reset debug output pin
                 }
                 else
                 {
@@ -240,7 +251,7 @@ void reader_isr(void)
                 set_task(data, TASK_JOB_SYN_ACK);
                 debug_output_binary(2);
                 data->receiving_counter = 0; // Reset receiving counter after SYN
-                //something_done = true;       // Mark that something was done
+                something_done = true;       // Mark that something was done
             }
             else if (receive_counter >= (SYN_ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_ACK_CYCLES + CYCLE_INACCURACY))
             {
@@ -249,27 +260,27 @@ void reader_isr(void)
                 set_task(data, TASK_JOB_ACK);
                 debug_output_binary(3);
                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
-                //something_done = true;       // Mark that something was done
+                something_done = true;       // Mark that something was done
             }
             else if (receive_counter >= (ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (ACK_CYCLES + CYCLE_INACCURACY))
             {
                 // ACK signal detected
                 set_ack(data, true);
                 data->receiving_counter = 0; // Reset receiving counter after ACK
-                //something_done = true;       // Mark that something was done
+                something_done = true;       // Mark that something was done
+                if (is_successful(data))
+                {
+                    data->successfull_handshakes++; // Increment successful handshakes counter
+                    if (data->successfull_handshakes >= 5)
+                    {
+                        initial_state_mask |= (1ULL << pin);
+                    }
+                }
             }
             else if (receive_counter > (ACK_CYCLES + CYCLE_INACCURACY))
             {
                 // Signal too long, reset counters
                 data->receiving_counter = 0;
-            }
-        }
-        if (is_successful(data))
-        {
-            data->successfull_handshakes++; // Increment successful handshakes counter
-            if (data->successfull_handshakes >= 5)
-            {
-                initial_state_mask |= (1ULL << pin);
             }
         }
 
@@ -413,23 +424,7 @@ int main(void)
 
     while (1)
     {
-        for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-        {
-            if (!(initial_state_mask & (1ULL << pin)))
-            {
-                debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
-            }
-        }
-
-#if defined(NRF52840_XXAA)
-        // Simple busy-wait delay for NRF52840 (in ms)
-        for (volatile uint32_t d = 0; d < 100000; ++d)
-            ;
-#elif defined(__MSP430FR5994__)
-        // Simple busy-wait delay for MSP430 (in ms)
-        for (volatile uint32_t d = 0; d < 10000; ++d)
-            ;
-#endif
+        
     }
 }
 
