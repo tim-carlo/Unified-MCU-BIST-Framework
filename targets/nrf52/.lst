@@ -17,311 +17,942 @@
   17              	.Ltext0:
   18              		.cfi_sections	.debug_frame
   19              		.file 1 "/Users/timcarlo/Desktop/testsoftware/core/main.c"
-  20              		.section	.text.manager_isr,"ax",%progbits
+  20              		.section	.text.debug_output_binary,"ax",%progbits
   21              		.align	1
   22              		.p2align 2,,3
-  23              		.global	manager_isr
+  23              		.global	debug_output_binary
   24              		.syntax unified
   25              		.thumb
   26              		.thumb_func
-  28              	manager_isr:
-  29              	.LFB135:
-   1:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-   2:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
-   3:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_helper.h"
-   4:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_gpio.h"
-   5:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "msp430fr5994_time.h"
-   6:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_utils.h"
-   7:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-   8:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdbool.h>
-   9:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdint.h>
-  10:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  11:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Define pin mappings for MSP430
-  12:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT 1
-  13:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 0
-  14:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT 1
-  15:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 1
-  16:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
-  17:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
-  18:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  19:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_A TIMER_A4
-  20:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_B TIMER_B0
-  21:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  22:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
-  23:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
-  24:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINA ABS_PIN(3, 6)
-  25:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINB ABS_PIN(3, 7)
-  26:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  27:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
-  28:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
-  29:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  30:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
-  31:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  32:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  33:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "nrf52840_gpio.h"
-  34:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  35:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
-  36:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840.h"
-  37:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "nrf52840_time.h"
-  38:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_helper.h"
-  39:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_utils.h"
-  40:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_gpio.h"
-  41:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  42:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
-  43:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 3
-  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT NRF_P1
-  45:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  46:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 3
-  47:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT NRF_P0
-  48:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 4
-  49:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT NRF_P0
-  50:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  51:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
-  52:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
-  53:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  54:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINA 11
-  55:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINB 12
-  56:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  57:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
-  58:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
-  59:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  60:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN 12
-  61:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN 12
+  28              	debug_output_binary:
+  29              	.LVL0:
+  30              	.LFB135:
+   1:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
+   2:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_helper.h"
+   3:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_gpio.h"
+   4:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "msp430fr5994_time.h"
+   5:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "msp430fr5994_utils.h"
+   6:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
+   7:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdbool.h>
+   8:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include <stdint.h>
+   9:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  10:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Define pin mappings for MSP430
+  11:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT 1
+  12:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 0
+  13:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT 1
+  14:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 1
+  15:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
+  16:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
+  17:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  18:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_A TIMER_A4
+  19:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TIMER_B TIMER_B0
+  20:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  21:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN ABS_PIN(3, 7)
+  22:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN ABS_PIN(3, 7)
+  23:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINA ABS_PIN(3, 6)
+  24:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINB ABS_PIN(3, 7)
+  25:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  26:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
+  27:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
+  28:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
+  29:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be
+  30:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  31:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
+  32:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+  33:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  34:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "nrf52840_gpio.h"
+  35:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  36:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+  37:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840.h"
+  38:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "nrf52840_time.h"
+  39:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_helper.h"
+  40:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_utils.h"
+  41:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "nrf52840_gpio.h"
+  42:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  43:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "printf.h"
+  44:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PIN 3
+  45:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define TEST_PORT NRF_P1
+  46:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  47:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PIN 3
+  48:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_RED_PORT NRF_P0
+  49:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PIN 4
+  50:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LED_GREEN_PORT NRF_P0
+  51:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  52:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
+  53:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
+  54:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  55:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINA 11
+  56:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PINB 12
+  57:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  58:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
+  59:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
+  60:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
+  61:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
   62:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  63:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
-  64:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  65:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  66:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  67:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "stack.h"
-  68:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "timing_pindata.h"
-  69:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "check_initial_state.h"
-  70:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "manchester.h"
-  71:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "random_utils.h"
-  72:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  73:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Handshake timing constants
-  74:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIAL_DELAY_MAX_MS 10000
-  75:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklistin
-  76:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_TRIES 5           // Maximum number of tries for a pin before giving up
-  77:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  78:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIATOR_ROLE 0
-  79:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define RESPONDER_ROLE 1
+  63:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_TX_PIN 12
+  64:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANCHESTER_RX_PIN 12
+  65:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  66:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+  67:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  68:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+  69:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  70:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "stack.h"
+  71:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "timing_pindata.h"
+  72:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "check_initial_state.h"
+  73:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // #include "manchester.h"
+  74:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #include "random_utils.h"
+  75:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  76:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Handshake timing constants
+  77:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIAL_DELAY_MAX_MS 10000
+  78:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklistin
+  79:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_NUMBER_OF_TRIES 5           // Maximum number of tries for a pin before giving up
   80:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  81:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG 0 // Set to 1 to enable debug logging, 0 to disable
-  82:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if DEBUG == 1
-  83:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-  84:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #else
-  85:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LOG(fmt, ...)
-  86:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
-  87:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  88:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Global variables
-  89:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
-  90:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  91:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State tracking
-  92:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool red_led_on = false;
-  93:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool green_led_on = false;
-  94:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  95:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile bool last_event_valid = false;
-  96:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t last_rising_pin = INVALID_PIN; // Global variable to store the last rising pin eve
+  81:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define INITIATOR_ROLE 0
+  82:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define RESPONDER_ROLE 1
+  83:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  84:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define READER_INTERVAL_US 5000   // Reader: every 5 ms
+  85:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANAGER_INTERVAL_US 10000 // Manager: every 10 ms
+  86:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define PRESCALER_DIV 8           // Prescaler division factor for the timer
+  87:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
+  88:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MANAGER_TICKS ((MANAGER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
+  89:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  90:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_DURATION 200     // Duration of SYN signal in microseconds
+  91:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_ACK_DURATION 600 // Duration of SYN_ACK signal in microseconds
+  92:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ACK_DURATION 1100    // Duration of ACK signal in microseconds
+  93:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  94:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_CYCLES ((uint32_t)SYN_DURATION * 1000UL / READER_INTERVAL_US)
+  95:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SYN_ACK_CYCLES ((uint32_t)SYN_ACK_DURATION * 1000UL / READER_INTERVAL_US)
+  96:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define ACK_CYCLES ((uint32_t)ACK_DURATION * 1000UL / READER_INTERVAL_US)
   97:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
-  98:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Flags controlled via interrupts
-  99:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 100:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t black_list_mask = 0;    // Global blacklist mask for GPIO pins
- 101:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t initial_state_mask = 0; // Mask to store the initial state of pins
- 102:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 103:/Users/timcarlo/Desktop/testsoftware/core/main.c **** uint32_t number_of_successful_handshakes = 0; // Counter for successful handshakes
- 104:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool disable_interrupts = false;              // Flag to disable interrupts during critical section
- 105:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 106:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void manager_isr(void)
- 107:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
-  30              		.loc 1 107 1 view -0
-  31              		.cfi_startproc
-  32              		@ args = 0, pretend = 0, frame = 8
-  33              		@ frame_needed = 0, uses_anonymous_args = 0
- 108:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
-  34              		.loc 1 108 5 view .LVU1
- 107:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
-  35              		.loc 1 107 1 is_stmt 0 view .LVU2
-  36 0000 00B5     		push	{lr}
-  37              		.cfi_def_cfa_offset 4
-  38              		.cfi_offset 14, -4
-  39              		.loc 1 108 5 view .LVU3
-  40 0002 1A20     		movs	r0, #26
- 107:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
-  41              		.loc 1 107 1 view .LVU4
-  42 0004 83B0     		sub	sp, sp, #12
-  43              		.cfi_def_cfa_offset 16
-  44              		.loc 1 108 5 view .LVU5
-  45 0006 FFF7FEFF 		bl	gpio_drive_high
-  46              	.LVL0:
- 109:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Insert 10 NOPs for timing adjustment
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (volatile int i = 0; i < 10; ++i)
-  47              		.loc 1 110 5 is_stmt 1 view .LVU6
-  48              	.LBB18:
-  49              		.loc 1 110 10 view .LVU7
-  50              		.loc 1 110 23 is_stmt 0 view .LVU8
-  51 000a 0023     		movs	r3, #0
-  52 000c 0193     		str	r3, [sp, #4]
-  53              		.loc 1 110 32 is_stmt 1 discriminator 1 view .LVU9
-  54 000e 019B     		ldr	r3, [sp, #4]
-  55 0010 092B     		cmp	r3, #9
-  56 0012 06DC     		bgt	.L2
-  57              	.L3:
- 111:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 112:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         __asm__ __volatile__("nop");
-  58              		.loc 1 112 9 view .LVU10
-  59              		.syntax unified
-  60              	@ 112 "/Users/timcarlo/Desktop/testsoftware/core/main.c" 1
-  61 0014 00BF     		nop
-  62              	@ 0 "" 2
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
-  63              		.loc 1 110 38 discriminator 3 view .LVU11
-  64              		.thumb
-  65              		.syntax unified
-  66 0016 019B     		ldr	r3, [sp, #4]
-  67 0018 0133     		adds	r3, r3, #1
-  68 001a 0193     		str	r3, [sp, #4]
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
-  69              		.loc 1 110 32 discriminator 1 view .LVU12
-  70 001c 019B     		ldr	r3, [sp, #4]
-  71 001e 092B     		cmp	r3, #9
-  72 0020 F8DD     		ble	.L3
-  73              	.L2:
-  74              	.LBE18:
- 113:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(DEBUG_PIN1); // Set debug pin low to indicate ISR exit
-  75              		.loc 1 114 5 view .LVU13
-  76 0022 1A20     		movs	r0, #26
- 115:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
-  77              		.loc 1 115 1 is_stmt 0 view .LVU14
-  78 0024 03B0     		add	sp, sp, #12
-  79              		.cfi_def_cfa_offset 4
-  80              		@ sp needed
-  81 0026 5DF804EB 		ldr	lr, [sp], #4
-  82              		.cfi_restore 14
-  83              		.cfi_def_cfa_offset 0
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
-  84              		.loc 1 114 5 view .LVU15
-  85 002a FFF7FEBF 		b	gpio_drive_low
-  86              	.LVL1:
-  87              		.cfi_endproc
-  88              	.LFE135:
-  90 002e 00BF     		.section	.text.reader_isr,"ax",%progbits
-  91              		.align	1
-  92              		.p2align 2,,3
-  93              		.global	reader_isr
-  94              		.syntax unified
-  95              		.thumb
-  96              		.thumb_func
-  98              	reader_isr:
-  99              	.LFB136:
- 116:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 117:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void reader_isr(void)
- 118:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 100              		.loc 1 118 1 is_stmt 1 view -0
- 101              		.cfi_startproc
- 102              		@ args = 0, pretend = 0, frame = 8
- 103              		@ frame_needed = 0, uses_anonymous_args = 0
- 119:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
- 104              		.loc 1 119 5 view .LVU17
- 118:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
- 105              		.loc 1 118 1 is_stmt 0 view .LVU18
- 106 0000 00B5     		push	{lr}
- 107              		.cfi_def_cfa_offset 4
- 108              		.cfi_offset 14, -4
- 109              		.loc 1 119 5 view .LVU19
- 110 0002 1B20     		movs	r0, #27
- 118:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
- 111              		.loc 1 118 1 view .LVU20
- 112 0004 83B0     		sub	sp, sp, #12
- 113              		.cfi_def_cfa_offset 16
- 114              		.loc 1 119 5 view .LVU21
- 115 0006 FFF7FEFF 		bl	gpio_drive_high
- 116              	.LVL2:
- 120:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Insert 10 NOPs for timing adjustment
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (volatile int i = 0; i < 10; ++i)
- 117              		.loc 1 121 5 is_stmt 1 view .LVU22
- 118              	.LBB20:
- 119              		.loc 1 121 10 view .LVU23
- 120              		.loc 1 121 23 is_stmt 0 view .LVU24
- 121 000a 0023     		movs	r3, #0
- 122 000c 0193     		str	r3, [sp, #4]
- 123              		.loc 1 121 32 is_stmt 1 discriminator 1 view .LVU25
- 124 000e 019B     		ldr	r3, [sp, #4]
- 125 0010 092B     		cmp	r3, #9
- 126 0012 06DC     		bgt	.L8
- 127              	.L9:
- 122:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         __asm__ __volatile__("nop");
- 128              		.loc 1 123 9 view .LVU26
- 129              		.syntax unified
- 130              	@ 123 "/Users/timcarlo/Desktop/testsoftware/core/main.c" 1
- 131 0014 00BF     		nop
- 132              	@ 0 "" 2
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 133              		.loc 1 121 38 discriminator 3 view .LVU27
- 134              		.thumb
- 135              		.syntax unified
- 136 0016 019B     		ldr	r3, [sp, #4]
- 137 0018 0133     		adds	r3, r3, #1
- 138 001a 0193     		str	r3, [sp, #4]
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 139              		.loc 1 121 32 discriminator 1 view .LVU28
- 140 001c 019B     		ldr	r3, [sp, #4]
- 141 001e 092B     		cmp	r3, #9
- 142 0020 F8DD     		ble	.L9
- 143              	.L8:
- 144              	.LBE20:
- 124:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 125:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(DEBUG_PIN2); // Set debug pin low to indicate ISR exit
- 145              		.loc 1 125 5 view .LVU29
- 146 0022 1B20     		movs	r0, #27
- 126:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 147              		.loc 1 126 1 is_stmt 0 view .LVU30
- 148 0024 03B0     		add	sp, sp, #12
- 149              		.cfi_def_cfa_offset 4
- 150              		@ sp needed
- 151 0026 5DF804EB 		ldr	lr, [sp], #4
- 152              		.cfi_restore 14
- 153              		.cfi_def_cfa_offset 0
- 125:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 154              		.loc 1 125 5 view .LVU31
- 155 002a FFF7FEBF 		b	gpio_drive_low
- 156              	.LVL3:
- 157              		.cfi_endproc
- 158              	.LFE136:
- 160 002e 00BF     		.section	.text.start_isr_timer,"ax",%progbits
- 161              		.align	1
- 162              		.p2align 2,,3
- 163              		.global	start_isr_timer
- 164              		.syntax unified
- 165              		.thumb
- 166              		.thumb_func
- 168              	start_isr_timer:
- 169              	.LFB137:
- 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 128:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void start_isr_timer(void)
- 129:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 170              		.loc 1 129 1 is_stmt 1 view -0
- 171              		.cfi_startproc
- 172              		@ args = 0, pretend = 0, frame = 0
- 173              		@ frame_needed = 0, uses_anonymous_args = 0
- 174              		@ link register save eliminated.
- 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     const uint16_t reader_interval_us = 1000;   // Reader: every 1 ms
- 175              		.loc 1 130 5 view .LVU33
- 176              	.LVL4:
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     const uint16_t manager_interval_us = 10000; // Manager: every 10 ms
- 177              		.loc 1 131 5 view .LVU34
- 132:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 133:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+  98:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define SIGNAL_INACCURACY 100 // Signal inaccuracy in milliseconds
+  99:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define CYCLE_INACCURACY ((uint32_t)SIGNAL_INACCURACY * 1000UL / READER_INTERVAL_US)
+ 100:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define MAXIMUM_WAITING_CYCLES 500 // Maximum waiting cycles for a signal
+ 101:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 102:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
+ 103:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if DEBUG == 1
+ 104:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+ 105:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #else
+ 106:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #define LOG(fmt, ...)
+ 107:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+ 108:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 109:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Global variables
+ 110:/Users/timcarlo/Desktop/testsoftware/core/main.c **** PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
+ 111:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 112:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // State tracking
+ 113:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool red_led_on = false;
+ 114:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool green_led_on = false;
+ 115:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 116:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile bool last_event_valid = false;
+ 117:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint8_t last_rising_pin = INVALID_PIN; // Global variable to store the last rising pin eve
+ 118:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 119:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Flags controlled via interrupts
+ 120:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 121:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t black_list_mask = 0;    // Global blacklist mask for GPIO pins
+ 122:/Users/timcarlo/Desktop/testsoftware/core/main.c **** volatile uint64_t initial_state_mask = 0; // Mask to store the initial state of pins
+ 123:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 124:/Users/timcarlo/Desktop/testsoftware/core/main.c **** uint32_t number_of_successful_handshakes = 0; // Counter for successful handshakes
+ 125:/Users/timcarlo/Desktop/testsoftware/core/main.c **** bool disable_interrupts = false;              // Flag to disable interrupts during critical section
+ 126:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void debug_output_binary(uint8_t value)
+ 128:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+  31              		.loc 1 128 1 view -0
+  32              		.cfi_startproc
+  33              		@ args = 0, pretend = 0, frame = 0
+  34              		@ frame_needed = 0, uses_anonymous_args = 0
+ 129:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Output the 2 LSBs of value (0-3) on DEBUG_PIN3 and DEBUG_PIN4
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (value & 0x01)
+  35              		.loc 1 130 5 view .LVU1
+  36              		.loc 1 130 8 is_stmt 0 view .LVU2
+  37 0000 10F0010F 		tst	r0, #1
+ 128:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Output the 2 LSBs of value (0-3) on DEBUG_PIN3 and DEBUG_PIN4
+  38              		.loc 1 128 1 view .LVU3
+  39 0004 10B5     		push	{r4, lr}
+  40              		.cfi_def_cfa_offset 8
+  41              		.cfi_offset 4, -8
+  42              		.cfi_offset 14, -4
+ 128:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Output the 2 LSBs of value (0-3) on DEBUG_PIN3 and DEBUG_PIN4
+  43              		.loc 1 128 1 view .LVU4
+  44 0006 0446     		mov	r4, r0
+ 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+  45              		.loc 1 131 9 view .LVU5
+  46 0008 4FF02700 		mov	r0, #39
+  47              	.LVL1:
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+  48              		.loc 1 130 8 view .LVU6
+  49 000c 09D0     		beq	.L2
+  50              		.loc 1 131 9 is_stmt 1 view .LVU7
+  51 000e FFF7FEFF 		bl	gpio_drive_high
+  52              	.LVL2:
+ 132:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 133:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(DEBUG_PIN3);
  134:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop timer first to ensure clean configuration
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_STOP = 1;
- 178              		.loc 1 136 5 view .LVU35
- 179              		.loc 1 136 28 is_stmt 0 view .LVU36
- 180 0000 134B     		ldr	r3, .L14
- 181              	.LBB21:
- 182              	.LBB22:
- 183              		.file 2 "CMSIS_5/CMSIS/Core/Include/core_cm4.h"
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (value & 0x02)
+  53              		.loc 1 135 5 view .LVU8
+  54              		.loc 1 135 8 is_stmt 0 view .LVU9
+  55 0012 A307     		lsls	r3, r4, #30
+  56              	.LBB32:
+  57              	.LBB33:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+  58              		.loc 1 136 9 view .LVU10
+  59 0014 4FF02800 		mov	r0, #40
+  60              	.LBE33:
+  61              	.LBE32:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+  62              		.loc 1 135 8 view .LVU11
+  63 0018 09D5     		bpl	.L4
+  64              	.L7:
+  65              	.LBB37:
+  66              	.LBI32:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+  67              		.loc 1 127 6 is_stmt 1 view .LVU12
+  68              	.LVL3:
+  69              	.LBB34:
+  70              		.loc 1 136 9 view .LVU13
+  71              	.LBE34:
+  72              	.LBE37:
+ 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_low(DEBUG_PIN4);
+ 139:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+  73              		.loc 1 139 1 is_stmt 0 view .LVU14
+  74 001a BDE81040 		pop	{r4, lr}
+  75              		.cfi_remember_state
+  76              		.cfi_restore 14
+  77              		.cfi_restore 4
+  78              		.cfi_def_cfa_offset 0
+  79              	.LVL4:
+  80              	.LBB38:
+  81              	.LBB35:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+  82              		.loc 1 136 9 view .LVU15
+  83 001e FFF7FEBF 		b	gpio_drive_high
+  84              	.LVL5:
+  85              	.L2:
+  86              		.cfi_restore_state
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+  87              		.loc 1 136 9 view .LVU16
+  88              	.LBE35:
+  89              	.LBE38:
+ 133:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+  90              		.loc 1 133 9 is_stmt 1 view .LVU17
+  91 0022 FFF7FEFF 		bl	gpio_drive_low
+  92              	.LVL6:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+  93              		.loc 1 135 5 view .LVU18
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+  94              		.loc 1 135 8 is_stmt 0 view .LVU19
+  95 0026 A307     		lsls	r3, r4, #30
+  96              	.LBB39:
+  97              	.LBB36:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+  98              		.loc 1 136 9 view .LVU20
+  99 0028 4FF02800 		mov	r0, #40
+ 100              	.LBE36:
+ 101              	.LBE39:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+ 102              		.loc 1 135 8 view .LVU21
+ 103 002c F5D4     		bmi	.L7
+ 104              	.L4:
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 105              		.loc 1 138 9 is_stmt 1 view .LVU22
+ 106              		.loc 1 139 1 is_stmt 0 view .LVU23
+ 107 002e BDE81040 		pop	{r4, lr}
+ 108              		.cfi_restore 14
+ 109              		.cfi_restore 4
+ 110              		.cfi_def_cfa_offset 0
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 111              		.loc 1 138 9 view .LVU24
+ 112 0032 FFF7FEBF 		b	gpio_drive_low
+ 113              	.LVL7:
+ 114              		.cfi_endproc
+ 115              	.LFE135:
+ 117 0036 00BF     		.section	.text.reader_isr,"ax",%progbits
+ 118              		.align	1
+ 119              		.p2align 2,,3
+ 120              		.global	reader_isr
+ 121              		.syntax unified
+ 122              		.thumb
+ 123              		.thumb_func
+ 125              	reader_isr:
+ 126              	.LFB136:
+ 140:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 141:/Users/timcarlo/Desktop/testsoftware/core/main.c **** /* void manager_isr(void)
+ 142:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 143:/Users/timcarlo/Desktop/testsoftware/core/main.c ****   //  gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
+ 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+ 145:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 146:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (initial_state_mask & (1ULL << pin))
+ 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue; // Skip blacklisted pins
+ 148:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         PinData *data = &pin_data[pin];
+ 150:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 151:/Users/timcarlo/Desktop/testsoftware/core/main.c **** //    gpio_drive_low(DEBUG_PIN2); // Set debug pin low to indicate ISR exit
+ 152:/Users/timcarlo/Desktop/testsoftware/core/main.c **** } */
+ 153:/Users/timcarlo/Desktop/testsoftware/core/main.c **** static const uint16_t required_cycles_lut[] = {
+ 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     [TASK_NONE] = 0,
+ 155:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     [TASK_JOB_SYN] = SYN_CYCLES,
+ 156:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     [TASK_JOB_SYN_ACK] = SYN_ACK_CYCLES,
+ 157:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     [TASK_JOB_ACK] = ACK_CYCLES};
+ 158:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 159:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void reader_isr(void)
+ 160:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 127              		.loc 1 160 1 is_stmt 1 view -0
+ 128              		.cfi_startproc
+ 129              		@ args = 0, pretend = 0, frame = 0
+ 130              		@ frame_needed = 0, uses_anonymous_args = 0
+ 161:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
+ 131              		.loc 1 161 5 view .LVU26
+ 160:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
+ 132              		.loc 1 160 1 is_stmt 0 view .LVU27
+ 133 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 134              		.cfi_def_cfa_offset 32
+ 135              		.cfi_offset 4, -32
+ 136              		.cfi_offset 5, -28
+ 137              		.cfi_offset 6, -24
+ 138              		.cfi_offset 7, -20
+ 139              		.cfi_offset 8, -16
+ 140              		.cfi_offset 9, -12
+ 141              		.cfi_offset 10, -8
+ 142              		.cfi_offset 14, -4
+ 143              		.loc 1 161 5 view .LVU28
+ 144 0004 1A20     		movs	r0, #26
+ 145 0006 FFF7FEFF 		bl	gpio_drive_high
+ 146              	.LVL8:
+ 162:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+ 147              		.loc 1 163 5 is_stmt 1 view .LVU29
+ 148              	.LBB56:
+ 149              		.loc 1 163 10 view .LVU30
+ 150              		.loc 1 163 31 discriminator 1 view .LVU31
+ 151 000a 574D     		ldr	r5, .L32
+ 152 000c 574F     		ldr	r7, .L32+4
+ 153              	.LBB57:
+ 154              	.LBB58:
+ 164:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 165:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         bool something_done = false; // Flag to track if any task was done
+ 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (initial_state_mask & (1ULL << pin))
+ 167:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue; // Skip blacklisted pins
+ 168:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 169:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         PinData *data = &pin_data[pin];
+ 170:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 171:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (data->waiting_counter >= MAXIMUM_WAITING_CYCLES)
+ 172:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             set_task(data, TASK_JOB_SYN);
+ 174:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             //  debug_output_binary(3); // Debug output for waiting timeout
+ 175:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             data->waiting_counter = 0; // Reset waiting counter
+ 176:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 177:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 178:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         // Check if a task is conducted on this pin
+ 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         PinDataTask task = get_task(data);
+ 180:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         bool pin_state = gpio_read(pin);
+ 181:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 182:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (task != TASK_NONE)
+ 183:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 184:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             something_done = true; // At least one task is being done
+ 185:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             // Collision detection:
+ 186:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             // Before sending, check if the pin is high and we are sending
+ 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (data->sending_counter == 0 && !pin_state)
+ 188:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 189:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_task(data, TASK_NONE); // Reset task
+ 190:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             else
+ 192:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 193:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 uint16_t required_cycles = required_cycles_lut[task];
+ 155              		.loc 1 193 26 is_stmt 0 view .LVU32
+ 156 000e DFF86081 		ldr	r8, .L32+8
+ 157              	.LBE58:
+ 158              	.LBE57:
+ 159              	.LBE56:
+ 161:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 160              		.loc 1 161 5 view .LVU33
+ 161 0012 0026     		movs	r6, #0
+ 162              	.LVL9:
+ 163              	.L22:
+ 164              	.LBB81:
+ 165              	.LBB79:
+ 165:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (initial_state_mask & (1ULL << pin))
+ 166              		.loc 1 165 9 is_stmt 1 view .LVU34
+ 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue; // Skip blacklisted pins
+ 167              		.loc 1 166 9 view .LVU35
+ 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue; // Skip blacklisted pins
+ 168              		.loc 1 166 13 is_stmt 0 view .LVU36
+ 169 0014 D7E90001 		ldrd	r0, [r7]
+ 170 0018 C6F12004 		rsb	r4, r6, #32
+ 171 001c 01FA04F4 		lsl	r4, r1, r4
+ 172 0020 A6F12002 		sub	r2, r6, #32
+ 173 0024 20FA06F3 		lsr	r3, r0, r6
+ 174 0028 2343     		orrs	r3, r3, r4
+ 175 002a 21FA02F2 		lsr	r2, r1, r2
+ 176 002e 1343     		orrs	r3, r3, r2
+ 166:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue; // Skip blacklisted pins
+ 177              		.loc 1 166 12 view .LVU37
+ 178 0030 13F00104 		ands	r4, r3, #1
+ 179 0034 42D1     		bne	.L9
+ 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 180              		.loc 1 169 9 is_stmt 1 view .LVU38
+ 181              	.LVL10:
+ 171:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 182              		.loc 1 171 9 view .LVU39
+ 171:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 183              		.loc 1 171 12 is_stmt 0 view .LVU40
+ 184 0036 2B89     		ldrh	r3, [r5, #8]
+ 185 0038 B3F5FA7F 		cmp	r3, #500
+ 186 003c 60D2     		bcs	.L26
+ 187              	.L10:
+ 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         bool pin_state = gpio_read(pin);
+ 188              		.loc 1 179 28 view .LVU41
+ 189 003e 2846     		mov	r0, r5
+ 190 0040 FFF7FEFF 		bl	get_task
+ 191              	.LVL11:
+ 192 0044 5FFA86FA 		uxtb	r10, r6
+ 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         bool pin_state = gpio_read(pin);
+ 193              		.loc 1 179 9 is_stmt 1 view .LVU42
+ 179:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         bool pin_state = gpio_read(pin);
+ 194              		.loc 1 179 28 is_stmt 0 view .LVU43
+ 195 0048 8146     		mov	r9, r0
+ 196              	.LVL12:
+ 180:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 197              		.loc 1 180 9 is_stmt 1 view .LVU44
+ 180:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 198              		.loc 1 180 26 is_stmt 0 view .LVU45
+ 199 004a 5046     		mov	r0, r10
+ 200              	.LVL13:
+ 180:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 201              		.loc 1 180 26 view .LVU46
+ 202 004c FFF7FEFF 		bl	gpio_read
+ 203              	.LVL14:
+ 204 0050 0446     		mov	r4, r0
+ 205              	.LVL15:
+ 182:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 206              		.loc 1 182 9 is_stmt 1 view .LVU47
+ 182:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 207              		.loc 1 182 12 is_stmt 0 view .LVU48
+ 208 0052 B9F1000F 		cmp	r9, #0
+ 209 0056 3BD0     		beq	.L11
+ 184:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             // Collision detection:
+ 210              		.loc 1 184 13 is_stmt 1 view .LVU49
+ 211              	.LVL16:
+ 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 212              		.loc 1 187 13 view .LVU50
+ 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 213              		.loc 1 187 21 is_stmt 0 view .LVU51
+ 214 0058 AB88     		ldrh	r3, [r5, #4]
+ 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 215              		.loc 1 187 16 view .LVU52
+ 216 005a 0BB9     		cbnz	r3, .L12
+ 187:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 217              		.loc 1 187 44 discriminator 1 view .LVU53
+ 218 005c 0028     		cmp	r0, #0
+ 219 005e 7ED0     		beq	.L27
+ 220              	.L12:
+ 221              	.LBB59:
+ 222              		.loc 1 193 17 is_stmt 1 view .LVU54
+ 223              	.LVL17:
+ 194:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 if (data->sending_counter >= required_cycles)
+ 224              		.loc 1 194 17 view .LVU55
+ 225              		.loc 1 194 20 is_stmt 0 view .LVU56
+ 226 0060 38F81920 		ldrh	r2, [r8, r9, lsl #1]
+ 227 0064 9A42     		cmp	r2, r3
+ 228 0066 51D8     		bhi	.L14
+ 195:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 {
+ 196:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     gpio_drive_high(DEBUG_PIN2); // Drive pin high to send signal
+ 229              		.loc 1 196 21 is_stmt 1 view .LVU57
+ 230 0068 1B20     		movs	r0, #27
+ 231              	.LVL18:
+ 232              		.loc 1 196 21 is_stmt 0 view .LVU58
+ 233 006a FFF7FEFF 		bl	gpio_drive_high
+ 234              	.LVL19:
+ 197:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     // Reset when task is complete
+ 198:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     gpio_od_release(pin); // Release the pin
+ 235              		.loc 1 198 21 is_stmt 1 view .LVU59
+ 236 006e 5046     		mov	r0, r10
+ 237 0070 FFF7FEFF 		bl	gpio_od_release
+ 238              	.LVL20:
+ 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     data->sending_counter = 0;
+ 239              		.loc 1 199 21 view .LVU60
+ 240              		.loc 1 199 43 is_stmt 0 view .LVU61
+ 241 0074 0021     		movs	r1, #0
+ 200:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     set_task(data, TASK_NONE);
+ 242              		.loc 1 200 21 view .LVU62
+ 243 0076 2846     		mov	r0, r5
+ 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     data->sending_counter = 0;
+ 244              		.loc 1 199 43 view .LVU63
+ 245 0078 A980     		strh	r1, [r5, #4]	@ movhi
+ 246              		.loc 1 200 21 is_stmt 1 view .LVU64
+ 247 007a FFF7FEFF 		bl	set_task
+ 248              	.LVL21:
+ 201:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     gpio_drive_low(DEBUG_PIN2); // Drive pin high to send signal
+ 249              		.loc 1 201 21 view .LVU65
+ 250 007e 1B20     		movs	r0, #27
+ 251 0080 FFF7FEFF 		bl	gpio_drive_low
+ 252              	.LVL22:
+ 253              	.L15:
+ 254              		.loc 1 201 21 is_stmt 0 view .LVU66
+ 255              	.LBE59:
+ 202:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 }
+ 203:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 else
+ 204:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 {
+ 205:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     gpio_od_hold_low(pin);   // Drive pin low to send signal
+ 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     data->sending_counter++; // Increment cycle counter
+ 207:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 }
+ 208:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 209:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 210:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         else
+ 211:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (!pin_state) // if a signal is received
+ 213:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 something_done = true;     // At least one task is being done
+ 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter++; // Increment receiving counter
+ 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(1);
+ 217:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 218:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (pin_state) // if no signal is received, reset the receiving counter
+ 256              		.loc 1 219 9 is_stmt 1 view .LVU67
+ 257              		.loc 1 219 12 is_stmt 0 view .LVU68
+ 258 0084 A4B1     		cbz	r4, .L13
+ 259              	.LVL23:
+ 260              	.LBB60:
+ 220:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 221:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 222:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             uint16_t receive_counter = data->receiving_counter;
+ 261              		.loc 1 222 13 is_stmt 1 view .LVU69
+ 262              		.loc 1 222 22 is_stmt 0 view .LVU70
+ 263 0086 EB88     		ldrh	r3, [r5, #6]
+ 264              	.LVL24:
+ 223:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLE
+ 265              		.loc 1 223 13 is_stmt 1 view .LVU71
+ 266              		.loc 1 223 16 is_stmt 0 view .LVU72
+ 267 0088 A3F11402 		sub	r2, r3, #20
+ 268 008c 282A     		cmp	r2, #40
+ 269 008e 26D9     		bls	.L28
+ 270              	.LVL25:
+ 271              	.L17:
+ 224:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 225:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 // SYN signal detected
+ 226:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_syn(data, true);
+ 227:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_task(data, TASK_JOB_SYN_ACK);
+ 228:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(2);
+ 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after SYN
+ 230:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 231:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             else if (receive_counter >= (SYN_ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (
+ 272              		.loc 1 231 18 is_stmt 1 view .LVU73
+ 273              		.loc 1 231 21 is_stmt 0 view .LVU74
+ 274 0090 A3F16402 		sub	r2, r3, #100
+ 275 0094 282A     		cmp	r2, #40
+ 276 0096 4AD9     		bls	.L29
+ 232:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 233:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 // SYN_ACK signal detected
+ 234:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_syn_ack(data, true);
+ 235:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_task(data, TASK_JOB_ACK);
+ 236:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(3);
+ 237:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
+ 238:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 239:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             else if (receive_counter >= (ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (ACK_
+ 277              		.loc 1 239 18 is_stmt 1 view .LVU75
+ 278              		.loc 1 239 21 is_stmt 0 view .LVU76
+ 279 0098 A3F1C802 		sub	r2, r3, #200
+ 280 009c 282A     		cmp	r2, #40
+ 281 009e 57D9     		bls	.L30
+ 240:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 241:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 // ACK signal detected
+ 242:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_ack(data, true);
+ 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after ACK
+ 244:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 245:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             else if (receive_counter > (ACK_CYCLES + CYCLE_INACCURACY))
+ 282              		.loc 1 245 18 is_stmt 1 view .LVU77
+ 283              		.loc 1 245 21 is_stmt 0 view .LVU78
+ 284 00a0 F02B     		cmp	r3, #240
+ 246:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 247:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 // Signal too long, reset counters
+ 248:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0;
+ 285              		.loc 1 248 17 is_stmt 1 view .LVU79
+ 286              		.loc 1 248 41 is_stmt 0 view .LVU80
+ 287 00a2 84BF     		itt	hi
+ 288 00a4 0023     		movhi	r3, #0
+ 289              	.LVL26:
+ 290              		.loc 1 248 41 view .LVU81
+ 291 00a6 EB80     		strhhi	r3, [r5, #6]	@ movhi
+ 292              	.LVL27:
+ 293              	.L18:
+ 294              		.loc 1 248 41 view .LVU82
+ 295              	.LBE60:
+ 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 250:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 251:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 252:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (!something_done)
+ 296              		.loc 1 252 9 is_stmt 1 view .LVU83
+ 297              		.loc 1 252 12 is_stmt 0 view .LVU84
+ 298 00a8 14B9     		cbnz	r4, .L13
+ 253:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 254:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             data->waiting_counter++; // Increment waiting counter if no task was done
+ 299              		.loc 1 254 13 is_stmt 1 view .LVU85
+ 300              		.loc 1 254 34 is_stmt 0 view .LVU86
+ 301 00aa 2B89     		ldrh	r3, [r5, #8]
+ 302 00ac 0133     		adds	r3, r3, #1
+ 303 00ae 2B81     		strh	r3, [r5, #8]	@ movhi
+ 304              	.L13:
+ 255:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 256:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 257:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         debug_output_binary(0); // Reset debug output
+ 305              		.loc 1 257 9 is_stmt 1 view .LVU87
+ 306              	.LVL28:
+ 307              	.LBB69:
+ 308              	.LBI69:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 309              		.loc 1 127 6 view .LVU88
+ 310              	.LBB70:
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+ 311              		.loc 1 130 5 view .LVU89
+ 133:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 312              		.loc 1 133 9 view .LVU90
+ 313 00b0 2720     		movs	r0, #39
+ 314 00b2 FFF7FEFF 		bl	gpio_drive_low
+ 315              	.LVL29:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+ 316              		.loc 1 135 5 view .LVU91
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 317              		.loc 1 138 9 view .LVU92
+ 318 00b6 2820     		movs	r0, #40
+ 319 00b8 FFF7FEFF 		bl	gpio_drive_low
+ 320              	.LVL30:
+ 321              	.L9:
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 322              		.loc 1 138 9 is_stmt 0 view .LVU93
+ 323              	.LBE70:
+ 324              	.LBE69:
+ 325              	.LBE79:
+ 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 326              		.loc 1 163 54 is_stmt 1 discriminator 2 view .LVU94
+ 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 327              		.loc 1 163 31 discriminator 1 view .LVU95
+ 328 00bc 0136     		adds	r6, r6, #1
+ 329              	.LVL31:
+ 163:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 330              		.loc 1 163 31 is_stmt 0 discriminator 1 view .LVU96
+ 331 00be 302E     		cmp	r6, #48
+ 332 00c0 05F10A05 		add	r5, r5, #10
+ 333 00c4 A6D1     		bne	.L22
+ 334              	.LBE81:
+ 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 259:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(DEBUG_PIN1); // Set debug pin low to indicate ISR exit
+ 335              		.loc 1 259 5 is_stmt 1 view .LVU97
+ 260:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 336              		.loc 1 260 1 is_stmt 0 view .LVU98
+ 337 00c6 BDE8F047 		pop	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 338              		.cfi_remember_state
+ 339              		.cfi_restore 14
+ 340              		.cfi_restore 10
+ 341              		.cfi_restore 9
+ 342              		.cfi_restore 8
+ 343              		.cfi_restore 7
+ 344              		.cfi_restore 6
+ 345              		.cfi_restore 5
+ 346              		.cfi_restore 4
+ 347              		.cfi_def_cfa_offset 0
+ 348              	.LVL32:
+ 259:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 349              		.loc 1 259 5 view .LVU99
+ 350 00ca 1A20     		movs	r0, #26
+ 351 00cc FFF7FEBF 		b	gpio_drive_low
+ 352              	.LVL33:
+ 353              	.L11:
+ 354              		.cfi_restore_state
+ 355              	.LBB82:
+ 356              	.LBB80:
+ 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 357              		.loc 1 212 13 is_stmt 1 view .LVU100
+ 212:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 358              		.loc 1 212 16 is_stmt 0 view .LVU101
+ 359 00d0 18B3     		cbz	r0, .L31
+ 360              	.LBB71:
+ 222:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLE
+ 361              		.loc 1 222 22 view .LVU102
+ 362 00d2 EB88     		ldrh	r3, [r5, #6]
+ 223:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 363              		.loc 1 223 16 view .LVU103
+ 364 00d4 A3F11402 		sub	r2, r3, #20
+ 365 00d8 282A     		cmp	r2, #40
+ 366              	.LBE71:
+ 165:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (initial_state_mask & (1ULL << pin))
+ 367              		.loc 1 165 14 view .LVU104
+ 368 00da 4C46     		mov	r4, r9
+ 369              	.LVL34:
+ 370              	.LBB72:
+ 222:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLE
+ 371              		.loc 1 222 13 is_stmt 1 view .LVU105
+ 223:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 372              		.loc 1 223 13 view .LVU106
+ 223:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 373              		.loc 1 223 16 is_stmt 0 view .LVU107
+ 374 00dc D8D8     		bhi	.L17
+ 375              	.LVL35:
+ 376              	.L28:
+ 226:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_task(data, TASK_JOB_SYN_ACK);
+ 377              		.loc 1 226 17 is_stmt 1 view .LVU108
+ 378 00de 0121     		movs	r1, #1
+ 379 00e0 2846     		mov	r0, r5
+ 380 00e2 FFF7FEFF 		bl	set_syn
+ 381              	.LVL36:
+ 227:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(2);
+ 382              		.loc 1 227 17 view .LVU109
+ 383 00e6 0221     		movs	r1, #2
+ 384 00e8 2846     		mov	r0, r5
+ 385 00ea FFF7FEFF 		bl	set_task
+ 386              	.LVL37:
+ 228:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after SYN
+ 387              		.loc 1 228 17 view .LVU110
+ 388              	.LBB61:
+ 389              	.LBI61:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 390              		.loc 1 127 6 view .LVU111
+ 391              	.LBB62:
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+ 392              		.loc 1 130 5 view .LVU112
+ 133:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 393              		.loc 1 133 9 view .LVU113
+ 394 00ee 2720     		movs	r0, #39
+ 395 00f0 FFF7FEFF 		bl	gpio_drive_low
+ 396              	.LVL38:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+ 397              		.loc 1 135 5 view .LVU114
+ 398              	.LBB63:
+ 399              	.LBI63:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 400              		.loc 1 127 6 view .LVU115
+ 401              	.LBB64:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 402              		.loc 1 136 9 view .LVU116
+ 403 00f4 2820     		movs	r0, #40
+ 404 00f6 FFF7FEFF 		bl	gpio_drive_high
+ 405              	.LVL39:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 406              		.loc 1 136 9 is_stmt 0 view .LVU117
+ 407              	.LBE64:
+ 408              	.LBE63:
+ 409              	.LBE62:
+ 410              	.LBE61:
+ 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 411              		.loc 1 229 17 is_stmt 1 view .LVU118
+ 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 412              		.loc 1 229 41 is_stmt 0 view .LVU119
+ 413 00fa 0023     		movs	r3, #0
+ 414 00fc EB80     		strh	r3, [r5, #6]	@ movhi
+ 415 00fe D3E7     		b	.L18
+ 416              	.LVL40:
+ 417              	.L26:
+ 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 418              		.loc 1 229 41 view .LVU120
+ 419              	.LBE72:
+ 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             //  debug_output_binary(3); // Debug output for waiting timeout
+ 420              		.loc 1 173 13 is_stmt 1 view .LVU121
+ 421 0100 0121     		movs	r1, #1
+ 422 0102 2846     		mov	r0, r5
+ 423 0104 FFF7FEFF 		bl	set_task
+ 424              	.LVL41:
+ 175:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 425              		.loc 1 175 13 view .LVU122
+ 175:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 426              		.loc 1 175 35 is_stmt 0 view .LVU123
+ 427 0108 2C81     		strh	r4, [r5, #8]	@ movhi
+ 428 010a 98E7     		b	.L10
+ 429              	.LVL42:
+ 430              	.L14:
+ 431              	.LBB73:
+ 205:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     data->sending_counter++; // Increment cycle counter
+ 432              		.loc 1 205 21 is_stmt 1 view .LVU124
+ 433 010c 5046     		mov	r0, r10
+ 434              	.LVL43:
+ 205:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                     data->sending_counter++; // Increment cycle counter
+ 435              		.loc 1 205 21 is_stmt 0 view .LVU125
+ 436 010e FFF7FEFF 		bl	gpio_od_hold_low
+ 437              	.LVL44:
+ 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 }
+ 438              		.loc 1 206 21 is_stmt 1 view .LVU126
+ 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 }
+ 439              		.loc 1 206 42 is_stmt 0 view .LVU127
+ 440 0112 AB88     		ldrh	r3, [r5, #4]
+ 441 0114 0133     		adds	r3, r3, #1
+ 442 0116 AB80     		strh	r3, [r5, #4]	@ movhi
+ 443 0118 B4E7     		b	.L15
+ 444              	.LVL45:
+ 445              	.L31:
+ 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 }
+ 446              		.loc 1 206 42 view .LVU128
+ 447              	.LBE73:
+ 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter++; // Increment receiving counter
+ 448              		.loc 1 214 17 is_stmt 1 view .LVU129
+ 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(1);
+ 449              		.loc 1 215 17 view .LVU130
+ 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(1);
+ 450              		.loc 1 215 40 is_stmt 0 view .LVU131
+ 451 011a EB88     		ldrh	r3, [r5, #6]
+ 452 011c 0133     		adds	r3, r3, #1
+ 453              	.LBB74:
+ 454              	.LBB75:
+ 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 455              		.loc 1 131 9 view .LVU132
+ 456 011e 2720     		movs	r0, #39
+ 457              	.LVL46:
+ 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 458              		.loc 1 131 9 view .LVU133
+ 459              	.LBE75:
+ 460              	.LBE74:
+ 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(1);
+ 461              		.loc 1 215 40 view .LVU134
+ 462 0120 EB80     		strh	r3, [r5, #6]	@ movhi
+ 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 463              		.loc 1 216 17 is_stmt 1 view .LVU135
+ 464              	.LVL47:
+ 465              	.LBB77:
+ 466              	.LBI74:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 467              		.loc 1 127 6 view .LVU136
+ 468              	.LBB76:
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+ 469              		.loc 1 130 5 view .LVU137
+ 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 470              		.loc 1 131 9 view .LVU138
+ 471 0122 FFF7FEFF 		bl	gpio_drive_high
+ 472              	.LVL48:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+ 473              		.loc 1 135 5 view .LVU139
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 474              		.loc 1 138 9 view .LVU140
+ 475 0126 2820     		movs	r0, #40
+ 476 0128 FFF7FEFF 		bl	gpio_drive_low
+ 477              	.LVL49:
+ 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 478              		.loc 1 138 9 is_stmt 0 view .LVU141
+ 479              	.LBE76:
+ 480              	.LBE77:
+ 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 481              		.loc 1 219 9 is_stmt 1 view .LVU142
+ 252:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 482              		.loc 1 252 9 view .LVU143
+ 483 012c C0E7     		b	.L13
+ 484              	.LVL50:
+ 485              	.L29:
+ 486              	.LBB78:
+ 234:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 set_task(data, TASK_JOB_ACK);
+ 487              		.loc 1 234 17 view .LVU144
+ 488 012e 0121     		movs	r1, #1
+ 489 0130 2846     		mov	r0, r5
+ 490 0132 FFF7FEFF 		bl	set_syn_ack
+ 491              	.LVL51:
+ 235:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_output_binary(3);
+ 492              		.loc 1 235 17 view .LVU145
+ 493 0136 0321     		movs	r1, #3
+ 494 0138 2846     		mov	r0, r5
+ 495 013a FFF7FEFF 		bl	set_task
+ 496              	.LVL52:
+ 236:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
+ 497              		.loc 1 236 17 view .LVU146
+ 498              	.LBB65:
+ 499              	.LBI65:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 500              		.loc 1 127 6 view .LVU147
+ 501              	.LBB66:
+ 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN3);
+ 502              		.loc 1 130 5 view .LVU148
+ 131:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 503              		.loc 1 131 9 view .LVU149
+ 504 013e 2720     		movs	r0, #39
+ 505 0140 FFF7FEFF 		bl	gpio_drive_high
+ 506              	.LVL53:
+ 135:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_drive_high(DEBUG_PIN4);
+ 507              		.loc 1 135 5 view .LVU150
+ 508              	.LBB67:
+ 509              	.LBI67:
+ 127:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 510              		.loc 1 127 6 view .LVU151
+ 511              	.LBB68:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 512              		.loc 1 136 9 view .LVU152
+ 513 0144 2820     		movs	r0, #40
+ 514 0146 FFF7FEFF 		bl	gpio_drive_high
+ 515              	.LVL54:
+ 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     else
+ 516              		.loc 1 136 9 is_stmt 0 view .LVU153
+ 517              	.LBE68:
+ 518              	.LBE67:
+ 519              	.LBE66:
+ 520              	.LBE65:
+ 237:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 521              		.loc 1 237 17 is_stmt 1 view .LVU154
+ 237:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 522              		.loc 1 237 41 is_stmt 0 view .LVU155
+ 523 014a 0023     		movs	r3, #0
+ 524 014c EB80     		strh	r3, [r5, #6]	@ movhi
+ 525 014e ABE7     		b	.L18
+ 526              	.LVL55:
+ 527              	.L30:
+ 242:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 data->receiving_counter = 0; // Reset receiving counter after ACK
+ 528              		.loc 1 242 17 is_stmt 1 view .LVU156
+ 529 0150 0121     		movs	r1, #1
+ 530 0152 2846     		mov	r0, r5
+ 531 0154 FFF7FEFF 		bl	set_ack
+ 532              	.LVL56:
+ 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 533              		.loc 1 243 17 view .LVU157
+ 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 534              		.loc 1 243 41 is_stmt 0 view .LVU158
+ 535 0158 0023     		movs	r3, #0
+ 536 015a EB80     		strh	r3, [r5, #6]	@ movhi
+ 537 015c A4E7     		b	.L18
+ 538              	.LVL57:
+ 539              	.L27:
+ 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 540              		.loc 1 243 41 view .LVU159
+ 541              	.LBE78:
+ 189:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 542              		.loc 1 189 17 is_stmt 1 view .LVU160
+ 543 015e 0146     		mov	r1, r0
+ 544 0160 2846     		mov	r0, r5
+ 545              	.LVL58:
+ 189:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 546              		.loc 1 189 17 is_stmt 0 view .LVU161
+ 547 0162 FFF7FEFF 		bl	set_task
+ 548              	.LVL59:
+ 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 549              		.loc 1 219 9 is_stmt 1 view .LVU162
+ 550 0166 A3E7     		b	.L13
+ 551              	.L33:
+ 552              		.align	2
+ 553              	.L32:
+ 554 0168 00000000 		.word	pin_data
+ 555 016c 00000000 		.word	initial_state_mask
+ 556 0170 00000000 		.word	required_cycles_lut
+ 557              	.LBE80:
+ 558              	.LBE82:
+ 559              		.cfi_endproc
+ 560              	.LFE136:
+ 562              		.section	.text.start_isr_timer,"ax",%progbits
+ 563              		.align	1
+ 564              		.p2align 2,,3
+ 565              		.global	start_isr_timer
+ 566              		.syntax unified
+ 567              		.thumb
+ 568              		.thumb_func
+ 570              	start_isr_timer:
+ 571              	.LFB137:
+ 261:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 262:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void start_isr_timer(void)
+ 263:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 572              		.loc 1 263 1 view -0
+ 573              		.cfi_startproc
+ 574              		@ args = 0, pretend = 0, frame = 0
+ 575              		@ frame_needed = 0, uses_anonymous_args = 0
+ 576              		@ link register save eliminated.
+ 264:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 265:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+ 266:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 267:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop timer first to ensure clean configuration
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_STOP = 1;
+ 577              		.loc 1 268 5 view .LVU164
+ 578              		.loc 1 268 28 is_stmt 0 view .LVU165
+ 579 0000 134B     		ldr	r3, .L36
+ 580              	.LBB83:
+ 581              	.LBB84:
+ 582              		.file 2 "CMSIS_5/CMSIS/Core/Include/core_cm4.h"
    1:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** /**************************************************************************//**
    2:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****  * @file     core_cm4.h
    3:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****  * @brief    CMSIS Cortex-M4 Core Peripheral Access Layer Header File
@@ -2142,984 +2773,1123 @@
 1818:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   if ((int32_t)(IRQn) >= 0)
 1819:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
 1820:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     NVIC->ICPR[(((uint32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)IRQn) & 0x1FUL));
- 184              		.loc 2 1820 43 view .LVU37
- 185 0002 1449     		ldr	r1, .L14+4
- 186              	.LBE22:
- 187              	.LBE21:
- 129:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     const uint16_t reader_interval_us = 1000;   // Reader: every 1 ms
- 188              		.loc 1 129 1 view .LVU38
- 189 0004 10B4     		push	{r4}
- 190              		.cfi_def_cfa_offset 4
- 191              		.cfi_offset 4, -4
- 192              		.loc 1 136 28 view .LVU39
- 193 0006 0122     		movs	r2, #1
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 138:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
- 194              		.loc 1 139 22 view .LVU40
- 195 0008 0020     		movs	r0, #0
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 196              		.loc 1 140 25 view .LVU41
- 197 000a 0324     		movs	r4, #3
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 198              		.loc 1 136 28 view .LVU42
- 199 000c 5A60     		str	r2, [r3, #4]
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 200              		.loc 1 137 5 is_stmt 1 view .LVU43
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 201              		.loc 1 137 29 is_stmt 0 view .LVU44
- 202 000e DA60     		str	r2, [r3, #12]
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 203              		.loc 1 139 5 is_stmt 1 view .LVU45
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 204              		.loc 1 139 22 is_stmt 0 view .LVU46
- 205 0010 C3F80405 		str	r0, [r3, #1284]
- 206              		.loc 1 140 5 is_stmt 1 view .LVU47
- 207              		.loc 1 140 25 is_stmt 0 view .LVU48
- 208 0014 C3F80845 		str	r4, [r3, #1288]
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
- 209              		.loc 1 141 5 is_stmt 1 view .LVU49
- 210              		.loc 1 141 27 is_stmt 0 view .LVU50
- 211 0018 0424     		movs	r4, #4
- 212 001a C3F81045 		str	r4, [r3, #1296]
- 142:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 143:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Reader interval -> Compare channel 0
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->CC[0] = reader_interval_us;
- 213              		.loc 1 144 5 is_stmt 1 view .LVU51
- 214              		.loc 1 144 23 is_stmt 0 view .LVU52
- 215 001e 4FF47A74 		mov	r4, #1000
- 216 0022 C3F84045 		str	r4, [r3, #1344]
- 145:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 146:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Manager interval -> Compare channel 1
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->CC[1] = manager_interval_us;
- 217              		.loc 1 147 5 is_stmt 1 view .LVU53
- 218              		.loc 1 147 23 is_stmt 0 view .LVU54
- 219 0026 42F21074 		movw	r4, #10000
- 220 002a C3F84445 		str	r4, [r3, #1348]
- 148:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->SHORTS = 0;
- 221              		.loc 1 149 5 is_stmt 1 view .LVU55
- 222              		.loc 1 149 24 is_stmt 0 view .LVU56
- 223 002e C3F80002 		str	r0, [r3, #512]
- 150:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 151:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Enable both interrupts
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->INTENSET =
- 224              		.loc 1 152 5 is_stmt 1 view .LVU57
- 225              		.loc 1 152 26 is_stmt 0 view .LVU58
- 226 0032 4FF44034 		mov	r4, #196608
- 227              	.LBB25:
- 228              	.LBB23:
- 229              		.loc 2 1820 43 view .LVU59
- 230 0036 4FF08060 		mov	r0, #67108864
- 231              	.LBE23:
- 232              	.LBE25:
- 233              		.loc 1 152 26 view .LVU60
- 234 003a C3F80443 		str	r4, [r3, #772]
- 153:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
- 154:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE1_Enabled << TIMER_INTENSET_COMPARE1_Pos);
- 155:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 156:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_ClearPendingIRQ(TIMER3_IRQn);
- 235              		.loc 1 156 5 is_stmt 1 view .LVU61
- 236              	.LVL5:
- 237              	.LBB26:
- 238              	.LBI21:
+ 583              		.loc 2 1820 43 view .LVU166
+ 584 0002 1449     		ldr	r1, .L36+4
+ 585              	.LBE84:
+ 586              	.LBE83:
+ 263:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 587              		.loc 1 263 1 view .LVU167
+ 588 0004 10B4     		push	{r4}
+ 589              		.cfi_def_cfa_offset 4
+ 590              		.cfi_offset 4, -4
+ 591              		.loc 1 268 28 view .LVU168
+ 592 0006 0122     		movs	r2, #1
+ 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 270:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
+ 593              		.loc 1 271 22 view .LVU169
+ 594 0008 0020     		movs	r0, #0
+ 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 595              		.loc 1 272 25 view .LVU170
+ 596 000a 0324     		movs	r4, #3
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 597              		.loc 1 268 28 view .LVU171
+ 598 000c 5A60     		str	r2, [r3, #4]
+ 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 599              		.loc 1 269 5 is_stmt 1 view .LVU172
+ 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 600              		.loc 1 269 29 is_stmt 0 view .LVU173
+ 601 000e DA60     		str	r2, [r3, #12]
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 602              		.loc 1 271 5 is_stmt 1 view .LVU174
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 603              		.loc 1 271 22 is_stmt 0 view .LVU175
+ 604 0010 C3F80405 		str	r0, [r3, #1284]
+ 605              		.loc 1 272 5 is_stmt 1 view .LVU176
+ 606              		.loc 1 272 25 is_stmt 0 view .LVU177
+ 607 0014 C3F80845 		str	r4, [r3, #1288]
+ 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
+ 608              		.loc 1 273 5 is_stmt 1 view .LVU178
+ 609              		.loc 1 273 27 is_stmt 0 view .LVU179
+ 610 0018 0424     		movs	r4, #4
+ 611 001a C3F81045 		str	r4, [r3, #1296]
+ 274:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 275:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Reader interval -> Compare channel 0
+ 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->CC[0] = READER_INTERVAL_US;
+ 612              		.loc 1 276 5 is_stmt 1 view .LVU180
+ 613              		.loc 1 276 23 is_stmt 0 view .LVU181
+ 614 001e 41F28834 		movw	r4, #5000
+ 615 0022 C3F84045 		str	r4, [r3, #1344]
+ 277:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 278:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Manager interval -> Compare channel 1
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->CC[1] = MANAGER_INTERVAL_US;
+ 616              		.loc 1 279 5 is_stmt 1 view .LVU182
+ 617              		.loc 1 279 23 is_stmt 0 view .LVU183
+ 618 0026 42F21074 		movw	r4, #10000
+ 619 002a C3F84445 		str	r4, [r3, #1348]
+ 280:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 281:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->SHORTS = 0;
+ 620              		.loc 1 281 5 is_stmt 1 view .LVU184
+ 621              		.loc 1 281 24 is_stmt 0 view .LVU185
+ 622 002e C3F80002 		str	r0, [r3, #512]
+ 282:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 283:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Enable both interrupts
+ 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->INTENSET =
+ 623              		.loc 1 284 5 is_stmt 1 view .LVU186
+ 624              		.loc 1 284 26 is_stmt 0 view .LVU187
+ 625 0032 4FF44034 		mov	r4, #196608
+ 626              	.LBB87:
+ 627              	.LBB85:
+ 628              		.loc 2 1820 43 view .LVU188
+ 629 0036 4FF08060 		mov	r0, #67108864
+ 630              	.LBE85:
+ 631              	.LBE87:
+ 632              		.loc 1 284 26 view .LVU189
+ 633 003a C3F80443 		str	r4, [r3, #772]
+ 285:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
+ 286:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE1_Enabled << TIMER_INTENSET_COMPARE1_Pos);
+ 287:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_ClearPendingIRQ(TIMER3_IRQn);
+ 634              		.loc 1 288 5 is_stmt 1 view .LVU190
+ 635              	.LVL60:
+ 636              	.LBB88:
+ 637              	.LBI83:
 1816:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
- 239              		.loc 2 1816 22 view .LVU62
- 240              	.LBB24:
+ 638              		.loc 2 1816 22 view .LVU191
+ 639              	.LBB86:
 1818:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
- 241              		.loc 2 1818 3 view .LVU63
- 242              		.loc 2 1820 5 view .LVU64
- 243              		.loc 2 1820 43 is_stmt 0 view .LVU65
- 244 003e C1F88001 		str	r0, [r1, #384]
- 245              	.LVL6:
- 246              		.loc 2 1820 43 view .LVU66
- 247              	.LBE24:
- 248              	.LBE26:
- 157:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_EnableIRQ(TIMER3_IRQn);
- 249              		.loc 1 157 5 is_stmt 1 view .LVU67
- 250              	.LBB27:
- 251              	.LBI27:
+ 640              		.loc 2 1818 3 view .LVU192
+ 641              		.loc 2 1820 5 view .LVU193
+ 642              		.loc 2 1820 43 is_stmt 0 view .LVU194
+ 643 003e C1F88001 		str	r0, [r1, #384]
+ 644              	.LVL61:
+ 645              		.loc 2 1820 43 view .LVU195
+ 646              	.LBE86:
+ 647              	.LBE88:
+ 289:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_EnableIRQ(TIMER3_IRQn);
+ 648              		.loc 1 289 5 is_stmt 1 view .LVU196
+ 649              	.LBB89:
+ 650              	.LBI89:
 1725:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
- 252              		.loc 2 1725 22 view .LVU68
- 253              	.LBB28:
+ 651              		.loc 2 1725 22 view .LVU197
+ 652              	.LBB90:
 1727:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
- 254              		.loc 2 1727 3 view .LVU69
+ 653              		.loc 2 1727 3 view .LVU198
 1729:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     NVIC->ISER[(((uint32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)IRQn) & 0x1FUL));
- 255              		.loc 2 1729 5 view .LVU70
+ 654              		.loc 2 1729 5 view .LVU199
 1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
- 256              		.loc 2 1730 5 view .LVU71
+ 655              		.loc 2 1730 5 view .LVU200
 1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
- 257              		.loc 2 1730 43 is_stmt 0 view .LVU72
- 258 0042 0860     		str	r0, [r1]
+ 656              		.loc 2 1730 43 is_stmt 0 view .LVU201
+ 657 0042 0860     		str	r0, [r1]
 1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
- 259              		.loc 2 1731 5 is_stmt 1 view .LVU73
- 260              	.LVL7:
+ 658              		.loc 2 1731 5 is_stmt 1 view .LVU202
+ 659              	.LVL62:
 1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
- 261              		.loc 2 1731 5 is_stmt 0 view .LVU74
- 262              	.LBE28:
- 263              	.LBE27:
- 158:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 159:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 264              		.loc 1 159 5 is_stmt 1 view .LVU75
- 265              		.loc 1 159 29 is_stmt 0 view .LVU76
- 266 0044 DA60     		str	r2, [r3, #12]
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
- 267              		.loc 1 160 5 is_stmt 1 view .LVU77
- 161:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 162:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
- 163:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 164:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop and clear timer
- 165:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL = MC__STOP | TACLR;
- 166:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 167:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Reader interval -> CCR0 (1 ms)
- 168:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCR0 = (reader_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
- 169:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 170:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Manager interval -> CCR1 (10 ms)
- 171:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCR1 = (manager_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
- 172:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 173:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Enable interrupts
- 174:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 = CCIE;
- 175:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL1 = CCIE;
- 176:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 177:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // SMCLK, no division, Up mode
- 178:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL = TASSEL__SMCLK | ID__1 | MC__UP | TACLR;
- 179:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 180:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 181:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 268              		.loc 1 181 1 is_stmt 0 view .LVU78
- 269 0046 5DF8044B 		ldr	r4, [sp], #4
- 270              		.cfi_restore 4
- 271              		.cfi_def_cfa_offset 0
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
- 272              		.loc 1 160 29 view .LVU79
- 273 004a 1A60     		str	r2, [r3]
- 274              		.loc 1 181 1 view .LVU80
- 275 004c 7047     		bx	lr
- 276              	.L15:
- 277 004e 00BF     		.align	2
- 278              	.L14:
- 279 0050 00A00140 		.word	1073848320
- 280 0054 00E100E0 		.word	-536813312
- 281              		.cfi_endproc
- 282              	.LFE137:
- 284              		.section	.text.stop_isr_timer,"ax",%progbits
- 285              		.align	1
- 286              		.p2align 2,,3
- 287              		.global	stop_isr_timer
- 288              		.syntax unified
- 289              		.thumb
- 290              		.thumb_func
- 292              	stop_isr_timer:
- 293              	.LFB138:
- 182:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 183:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void stop_isr_timer(void)
- 184:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 294              		.loc 1 184 1 is_stmt 1 view -0
- 295              		.cfi_startproc
- 296              		@ args = 0, pretend = 0, frame = 0
- 297              		@ frame_needed = 0, uses_anonymous_args = 0
- 298              		@ link register save eliminated.
- 185:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 186:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_STOP = 1;
- 299              		.loc 1 186 5 view .LVU82
- 300              		.loc 1 186 28 is_stmt 0 view .LVU83
- 301 0000 014B     		ldr	r3, .L17
- 302 0002 0122     		movs	r2, #1
- 303 0004 5A60     		str	r2, [r3, #4]
- 187:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
- 188:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop Timer A1 completely and reset for next use
- 189:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL &= ~MC_3;    // Clear mode control bits (stop timer
- 190:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL |= TACLR;    // Clear timer counter
- 191:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 &= ~CCIFG; // Clear any pending CCR0 interrupt
- 192:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 &= ~CCIE;  // Disable CCR0 interrupt
- 193:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1R = 0;           // Reset timer counter
- 194:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 195:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 304              		.loc 1 195 1 view .LVU84
- 305 0006 7047     		bx	lr
- 306              	.L18:
- 307              		.align	2
- 308              	.L17:
- 309 0008 00A00140 		.word	1073848320
- 310              		.cfi_endproc
- 311              	.LFE138:
- 313              		.section	.text.set_standart_blacklist_pins,"ax",%progbits
- 314              		.align	1
- 315              		.p2align 2,,3
- 316              		.global	set_standart_blacklist_pins
- 317              		.syntax unified
- 318              		.thumb
- 319              		.thumb_func
- 321              	set_standart_blacklist_pins:
- 322              	.LVL8:
- 323              	.LFB139:
- 196:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 197:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzufügen
- 198:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 324              		.loc 1 198 1 is_stmt 1 view -0
- 325              		.cfi_startproc
- 326              		@ args = 0, pretend = 0, frame = 0
- 327              		@ frame_needed = 0, uses_anonymous_args = 0
- 328              		@ link register save eliminated.
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
- 329              		.loc 1 199 5 view .LVU86
- 330              		.loc 1 199 11 is_stmt 0 view .LVU87
- 331 0000 4FF0FF32 		mov	r2, #-1
- 332 0004 4FF0FF33 		mov	r3, #-1
- 198:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
- 333              		.loc 1 198 1 view .LVU88
- 334 0008 F0B4     		push	{r4, r5, r6, r7}
- 335              		.cfi_def_cfa_offset 16
- 336              		.cfi_offset 4, -16
- 337              		.cfi_offset 5, -12
- 338              		.cfi_offset 6, -8
- 339              		.cfi_offset 7, -4
- 340              		.loc 1 199 11 view .LVU89
- 341 000a C0E90023 		strd	r2, [r0]
- 200:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 201:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 202:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 12); // Pin 12
- 342              		.loc 1 202 5 is_stmt 1 view .LVU90
- 343 000e D0E90067 		ldrd	r6, [r0]
- 344              		.loc 1 202 11 is_stmt 0 view .LVU91
- 345 0012 26F48054 		bic	r4, r6, #4096
- 346 0016 3D46     		mov	r5, r7
- 347 0018 C0E90045 		strd	r4, [r0]
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
- 348              		.loc 1 203 5 is_stmt 1 view .LVU92
- 349 001c D0E90045 		ldrd	r4, [r0]
- 350              		.loc 1 203 11 is_stmt 0 view .LVU93
- 351 0020 24F40062 		bic	r2, r4, #2048
- 352 0024 2B46     		mov	r3, r5
- 353 0026 C0E90023 		strd	r2, [r0]
- 204:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 205:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
- 206:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
- 207:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
- 208:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 209:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 354              		.loc 1 209 1 view .LVU94
- 355 002a F0BC     		pop	{r4, r5, r6, r7}
- 356              		.cfi_restore 7
- 357              		.cfi_restore 6
- 358              		.cfi_restore 5
- 359              		.cfi_restore 4
- 360              		.cfi_def_cfa_offset 0
- 361 002c 7047     		bx	lr
- 362              		.cfi_endproc
- 363              	.LFE139:
- 365 002e 00BF     		.section	.text.print_active_pins_from_mask,"ax",%progbits
- 366              		.align	1
- 367              		.p2align 2,,3
- 368              		.global	print_active_pins_from_mask
- 369              		.syntax unified
- 370              		.thumb
- 371              		.thumb_func
- 373              	print_active_pins_from_mask:
- 374              	.LVL9:
- 375              	.LFB140:
- 210:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 211:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void print_active_pins_from_mask(uint64_t mask)
- 212:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 376              		.loc 1 212 1 is_stmt 1 view -0
- 377              		.cfi_startproc
- 378              		@ args = 0, pretend = 0, frame = 0
- 379              		@ frame_needed = 0, uses_anonymous_args = 0
- 380              		@ link register save eliminated.
- 213:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Blacklist mask: ");
- 381              		.loc 1 213 28 view .LVU96
- 214:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < 64; ++pin)
- 382              		.loc 1 214 5 view .LVU97
- 383              		.loc 1 214 10 view .LVU98
- 384              		.loc 1 214 31 discriminator 1 view .LVU99
- 215:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 216:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if ((mask >> pin) & 1)
- 217:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
- 218:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             LOG("%u ", (unsigned int)pin);
- 219:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
- 220:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 221:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("\n");
- 385              		.loc 1 221 14 view .LVU100
- 222:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 386              		.loc 1 222 1 is_stmt 0 view .LVU101
- 387 0000 7047     		bx	lr
- 388              		.cfi_endproc
- 389              	.LFE140:
- 391 0002 00BF     		.section	.text.startup.main,"ax",%progbits
- 392              		.align	1
- 393              		.p2align 2,,3
- 394              		.global	main
- 395              		.syntax unified
- 396              		.thumb
- 397              		.thumb_func
- 399              	main:
- 400              	.LFB141:
- 223:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 224:/Users/timcarlo/Desktop/testsoftware/core/main.c **** int main(void)
- 225:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 401              		.loc 1 225 1 is_stmt 1 view -0
- 402              		.cfi_startproc
- 403              		@ args = 0, pretend = 0, frame = 0
- 404              		@ frame_needed = 0, uses_anonymous_args = 0
- 226:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 405              		.loc 1 226 5 view .LVU103
- 225:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
- 406              		.loc 1 225 1 is_stmt 0 view .LVU104
- 407 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
- 408              		.cfi_def_cfa_offset 24
- 409              		.cfi_offset 3, -24
- 410              		.cfi_offset 4, -20
- 411              		.cfi_offset 5, -16
- 412              		.cfi_offset 6, -12
- 413              		.cfi_offset 7, -8
- 414              		.cfi_offset 14, -4
- 415              		.loc 1 226 5 view .LVU105
- 416 0002 FFF7FEFF 		bl	io_init
- 417              	.LVL10:
- 227:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
- 418              		.loc 1 227 5 is_stmt 1 view .LVU106
- 419 0006 3021     		movs	r1, #48
- 420 0008 3548     		ldr	r0, .L27
- 421              	.LBB29:
- 422              	.LBB30:
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 423              		.loc 1 199 11 is_stmt 0 view .LVU107
- 424 000a 364D     		ldr	r5, .L27+4
- 425              	.LBE30:
- 426              	.LBE29:
- 427              		.loc 1 227 5 view .LVU108
- 428 000c FFF7FEFF 		bl	initialize_pin_data_array
- 429              	.LVL11:
- 228:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Running on %s\n", get_chip_family_name());
- 430              		.loc 1 228 51 is_stmt 1 view .LVU109
- 229:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Chip UID: %s\n", get_unique_id_str());
- 431              		.loc 1 229 47 view .LVU110
- 230:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 231:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN1);
- 432              		.loc 1 231 5 view .LVU111
- 433 0010 1A20     		movs	r0, #26
- 434 0012 FFF7FEFF 		bl	gpio_output_init
- 435              	.LVL12:
- 232:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN2);
- 436              		.loc 1 232 5 view .LVU112
- 437 0016 1B20     		movs	r0, #27
- 438 0018 FFF7FEFF 		bl	gpio_output_init
- 439              	.LVL13:
- 233:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 234:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_timer(TIMER_B);
- 440              		.loc 1 234 5 view .LVU113
- 441 001c 3248     		ldr	r0, .L27+8
- 442 001e FFF7FEFF 		bl	start_timer
- 443              	.LVL14:
- 235:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_timer(TIMER_A);
- 444              		.loc 1 235 5 view .LVU114
- 445 0022 3248     		ldr	r0, .L27+12
- 446 0024 FFF7FEFF 		bl	start_timer
- 447              	.LVL15:
- 236:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 237:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(ABSOLUTE_PIN_GREEN);
- 448              		.loc 1 237 5 view .LVU115
- 449 0028 0420     		movs	r0, #4
- 450 002a FFF7FEFF 		bl	gpio_output_init
- 451              	.LVL16:
- 238:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(ABSOLUTE_PIN_RED);
- 452              		.loc 1 238 5 view .LVU116
- 453 002e 0320     		movs	r0, #3
- 454 0030 FFF7FEFF 		bl	gpio_output_init
- 455              	.LVL17:
- 239:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 240:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Since the Out Register is initialized to 1, we need to set the LEDs to low
- 241:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(__MSP430FR5994__)
- 242:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(ABSOLUTE_PIN_GREEN);
- 243:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_drive_low(ABSOLUTE_PIN_RED);
- 244:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
- 245:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 246:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     set_standart_blacklist_pins(&black_list_mask);
- 456              		.loc 1 246 5 view .LVU117
- 457              	.LBB33:
- 458              	.LBI29:
- 197:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 459              		.loc 1 197 6 view .LVU118
- 460              	.LBB31:
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 461              		.loc 1 199 5 view .LVU119
- 199:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 462              		.loc 1 199 11 is_stmt 0 view .LVU120
- 463 0034 4FF0FF32 		mov	r2, #-1
- 464 0038 4FF0FF33 		mov	r3, #-1
- 465 003c C5E90023 		strd	r2, [r5]
- 202:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
- 466              		.loc 1 202 5 is_stmt 1 view .LVU121
- 467 0040 D5E90067 		ldrd	r6, [r5]
- 202:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
- 468              		.loc 1 202 11 is_stmt 0 view .LVU122
- 469 0044 26F48050 		bic	r0, r6, #4096
- 470 0048 3946     		mov	r1, r7
- 471 004a C5E90001 		strd	r0, [r5]
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 472              		.loc 1 203 5 is_stmt 1 view .LVU123
- 473 004e D5E90001 		ldrd	r0, [r5]
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 474              		.loc 1 203 11 is_stmt 0 view .LVU124
- 475 0052 20F40062 		bic	r2, r0, #2048
- 476 0056 0B46     		mov	r3, r1
- 477 0058 C5E90023 		strd	r2, [r5]
- 478              	.LVL18:
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 479              		.loc 1 203 11 view .LVU125
- 480              	.LBE31:
- 481              	.LBE33:
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
- 482              		.loc 1 247 5 is_stmt 1 view .LVU126
- 483              	.LBB34:
- 484              		.loc 1 247 10 view .LVU127
- 485              		.loc 1 247 31 discriminator 1 view .LVU128
- 486              	.LBE34:
- 487              	.LBB35:
- 488              	.LBB32:
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 489              		.loc 1 203 11 is_stmt 0 view .LVU129
- 490 005c 0024     		movs	r4, #0
- 491              	.LVL19:
- 492              	.L24:
- 203:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 493              		.loc 1 203 11 view .LVU130
- 494              	.LBE32:
- 495              	.LBE35:
- 496              	.LBB36:
- 248:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (black_list_mask & (1ULL << pin))
- 497              		.loc 1 249 9 is_stmt 1 view .LVU131
- 250:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
- 251:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
- 498              		.loc 1 251 9 view .LVU132
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
- 499              		.loc 1 249 13 is_stmt 0 view .LVU133
- 500 005e D5E90001 		ldrd	r0, [r5]
- 501 0062 C4F1200C 		rsb	ip, r4, #32
- 502 0066 20FA04F3 		lsr	r3, r0, r4
- 503 006a A4F12002 		sub	r2, r4, #32
- 504 006e 01FA0CFC 		lsl	ip, r1, ip
- 505 0072 43EA0C03 		orr	r3, r3, ip
- 506 0076 21FA02F2 		lsr	r2, r1, r2
- 507 007a 1343     		orrs	r3, r3, r2
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
- 508              		.loc 1 249 12 view .LVU134
- 509 007c 13F0010F 		tst	r3, #1
- 510              		.loc 1 251 9 view .LVU135
- 511 0080 E0B2     		uxtb	r0, r4
- 249:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
- 512              		.loc 1 249 12 view .LVU136
- 513 0082 01D1     		bne	.L23
- 514              		.loc 1 251 9 view .LVU137
- 515 0084 FFF7FEFF 		bl	gpio_od_init
- 516              	.LVL20:
- 517              	.L23:
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 518              		.loc 1 247 54 is_stmt 1 discriminator 2 view .LVU138
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 519              		.loc 1 247 31 discriminator 1 view .LVU139
- 520 0088 0134     		adds	r4, r4, #1
- 521              	.LVL21:
- 247:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 522              		.loc 1 247 31 is_stmt 0 discriminator 1 view .LVU140
- 523 008a 302C     		cmp	r4, #48
- 524 008c E7D1     		bne	.L24
- 525              	.LBE36:
- 252:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 253:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 254:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint64_t get_initial_state = get_initial_pin_state(0);
- 526              		.loc 1 254 5 is_stmt 1 view .LVU141
- 527              		.loc 1 254 34 is_stmt 0 view .LVU142
- 528 008e 0020     		movs	r0, #0
- 529 0090 FFF7FEFF 		bl	get_initial_pin_state
- 530              	.LVL22:
- 255:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  black_list_mask |= ~get_initial_state; // Add initial state to the blacklist mask
- 256:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 257:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Initial pin state: 0x%016llx\n", get_initial_state);
- 531              		.loc 1 257 61 is_stmt 1 view .LVU143
- 258:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     print_active_pins_from_mask(black_list_mask);
- 532              		.loc 1 258 5 view .LVU144
- 533              	.LBB37:
- 534              	.LBB38:
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 535              		.loc 1 136 28 is_stmt 0 view .LVU145
- 536 0094 164B     		ldr	r3, .L27+16
- 537              	.LBE38:
- 538              	.LBE37:
- 539              		.loc 1 258 5 view .LVU146
- 540 0096 D5E90045 		ldrd	r4, [r5]
- 541              	.LVL23:
- 259:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 260:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_isr_timer(); // Start the ISR timer
- 542              		.loc 1 260 5 is_stmt 1 view .LVU147
- 543              	.LBB46:
- 544              	.LBI37:
- 128:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 545              		.loc 1 128 6 view .LVU148
- 546              	.LBB45:
- 130:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     const uint16_t manager_interval_us = 10000; // Manager: every 10 ms
- 547              		.loc 1 130 5 view .LVU149
- 131:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 548              		.loc 1 131 5 view .LVU150
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 549              		.loc 1 136 5 view .LVU151
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 550              		.loc 1 136 28 is_stmt 0 view .LVU152
- 551 009a 0122     		movs	r2, #1
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 552              		.loc 1 139 22 view .LVU153
- 553 009c 0020     		movs	r0, #0
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
- 554              		.loc 1 140 25 view .LVU154
- 555 009e 0321     		movs	r1, #3
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 556              		.loc 1 141 27 view .LVU155
- 557 00a0 0424     		movs	r4, #4
- 136:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
- 558              		.loc 1 136 28 view .LVU156
- 559 00a2 5A60     		str	r2, [r3, #4]
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 560              		.loc 1 137 5 is_stmt 1 view .LVU157
- 137:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 561              		.loc 1 137 29 is_stmt 0 view .LVU158
- 562 00a4 DA60     		str	r2, [r3, #12]
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 563              		.loc 1 139 5 is_stmt 1 view .LVU159
- 139:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
- 564              		.loc 1 139 22 is_stmt 0 view .LVU160
- 565 00a6 C3F80405 		str	r0, [r3, #1284]
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
- 566              		.loc 1 140 5 is_stmt 1 view .LVU161
- 140:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
- 567              		.loc 1 140 25 is_stmt 0 view .LVU162
- 568 00aa C3F80815 		str	r1, [r3, #1288]
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 569              		.loc 1 141 5 is_stmt 1 view .LVU163
- 141:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 570              		.loc 1 141 27 is_stmt 0 view .LVU164
- 571 00ae C3F81045 		str	r4, [r3, #1296]
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 572              		.loc 1 144 5 is_stmt 1 view .LVU165
- 144:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 573              		.loc 1 144 23 is_stmt 0 view .LVU166
- 574 00b2 4FF47A74 		mov	r4, #1000
- 575 00b6 C3F84045 		str	r4, [r3, #1344]
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 576              		.loc 1 147 5 is_stmt 1 view .LVU167
- 147:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 577              		.loc 1 147 23 is_stmt 0 view .LVU168
- 578 00ba 42F21074 		movw	r4, #10000
- 579 00be C3F84445 		str	r4, [r3, #1348]
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 580              		.loc 1 149 5 is_stmt 1 view .LVU169
- 581              	.LBB39:
- 582              	.LBB40:
- 583              		.loc 2 1820 43 is_stmt 0 view .LVU170
- 584 00c2 0C49     		ldr	r1, .L27+20
- 585              	.LBE40:
- 586              	.LBE39:
- 149:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 587              		.loc 1 149 24 view .LVU171
- 588 00c4 C3F80002 		str	r0, [r3, #512]
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
- 589              		.loc 1 152 5 is_stmt 1 view .LVU172
- 152:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
- 590              		.loc 1 152 26 is_stmt 0 view .LVU173
- 591 00c8 4FF44034 		mov	r4, #196608
- 592 00cc C3F80443 		str	r4, [r3, #772]
- 156:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_EnableIRQ(TIMER3_IRQn);
- 593              		.loc 1 156 5 is_stmt 1 view .LVU174
- 594              	.LVL24:
- 595              	.LBB42:
- 596              	.LBI39:
-1816:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
- 597              		.loc 2 1816 22 view .LVU175
- 598              	.LBB41:
-1818:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
- 599              		.loc 2 1818 3 view .LVU176
- 600              		.loc 2 1820 5 view .LVU177
- 601              		.loc 2 1820 43 is_stmt 0 view .LVU178
- 602 00d0 4FF08064 		mov	r4, #67108864
- 603 00d4 C1F88041 		str	r4, [r1, #384]
- 604              	.LVL25:
- 605              		.loc 2 1820 43 view .LVU179
- 606              	.LBE41:
- 607              	.LBE42:
- 157:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 608              		.loc 1 157 5 is_stmt 1 view .LVU180
- 609              	.LBB43:
- 610              	.LBI43:
-1725:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
- 611              		.loc 2 1725 22 view .LVU181
- 612              	.LBB44:
-1727:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
- 613              		.loc 2 1727 3 view .LVU182
-1729:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     NVIC->ISER[(((uint32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)IRQn) & 0x1FUL));
- 614              		.loc 2 1729 5 view .LVU183
-1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
- 615              		.loc 2 1730 5 view .LVU184
-1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
- 616              		.loc 2 1730 43 is_stmt 0 view .LVU185
- 617 00d8 0C60     		str	r4, [r1]
-1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
- 618              		.loc 2 1731 5 is_stmt 1 view .LVU186
- 619              	.LVL26:
-1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
- 620              		.loc 2 1731 5 is_stmt 0 view .LVU187
- 621              	.LBE44:
- 622              	.LBE43:
- 159:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
- 623              		.loc 1 159 5 is_stmt 1 view .LVU188
- 159:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
- 624              		.loc 1 159 29 is_stmt 0 view .LVU189
- 625 00da DA60     		str	r2, [r3, #12]
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 626              		.loc 1 160 5 is_stmt 1 view .LVU190
- 160:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 627              		.loc 1 160 29 is_stmt 0 view .LVU191
- 628 00dc 1A60     		str	r2, [r3]
- 629              	.LBE45:
- 630              	.LBE46:
- 261:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 631              		.loc 1 261 1 view .LVU192
- 632 00de F8BD     		pop	{r3, r4, r5, r6, r7, pc}
- 633              	.L28:
- 634              		.align	2
- 635              	.L27:
- 636 00e0 00000000 		.word	pin_data
- 637 00e4 00000000 		.word	black_list_mask
- 638 00e8 00900040 		.word	1073778688
- 639 00ec 00800040 		.word	1073774592
- 640 00f0 00A00140 		.word	1073848320
- 641 00f4 00E100E0 		.word	-536813312
- 642              		.cfi_endproc
- 643              	.LFE141:
- 645              		.section	.text.TIMER3_IRQHandler,"ax",%progbits
- 646              		.align	1
- 647              		.p2align 2,,3
- 648              		.global	TIMER3_IRQHandler
- 649              		.syntax unified
- 650              		.thumb
- 651              		.thumb_func
- 653              	TIMER3_IRQHandler:
- 654              	.LFB142:
- 262:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
- 263:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Interrupt Service Routine for Timer A3
- 264:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
- 265:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void TIMER3_IRQHandler(void)
- 266:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 655              		.loc 1 266 1 is_stmt 1 view -0
- 656              		.cfi_startproc
- 657              		@ args = 0, pretend = 0, frame = 8
- 658              		@ frame_needed = 0, uses_anonymous_args = 0
- 267:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (NRF_TIMER3->EVENTS_COMPARE[0])
- 659              		.loc 1 267 5 view .LVU194
- 266:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (NRF_TIMER3->EVENTS_COMPARE[0])
- 660              		.loc 1 266 1 is_stmt 0 view .LVU195
- 661 0000 10B5     		push	{r4, lr}
- 662              		.cfi_def_cfa_offset 8
- 663              		.cfi_offset 4, -8
- 664              		.cfi_offset 14, -4
- 665              		.loc 1 267 35 view .LVU196
- 666 0002 244B     		ldr	r3, .L44
- 667 0004 D3F84021 		ldr	r2, [r3, #320]
- 266:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (NRF_TIMER3->EVENTS_COMPARE[0])
- 668              		.loc 1 266 1 view .LVU197
- 669 0008 82B0     		sub	sp, sp, #8
- 670              		.cfi_def_cfa_offset 16
- 671              		.loc 1 267 8 view .LVU198
- 672 000a 2AB9     		cbnz	r2, .L42
- 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->EVENTS_COMPARE[0] = 0;
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += 1000; // Next reader event in 1ms
- 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();             // Call the reader ISR
- 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (NRF_TIMER3->EVENTS_COMPARE[1])
- 673              		.loc 1 273 5 is_stmt 1 view .LVU199
- 674              		.loc 1 273 35 is_stmt 0 view .LVU200
- 675 000c 214B     		ldr	r3, .L44
- 676 000e D3F84421 		ldr	r2, [r3, #324]
- 677              		.loc 1 273 8 view .LVU201
- 678 0012 02BB     		cbnz	r2, .L43
- 679              	.L29:
- 274:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 275:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->EVENTS_COMPARE[1] = 0;
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[1] += 10000; // Nächstes Manager-Event in 10ms
- 277:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         manager_isr();             // Call the manager ISR
- 278:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 279:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 680              		.loc 1 279 1 view .LVU202
- 681 0014 02B0     		add	sp, sp, #8
- 682              		.cfi_remember_state
- 683              		.cfi_def_cfa_offset 8
- 684              		@ sp needed
- 685 0016 10BD     		pop	{r4, pc}
- 686              	.L42:
- 687              		.cfi_restore_state
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += 1000; // Next reader event in 1ms
- 688              		.loc 1 269 9 is_stmt 1 view .LVU203
- 269:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += 1000; // Next reader event in 1ms
- 689              		.loc 1 269 39 is_stmt 0 view .LVU204
- 690 0018 0024     		movs	r4, #0
- 691 001a C3F84041 		str	r4, [r3, #320]
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();             // Call the reader ISR
- 692              		.loc 1 270 9 is_stmt 1 view .LVU205
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();             // Call the reader ISR
- 693              		.loc 1 270 23 is_stmt 0 view .LVU206
- 694 001e D3F84025 		ldr	r2, [r3, #1344]
- 270:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();             // Call the reader ISR
- 695              		.loc 1 270 27 view .LVU207
- 696 0022 02F57A72 		add	r2, r2, #1000
- 697 0026 C3F84025 		str	r2, [r3, #1344]
- 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 698              		.loc 1 271 9 is_stmt 1 view .LVU208
- 699              	.LBB53:
- 700              	.LBI53:
- 117:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 701              		.loc 1 117 6 view .LVU209
- 702              	.LBB54:
- 119:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Insert 10 NOPs for timing adjustment
- 703              		.loc 1 119 5 view .LVU210
- 704 002a 1B20     		movs	r0, #27
- 705 002c FFF7FEFF 		bl	gpio_drive_high
- 706              	.LVL27:
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 707              		.loc 1 121 5 view .LVU211
- 708              	.LBB55:
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 709              		.loc 1 121 10 view .LVU212
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 710              		.loc 1 121 23 is_stmt 0 view .LVU213
- 711 0030 0094     		str	r4, [sp]
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 712              		.loc 1 121 32 is_stmt 1 discriminator 1 view .LVU214
- 713 0032 009B     		ldr	r3, [sp]
- 714 0034 092B     		cmp	r3, #9
- 715 0036 06DC     		bgt	.L31
- 716              	.L32:
- 123:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 717              		.loc 1 123 9 view .LVU215
- 718              		.syntax unified
- 719              	@ 123 "/Users/timcarlo/Desktop/testsoftware/core/main.c" 1
- 720 0038 00BF     		nop
- 721              	@ 0 "" 2
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 722              		.loc 1 121 38 discriminator 3 view .LVU216
- 723              		.thumb
- 724              		.syntax unified
- 725 003a 009B     		ldr	r3, [sp]
- 726 003c 0133     		adds	r3, r3, #1
- 727 003e 0093     		str	r3, [sp]
- 121:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 728              		.loc 1 121 32 discriminator 1 view .LVU217
- 729 0040 009B     		ldr	r3, [sp]
- 730 0042 092B     		cmp	r3, #9
- 731 0044 F8DD     		ble	.L32
- 732              	.L31:
- 733              	.LBE55:
- 125:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 734              		.loc 1 125 5 view .LVU218
- 735 0046 1B20     		movs	r0, #27
- 736 0048 FFF7FEFF 		bl	gpio_drive_low
- 737              	.LVL28:
- 738              	.LBE54:
- 739              	.LBE53:
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 740              		.loc 1 273 5 view .LVU219
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 741              		.loc 1 273 35 is_stmt 0 view .LVU220
- 742 004c 114B     		ldr	r3, .L44
- 743 004e D3F84421 		ldr	r2, [r3, #324]
- 273:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 744              		.loc 1 273 8 view .LVU221
- 745 0052 002A     		cmp	r2, #0
- 746 0054 DED0     		beq	.L29
- 747              	.L43:
- 275:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[1] += 10000; // Nächstes Manager-Event in 10ms
- 748              		.loc 1 275 9 is_stmt 1 view .LVU222
- 275:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[1] += 10000; // Nächstes Manager-Event in 10ms
- 749              		.loc 1 275 39 is_stmt 0 view .LVU223
- 750 0056 0024     		movs	r4, #0
- 751 0058 C3F84441 		str	r4, [r3, #324]
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         manager_isr();             // Call the manager ISR
- 752              		.loc 1 276 9 is_stmt 1 view .LVU224
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         manager_isr();             // Call the manager ISR
- 753              		.loc 1 276 23 is_stmt 0 view .LVU225
- 754 005c D3F84425 		ldr	r2, [r3, #1348]
- 276:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         manager_isr();             // Call the manager ISR
- 755              		.loc 1 276 27 view .LVU226
- 756 0060 02F51C52 		add	r2, r2, #9984
- 757 0064 1032     		adds	r2, r2, #16
- 758 0066 C3F84425 		str	r2, [r3, #1348]
- 277:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 759              		.loc 1 277 9 is_stmt 1 view .LVU227
- 760              	.LBB56:
- 761              	.LBI56:
- 106:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
- 762              		.loc 1 106 6 view .LVU228
- 763              	.LBB57:
- 108:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Insert 10 NOPs for timing adjustment
- 764              		.loc 1 108 5 view .LVU229
- 765 006a 1A20     		movs	r0, #26
- 766 006c FFF7FEFF 		bl	gpio_drive_high
- 767              	.LVL29:
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 768              		.loc 1 110 5 view .LVU230
- 769              	.LBB58:
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 770              		.loc 1 110 10 view .LVU231
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 771              		.loc 1 110 23 is_stmt 0 view .LVU232
- 772 0070 0194     		str	r4, [sp, #4]
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 773              		.loc 1 110 32 is_stmt 1 discriminator 1 view .LVU233
- 774 0072 019B     		ldr	r3, [sp, #4]
- 775 0074 092B     		cmp	r3, #9
- 776 0076 06DC     		bgt	.L34
- 777              	.L35:
- 112:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
- 778              		.loc 1 112 9 view .LVU234
- 779              		.syntax unified
- 780              	@ 112 "/Users/timcarlo/Desktop/testsoftware/core/main.c" 1
- 781 0078 00BF     		nop
- 782              	@ 0 "" 2
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 783              		.loc 1 110 38 discriminator 3 view .LVU235
- 784              		.thumb
- 785              		.syntax unified
- 786 007a 019B     		ldr	r3, [sp, #4]
- 787 007c 0133     		adds	r3, r3, #1
- 788 007e 0193     		str	r3, [sp, #4]
- 110:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
- 789              		.loc 1 110 32 discriminator 1 view .LVU236
- 790 0080 019B     		ldr	r3, [sp, #4]
- 791 0082 092B     		cmp	r3, #9
- 792 0084 F8DD     		ble	.L35
- 793              	.L34:
- 794              	.LBE58:
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 795              		.loc 1 114 5 view .LVU237
- 796 0086 1A20     		movs	r0, #26
- 797              	.LBE57:
- 798              	.LBE56:
- 799              		.loc 1 279 1 is_stmt 0 view .LVU238
- 800 0088 02B0     		add	sp, sp, #8
- 801              		.cfi_def_cfa_offset 8
- 802              		@ sp needed
- 803 008a BDE81040 		pop	{r4, lr}
- 804              		.cfi_restore 14
- 805              		.cfi_restore 4
- 806              		.cfi_def_cfa_offset 0
- 807              	.LBB60:
- 808              	.LBB59:
- 114:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
- 809              		.loc 1 114 5 view .LVU239
- 810 008e FFF7FEBF 		b	gpio_drive_low
- 811              	.LVL30:
- 812              	.L45:
- 813 0092 00BF     		.align	2
+ 660              		.loc 2 1731 5 is_stmt 0 view .LVU203
+ 661              	.LBE90:
+ 662              	.LBE89:
+ 290:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 291:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 663              		.loc 1 291 5 is_stmt 1 view .LVU204
+ 664              		.loc 1 291 29 is_stmt 0 view .LVU205
+ 665 0044 DA60     		str	r2, [r3, #12]
+ 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
+ 666              		.loc 1 292 5 is_stmt 1 view .LVU206
+ 293:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 294:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
+ 295:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 296:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop and clear timer
+ 297:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL = MC__STOP | TACLR;
+ 298:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 299:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCR0 = READER_TICKS;
+ 300:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // TA1CCR1 = MANAGER_TICKS;
+ 301:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 302:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Enable interrupts
+ 303:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 = CCIE;
+ 304:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // TA1CCTL1 = CCIE;
+ 305:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 306:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL = TASSEL__SMCLK | ID__8 | MC__CONTINUOUS | TACLR;
+ 307:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 308:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+ 309:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 667              		.loc 1 309 1 is_stmt 0 view .LVU207
+ 668 0046 5DF8044B 		ldr	r4, [sp], #4
+ 669              		.cfi_restore 4
+ 670              		.cfi_def_cfa_offset 0
+ 292:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
+ 671              		.loc 1 292 29 view .LVU208
+ 672 004a 1A60     		str	r2, [r3]
+ 673              		.loc 1 309 1 view .LVU209
+ 674 004c 7047     		bx	lr
+ 675              	.L37:
+ 676 004e 00BF     		.align	2
+ 677              	.L36:
+ 678 0050 00A00140 		.word	1073848320
+ 679 0054 00E100E0 		.word	-536813312
+ 680              		.cfi_endproc
+ 681              	.LFE137:
+ 683              		.section	.text.stop_isr_timer,"ax",%progbits
+ 684              		.align	1
+ 685              		.p2align 2,,3
+ 686              		.global	stop_isr_timer
+ 687              		.syntax unified
+ 688              		.thumb
+ 689              		.thumb_func
+ 691              	stop_isr_timer:
+ 692              	.LFB138:
+ 310:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 311:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void stop_isr_timer(void)
+ 312:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 693              		.loc 1 312 1 is_stmt 1 view -0
+ 694              		.cfi_startproc
+ 695              		@ args = 0, pretend = 0, frame = 0
+ 696              		@ frame_needed = 0, uses_anonymous_args = 0
+ 697              		@ link register save eliminated.
+ 313:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+ 314:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_STOP = 1;
+ 698              		.loc 1 314 5 view .LVU211
+ 699              		.loc 1 314 28 is_stmt 0 view .LVU212
+ 700 0000 014B     		ldr	r3, .L39
+ 701 0002 0122     		movs	r2, #1
+ 702 0004 5A60     		str	r2, [r3, #4]
+ 315:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
+ 316:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     // Stop Timer A1 completely and reset for next use
+ 317:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL &= ~MC_3;    // Clear mode control bits (stop timer
+ 318:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CTL |= TACLR;    // Clear timer counter
+ 319:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 &= ~CCIFG; // Clear any pending CCR0 interrupt
+ 320:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1CCTL0 &= ~CCIE;  // Disable CCR0 interrupt
+ 321:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     TA1R = 0;           // Reset timer counter
+ 322:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+ 323:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 703              		.loc 1 323 1 view .LVU213
+ 704 0006 7047     		bx	lr
+ 705              	.L40:
+ 706              		.align	2
+ 707              	.L39:
+ 708 0008 00A00140 		.word	1073848320
+ 709              		.cfi_endproc
+ 710              	.LFE138:
+ 712              		.section	.text.set_standart_blacklist_pins,"ax",%progbits
+ 713              		.align	1
+ 714              		.p2align 2,,3
+ 715              		.global	set_standart_blacklist_pins
+ 716              		.syntax unified
+ 717              		.thumb
+ 718              		.thumb_func
+ 720              	set_standart_blacklist_pins:
+ 721              	.LVL63:
+ 722              	.LFB139:
+ 324:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 325:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzufügen
+ 326:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 723              		.loc 1 326 1 is_stmt 1 view -0
+ 724              		.cfi_startproc
+ 725              		@ args = 0, pretend = 0, frame = 0
+ 726              		@ frame_needed = 0, uses_anonymous_args = 0
+ 727              		@ link register save eliminated.
+ 327:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
+ 728              		.loc 1 327 5 view .LVU215
+ 729              		.loc 1 327 11 is_stmt 0 view .LVU216
+ 730 0000 4FF0FF32 		mov	r2, #-1
+ 731 0004 4FF0FF33 		mov	r3, #-1
+ 326:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask = 0xFFFFFFFFFFFFFFFFULL;
+ 732              		.loc 1 326 1 view .LVU217
+ 733 0008 F0B4     		push	{r4, r5, r6, r7}
+ 734              		.cfi_def_cfa_offset 16
+ 735              		.cfi_offset 4, -16
+ 736              		.cfi_offset 5, -12
+ 737              		.cfi_offset 6, -8
+ 738              		.cfi_offset 7, -4
+ 739              		.loc 1 327 11 view .LVU218
+ 740 000a C0E90023 		strd	r2, [r0]
+ 328:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 329:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+ 330:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 12); // Pin 12
+ 741              		.loc 1 330 5 is_stmt 1 view .LVU219
+ 742 000e D0E90067 		ldrd	r6, [r0]
+ 743              		.loc 1 330 11 is_stmt 0 view .LVU220
+ 744 0012 26F48054 		bic	r4, r6, #4096
+ 745 0016 3D46     		mov	r5, r7
+ 746 0018 C0E90045 		strd	r4, [r0]
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
+ 747              		.loc 1 331 5 is_stmt 1 view .LVU221
+ 748 001c D0E90045 		ldrd	r4, [r0]
+ 749              		.loc 1 331 11 is_stmt 0 view .LVU222
+ 750 0020 24F40062 		bic	r2, r4, #2048
+ 751 0024 2B46     		mov	r3, r5
+ 752 0026 C0E90023 		strd	r2, [r0]
+ 332:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 333:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
+ 334:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
+ 335:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
+ 336:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+ 337:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 753              		.loc 1 337 1 view .LVU223
+ 754 002a F0BC     		pop	{r4, r5, r6, r7}
+ 755              		.cfi_restore 7
+ 756              		.cfi_restore 6
+ 757              		.cfi_restore 5
+ 758              		.cfi_restore 4
+ 759              		.cfi_def_cfa_offset 0
+ 760 002c 7047     		bx	lr
+ 761              		.cfi_endproc
+ 762              	.LFE139:
+ 764 002e 00BF     		.section	.rodata.print_active_pins_from_mask.str1.4,"aMS",%progbits,1
+ 765              		.align	2
+ 766              	.LC0:
+ 767 0000 426C6163 		.ascii	"Blacklist mask: \000"
+ 767      6B6C6973 
+ 767      74206D61 
+ 767      736B3A20 
+ 767      00
+ 768 0011 000000   		.align	2
+ 769              	.LC1:
+ 770 0014 25752000 		.ascii	"%u \000"
+ 771              		.align	2
+ 772              	.LC2:
+ 773 0018 0A00     		.ascii	"\012\000"
+ 774              		.section	.text.print_active_pins_from_mask,"ax",%progbits
+ 775              		.align	1
+ 776              		.p2align 2,,3
+ 777              		.global	print_active_pins_from_mask
+ 778              		.syntax unified
+ 779              		.thumb
+ 780              		.thumb_func
+ 782              	print_active_pins_from_mask:
+ 783              	.LVL64:
+ 784              	.LFB140:
+ 338:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 339:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void print_active_pins_from_mask(uint64_t mask)
+ 340:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 785              		.loc 1 340 1 is_stmt 1 view -0
+ 786              		.cfi_startproc
+ 787              		@ args = 0, pretend = 0, frame = 0
+ 788              		@ frame_needed = 0, uses_anonymous_args = 0
+ 341:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Blacklist mask: ");
+ 789              		.loc 1 341 5 view .LVU225
+ 340:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Blacklist mask: ");
+ 790              		.loc 1 340 1 is_stmt 0 view .LVU226
+ 791 0000 70B5     		push	{r4, r5, r6, lr}
+ 792              		.cfi_def_cfa_offset 16
+ 793              		.cfi_offset 4, -16
+ 794              		.cfi_offset 5, -12
+ 795              		.cfi_offset 6, -8
+ 796              		.cfi_offset 14, -4
+ 340:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Blacklist mask: ");
+ 797              		.loc 1 340 1 view .LVU227
+ 798 0002 0646     		mov	r6, r0
+ 799              		.loc 1 341 5 view .LVU228
+ 800 0004 1148     		ldr	r0, .L49
+ 801              	.LVL65:
+ 340:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Blacklist mask: ");
+ 802              		.loc 1 340 1 view .LVU229
+ 803 0006 0D46     		mov	r5, r1
+ 804              		.loc 1 341 5 view .LVU230
+ 805 0008 0024     		movs	r4, #0
+ 806 000a FFF7FEFF 		bl	printf_
+ 807              	.LVL66:
+ 342:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < 64; ++pin)
+ 808              		.loc 1 342 5 is_stmt 1 view .LVU231
+ 809              	.LBB91:
+ 810              		.loc 1 342 10 view .LVU232
+ 811              		.loc 1 342 31 discriminator 1 view .LVU233
+ 812 000e 02E0     		b	.L45
+ 813              	.LVL67:
  814              	.L44:
- 815 0094 00A00140 		.word	1073848320
- 816              	.LBE59:
- 817              	.LBE60:
- 818              		.cfi_endproc
- 819              	.LFE142:
- 821              		.global	disable_interrupts
- 822              		.section	.bss.disable_interrupts,"aw",%nobits
- 825              	disable_interrupts:
- 826 0000 00       		.space	1
- 827              		.global	number_of_successful_handshakes
- 828              		.section	.bss.number_of_successful_handshakes,"aw",%nobits
- 829              		.align	2
- 832              	number_of_successful_handshakes:
- 833 0000 00000000 		.space	4
- 834              		.global	initial_state_mask
- 835              		.section	.bss.initial_state_mask,"aw",%nobits
- 836              		.align	3
- 839              	initial_state_mask:
- 840 0000 00000000 		.space	8
- 840      00000000 
- 841              		.global	black_list_mask
- 842              		.section	.bss.black_list_mask,"aw",%nobits
- 843              		.align	3
- 846              	black_list_mask:
- 847 0000 00000000 		.space	8
- 847      00000000 
- 848              		.global	last_rising_pin
- 849              		.section	.data.last_rising_pin,"aw"
- 852              	last_rising_pin:
- 853 0000 FF       		.byte	-1
- 854              		.global	last_event_valid
- 855              		.section	.bss.last_event_valid,"aw",%nobits
- 858              	last_event_valid:
- 859 0000 00       		.space	1
- 860              		.global	green_led_on
- 861              		.section	.bss.green_led_on,"aw",%nobits
- 864              	green_led_on:
- 865 0000 00       		.space	1
- 866              		.global	red_led_on
- 867              		.section	.bss.red_led_on,"aw",%nobits
- 870              	red_led_on:
- 871 0000 00       		.space	1
- 872              		.global	pin_data
- 873              		.section	.bss.pin_data,"aw",%nobits
- 874              		.align	2
- 877              	pin_data:
- 878 0000 00000000 		.space	288
- 878      00000000 
- 878      00000000 
- 878      00000000 
- 878      00000000 
- 879              		.text
- 880              	.Letext0:
- 881              		.file 3 "Include/nrf52840.h"
- 882              		.file 4 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
- 883              		.file 5 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
- 884              		.file 6 "/Users/timcarlo/Desktop/testsoftware/common/include/timing_pindata.h"
- 885              		.file 7 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_gpio.h"
- 886              		.file 8 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_time.h"
- 887              		.file 9 "/Users/timcarlo/Desktop/testsoftware/common/include/check_initial_state.h"
- 888              		.file 10 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
+ 815              		.loc 1 342 37 discriminator 2 view .LVU234
+ 816              		.loc 1 342 31 discriminator 1 view .LVU235
+ 817 0010 0134     		adds	r4, r4, #1
+ 818              	.LVL68:
+ 819              		.loc 1 342 31 is_stmt 0 discriminator 1 view .LVU236
+ 820 0012 402C     		cmp	r4, #64
+ 821 0014 15D0     		beq	.L48
+ 822              	.LVL69:
+ 823              	.L45:
+ 343:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 344:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if ((mask >> pin) & 1)
+ 824              		.loc 1 344 9 is_stmt 1 view .LVU237
+ 825              		.loc 1 344 19 is_stmt 0 view .LVU238
+ 826 0016 C4F1200C 		rsb	ip, r4, #32
+ 827 001a A4F12002 		sub	r2, r4, #32
+ 828 001e 26FA04F3 		lsr	r3, r6, r4
+ 829 0022 05FA0CFC 		lsl	ip, r5, ip
+ 830 0026 43EA0C03 		orr	r3, r3, ip
+ 831 002a 25FA02F2 		lsr	r2, r5, r2
+ 832 002e 1343     		orrs	r3, r3, r2
+ 833              		.loc 1 344 12 view .LVU239
+ 834 0030 DB07     		lsls	r3, r3, #31
+ 835 0032 EDD5     		bpl	.L44
+ 345:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 346:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             LOG("%u ", (unsigned int)pin);
+ 836              		.loc 1 346 13 is_stmt 1 view .LVU240
+ 837 0034 2146     		mov	r1, r4
+ 838 0036 0648     		ldr	r0, .L49+4
+ 342:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 839              		.loc 1 342 31 is_stmt 0 discriminator 1 view .LVU241
+ 840 0038 0134     		adds	r4, r4, #1
+ 841              	.LVL70:
+ 842              		.loc 1 346 13 view .LVU242
+ 843 003a FFF7FEFF 		bl	printf_
+ 844              	.LVL71:
+ 342:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 845              		.loc 1 342 37 is_stmt 1 discriminator 2 view .LVU243
+ 342:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 846              		.loc 1 342 31 discriminator 1 view .LVU244
+ 847 003e 402C     		cmp	r4, #64
+ 848 0040 E9D1     		bne	.L45
+ 849              	.L48:
+ 850              	.LBE91:
+ 347:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 348:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 349:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("\n");
+ 851              		.loc 1 349 5 view .LVU245
+ 350:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 852              		.loc 1 350 1 is_stmt 0 view .LVU246
+ 853 0042 BDE87040 		pop	{r4, r5, r6, lr}
+ 854              		.cfi_restore 14
+ 855              		.cfi_restore 6
+ 856              		.cfi_restore 5
+ 857              		.cfi_restore 4
+ 858              		.cfi_def_cfa_offset 0
+ 349:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 859              		.loc 1 349 5 view .LVU247
+ 860 0046 0348     		ldr	r0, .L49+8
+ 861 0048 FFF7FEBF 		b	printf_
+ 862              	.LVL72:
+ 863              	.L50:
+ 864              		.align	2
+ 865              	.L49:
+ 866 004c 00000000 		.word	.LC0
+ 867 0050 14000000 		.word	.LC1
+ 868 0054 18000000 		.word	.LC2
+ 869              		.cfi_endproc
+ 870              	.LFE140:
+ 872              		.section	.rodata.main.str1.4,"aMS",%progbits,1
+ 873              		.align	2
+ 874              	.LC3:
+ 875 0000 52756E6E 		.ascii	"Running on %s\012\000"
+ 875      696E6720 
+ 875      6F6E2025 
+ 875      730A00
+ 876 000f 00       		.align	2
+ 877              	.LC4:
+ 878 0010 43686970 		.ascii	"Chip UID: %s\012\000"
+ 878      20554944 
+ 878      3A202573 
+ 878      0A00
+ 879 001e 0000     		.align	2
+ 880              	.LC5:
+ 881 0020 496E6974 		.ascii	"Initial pin state: 0x%016llx\012\000"
+ 881      69616C20 
+ 881      70696E20 
+ 881      73746174 
+ 881      653A2030 
+ 882              		.section	.text.startup.main,"ax",%progbits
+ 883              		.align	1
+ 884              		.p2align 2,,3
+ 885              		.global	main
+ 886              		.syntax unified
+ 887              		.thumb
+ 888              		.thumb_func
+ 890              	main:
+ 891              	.LFB141:
+ 351:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 352:/Users/timcarlo/Desktop/testsoftware/core/main.c **** int main(void)
+ 353:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 892              		.loc 1 353 1 is_stmt 1 view -0
+ 893              		.cfi_startproc
+ 894              		@ args = 0, pretend = 0, frame = 8
+ 895              		@ frame_needed = 0, uses_anonymous_args = 0
+ 354:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
+ 896              		.loc 1 354 5 view .LVU249
+ 353:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     io_init();
+ 897              		.loc 1 353 1 is_stmt 0 view .LVU250
+ 898 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 899              		.cfi_def_cfa_offset 36
+ 900              		.cfi_offset 4, -36
+ 901              		.cfi_offset 5, -32
+ 902              		.cfi_offset 6, -28
+ 903              		.cfi_offset 7, -24
+ 904              		.cfi_offset 8, -20
+ 905              		.cfi_offset 9, -16
+ 906              		.cfi_offset 10, -12
+ 907              		.cfi_offset 11, -8
+ 908              		.cfi_offset 14, -4
+ 909 0004 83B0     		sub	sp, sp, #12
+ 910              		.cfi_def_cfa_offset 48
+ 911              		.loc 1 354 5 view .LVU251
+ 912 0006 FFF7FEFF 		bl	io_init
+ 913              	.LVL73:
+ 355:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+ 914              		.loc 1 355 5 is_stmt 1 view .LVU252
+ 915 000a 3021     		movs	r1, #48
+ 916 000c 6348     		ldr	r0, .L68
+ 917              	.LBB92:
+ 918              	.LBB93:
+ 327:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 919              		.loc 1 327 11 is_stmt 0 view .LVU253
+ 920 000e DFF8A481 		ldr	r8, .L68+24
+ 921              	.LBE93:
+ 922              	.LBE92:
+ 923              		.loc 1 355 5 view .LVU254
+ 924 0012 FFF7FEFF 		bl	initialize_pin_data_array
+ 925              	.LVL74:
+ 356:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Running on %s\n", get_chip_family_name());
+ 926              		.loc 1 356 5 is_stmt 1 view .LVU255
+ 927 0016 FFF7FEFF 		bl	get_chip_family_name
+ 928              	.LVL75:
+ 929 001a 0146     		mov	r1, r0
+ 930              		.loc 1 356 5 is_stmt 0 discriminator 1 view .LVU256
+ 931 001c 6048     		ldr	r0, .L68+4
+ 932 001e FFF7FEFF 		bl	printf_
+ 933              	.LVL76:
+ 357:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Chip UID: %s\n", get_unique_id_str());
+ 934              		.loc 1 357 5 is_stmt 1 view .LVU257
+ 935 0022 FFF7FEFF 		bl	get_unique_id_str
+ 936              	.LVL77:
+ 937 0026 0146     		mov	r1, r0
+ 938              		.loc 1 357 5 is_stmt 0 discriminator 1 view .LVU258
+ 939 0028 5E48     		ldr	r0, .L68+8
+ 940 002a FFF7FEFF 		bl	printf_
+ 941              	.LVL78:
+ 358:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 359:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN1);
+ 942              		.loc 1 359 5 is_stmt 1 view .LVU259
+ 943 002e 1A20     		movs	r0, #26
+ 944 0030 FFF7FEFF 		bl	gpio_output_init
+ 945              	.LVL79:
+ 360:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN2);
+ 946              		.loc 1 360 5 view .LVU260
+ 947 0034 1B20     		movs	r0, #27
+ 948 0036 FFF7FEFF 		bl	gpio_output_init
+ 949              	.LVL80:
+ 361:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN3);
+ 950              		.loc 1 361 5 view .LVU261
+ 951 003a 2720     		movs	r0, #39
+ 952 003c FFF7FEFF 		bl	gpio_output_init
+ 953              	.LVL81:
+ 362:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     gpio_output_init(DEBUG_PIN4);
+ 954              		.loc 1 362 5 view .LVU262
+ 955 0040 2820     		movs	r0, #40
+ 956 0042 FFF7FEFF 		bl	gpio_output_init
+ 957              	.LVL82:
+ 363:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 364:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  start_timer(TIMER_B);
+ 365:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //    start_timer(TIMER_A);
+ 366:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 367:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     set_standart_blacklist_pins(&initial_state_mask);
+ 958              		.loc 1 367 5 view .LVU263
+ 959              	.LBB96:
+ 960              	.LBI92:
+ 325:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 961              		.loc 1 325 6 view .LVU264
+ 962              	.LBB94:
+ 327:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 963              		.loc 1 327 5 view .LVU265
+ 327:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 964              		.loc 1 327 11 is_stmt 0 view .LVU266
+ 965 0046 4FF0FF32 		mov	r2, #-1
+ 966 004a 4FF0FF33 		mov	r3, #-1
+ 967 004e C8E90023 		strd	r2, [r8]
+ 330:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
+ 968              		.loc 1 330 5 is_stmt 1 view .LVU267
+ 969 0052 D8E90045 		ldrd	r4, [r8]
+ 330:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     *mask &= ~(1ULL << 11); // Pin 11
+ 970              		.loc 1 330 11 is_stmt 0 view .LVU268
+ 971 0056 24F48050 		bic	r0, r4, #4096
+ 972 005a 2946     		mov	r1, r5
+ 973 005c C8E90001 		strd	r0, [r8]
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 974              		.loc 1 331 5 is_stmt 1 view .LVU269
+ 975 0060 D8E90001 		ldrd	r0, [r8]
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 976              		.loc 1 331 11 is_stmt 0 view .LVU270
+ 977 0064 20F40062 		bic	r2, r0, #2048
+ 978 0068 0B46     		mov	r3, r1
+ 979 006a C8E90023 		strd	r2, [r8]
+ 980              	.LVL83:
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 981              		.loc 1 331 11 view .LVU271
+ 982              	.LBE94:
+ 983              	.LBE96:
+ 368:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+ 984              		.loc 1 368 5 is_stmt 1 view .LVU272
+ 985              	.LBB97:
+ 986              		.loc 1 368 10 view .LVU273
+ 987              		.loc 1 368 31 discriminator 1 view .LVU274
+ 988              	.LBE97:
+ 989              	.LBB98:
+ 990              	.LBB95:
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 991              		.loc 1 331 11 is_stmt 0 view .LVU275
+ 992 006e 0024     		movs	r4, #0
+ 993              	.LVL84:
+ 994              	.L53:
+ 331:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 995              		.loc 1 331 11 view .LVU276
+ 996              	.LBE95:
+ 997              	.LBE98:
+ 998              	.LBB99:
+ 369:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 370:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (initial_state_mask & (1ULL << pin))
+ 999              		.loc 1 370 9 is_stmt 1 view .LVU277
+ 371:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
+ 372:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
+ 1000              		.loc 1 372 9 view .LVU278
+ 370:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
+ 1001              		.loc 1 370 13 is_stmt 0 view .LVU279
+ 1002 0070 D8E90001 		ldrd	r0, [r8]
+ 1003 0074 C4F12005 		rsb	r5, r4, #32
+ 1004 0078 20FA04F3 		lsr	r3, r0, r4
+ 1005 007c A4F12002 		sub	r2, r4, #32
+ 1006 0080 01FA05F5 		lsl	r5, r1, r5
+ 1007 0084 2B43     		orrs	r3, r3, r5
+ 1008 0086 21FA02F2 		lsr	r2, r1, r2
+ 1009 008a 1343     		orrs	r3, r3, r2
+ 370:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
+ 1010              		.loc 1 370 12 view .LVU280
+ 1011 008c 13F0010F 		tst	r3, #1
+ 1012              		.loc 1 372 9 view .LVU281
+ 1013 0090 E0B2     		uxtb	r0, r4
+ 370:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             continue;      // Skip blacklisted pins (bit = 1)
+ 1014              		.loc 1 370 12 view .LVU282
+ 1015 0092 01D1     		bne	.L52
+ 1016              		.loc 1 372 9 view .LVU283
+ 1017 0094 FFF7FEFF 		bl	gpio_od_init
+ 1018              	.LVL85:
+ 1019              	.L52:
+ 368:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1020              		.loc 1 368 54 is_stmt 1 discriminator 2 view .LVU284
+ 368:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1021              		.loc 1 368 31 discriminator 1 view .LVU285
+ 1022 0098 0134     		adds	r4, r4, #1
+ 1023              	.LVL86:
+ 368:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1024              		.loc 1 368 31 is_stmt 0 discriminator 1 view .LVU286
+ 1025 009a 302C     		cmp	r4, #48
+ 1026 009c E8D1     		bne	.L53
+ 1027              	.LBE99:
+ 373:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 374:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 375:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     uint64_t get_initial_state = get_initial_pin_state(0);
+ 1028              		.loc 1 375 5 is_stmt 1 view .LVU287
+ 1029              		.loc 1 375 34 is_stmt 0 view .LVU288
+ 1030 009e 0020     		movs	r0, #0
+ 1031 00a0 FFF7FEFF 		bl	get_initial_pin_state
+ 1032              	.LVL87:
+ 1033 00a4 3D4D     		ldr	r5, .L68
+ 1034 00a6 0246     		mov	r2, r0
+ 1035 00a8 0B46     		mov	r3, r1
+ 1036              	.LVL88:
+ 376:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     //  black_list_mask |= ~get_initial_state; // Add initial state to the blacklist mask
+ 377:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 378:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     LOG("Initial pin state: 0x%016llx\n", get_initial_state);
+ 1037              		.loc 1 378 5 is_stmt 1 view .LVU289
+ 1038 00aa 3F48     		ldr	r0, .L68+12
+ 1039 00ac FFF7FEFF 		bl	printf_
+ 1040              	.LVL89:
+ 379:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     print_active_pins_from_mask(initial_state_mask);
+ 1041              		.loc 1 379 5 view .LVU290
+ 1042 00b0 D8E90001 		ldrd	r0, [r8]
+ 1043 00b4 FFF7FEFF 		bl	print_active_pins_from_mask
+ 1044              	.LVL90:
+ 380:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 381:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+ 1045              		.loc 1 381 5 view .LVU291
+ 1046              	.LBB100:
+ 1047              		.loc 1 381 10 view .LVU292
+ 1048              		.loc 1 381 31 discriminator 1 view .LVU293
+ 1049              	.LBE100:
+ 379:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     print_active_pins_from_mask(initial_state_mask);
+ 1050              		.loc 1 379 5 is_stmt 0 view .LVU294
+ 1051 00b8 0024     		movs	r4, #0
+ 1052              	.LVL91:
+ 379:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     print_active_pins_from_mask(initial_state_mask);
+ 1053              		.loc 1 379 5 view .LVU295
+ 1054 00ba A946     		mov	r9, r5
+ 1055 00bc 04E0     		b	.L55
+ 1056              	.LVL92:
+ 1057              	.L54:
+ 1058              	.LBB101:
+ 1059              		.loc 1 381 54 is_stmt 1 discriminator 2 view .LVU296
+ 1060              		.loc 1 381 31 discriminator 1 view .LVU297
+ 1061 00be 0134     		adds	r4, r4, #1
+ 1062              	.LVL93:
+ 1063              		.loc 1 381 31 is_stmt 0 discriminator 1 view .LVU298
+ 1064 00c0 302C     		cmp	r4, #48
+ 1065 00c2 09F10A09 		add	r9, r9, #10
+ 1066 00c6 17D0     		beq	.L66
+ 1067              	.LVL94:
+ 1068              	.L55:
+ 382:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 383:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         if (!(initial_state_mask & (1ULL << pin)))
+ 1069              		.loc 1 383 9 is_stmt 1 view .LVU299
+ 1070              		.loc 1 383 13 is_stmt 0 view .LVU300
+ 1071 00c8 D8E90067 		ldrd	r6, [r8]
+ 1072 00cc C4F12001 		rsb	r1, r4, #32
+ 1073 00d0 A4F12002 		sub	r2, r4, #32
+ 1074 00d4 26FA04F3 		lsr	r3, r6, r4
+ 1075 00d8 07FA01F1 		lsl	r1, r7, r1
+ 1076 00dc 27FA02F2 		lsr	r2, r7, r2
+ 1077 00e0 0B43     		orrs	r3, r3, r1
+ 1078 00e2 1343     		orrs	r3, r3, r2
+ 1079              		.loc 1 383 12 view .LVU301
+ 1080 00e4 DA07     		lsls	r2, r3, #31
+ 1081 00e6 EAD4     		bmi	.L54
+ 384:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 385:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
+ 1082              		.loc 1 385 13 is_stmt 1 view .LVU302
+ 1083 00e8 4846     		mov	r0, r9
+ 381:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1084              		.loc 1 381 31 is_stmt 0 discriminator 1 view .LVU303
+ 1085 00ea 0134     		adds	r4, r4, #1
+ 1086              	.LVL95:
+ 1087              		.loc 1 385 13 view .LVU304
+ 1088 00ec FFF7FEFF 		bl	debug_print_pindata
+ 1089              	.LVL96:
+ 381:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1090              		.loc 1 381 54 is_stmt 1 discriminator 2 view .LVU305
+ 381:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1091              		.loc 1 381 31 discriminator 1 view .LVU306
+ 1092 00f0 302C     		cmp	r4, #48
+ 1093 00f2 09F10A09 		add	r9, r9, #10
+ 1094 00f6 E7D1     		bne	.L55
+ 1095              	.L66:
+ 1096              	.LBE101:
+ 386:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 387:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 388:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     start_isr_timer(); // Start the ISR timer
+ 1097              		.loc 1 388 5 view .LVU307
+ 1098              	.LBB102:
+ 1099              	.LBI102:
+ 262:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 1100              		.loc 1 262 6 view .LVU308
+ 1101              	.LBB103:
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 1102              		.loc 1 268 5 view .LVU309
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 1103              		.loc 1 268 28 is_stmt 0 view .LVU310
+ 1104 00f8 2C4B     		ldr	r3, .L68+16
+ 1105              	.LBB104:
+ 1106              	.LBB105:
+ 1107              		.loc 2 1820 43 view .LVU311
+ 1108 00fa 2D49     		ldr	r1, .L68+20
+ 1109              	.LBE105:
+ 1110              	.LBE104:
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 1111              		.loc 1 268 28 view .LVU312
+ 1112 00fc 0122     		movs	r2, #1
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 1113              		.loc 1 271 22 view .LVU313
+ 1114 00fe 4FF0000A 		mov	r10, #0
+ 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
+ 1115              		.loc 1 272 25 view .LVU314
+ 1116 0102 0320     		movs	r0, #3
+ 268:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_CLEAR = 1;
+ 1117              		.loc 1 268 28 view .LVU315
+ 1118 0104 5A60     		str	r2, [r3, #4]
+ 269:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1119              		.loc 1 269 5 is_stmt 1 view .LVU316
+ 269:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1120              		.loc 1 269 29 is_stmt 0 view .LVU317
+ 1121 0106 DA60     		str	r2, [r3, #12]
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 1122              		.loc 1 271 5 is_stmt 1 view .LVU318
+ 271:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+ 1123              		.loc 1 271 22 is_stmt 0 view .LVU319
+ 1124 0108 C3F804A5 		str	r10, [r3, #1284]
+ 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
+ 1125              		.loc 1 272 5 is_stmt 1 view .LVU320
+ 272:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos; // 1 MHz -> 1 tick = 1 µs
+ 1126              		.loc 1 272 25 is_stmt 0 view .LVU321
+ 1127 010c C3F80805 		str	r0, [r3, #1288]
+ 273:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1128              		.loc 1 273 5 is_stmt 1 view .LVU322
+ 273:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1129              		.loc 1 273 27 is_stmt 0 view .LVU323
+ 1130 0110 0420     		movs	r0, #4
+ 1131 0112 C3F81005 		str	r0, [r3, #1296]
+ 276:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1132              		.loc 1 276 5 is_stmt 1 view .LVU324
+ 276:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1133              		.loc 1 276 23 is_stmt 0 view .LVU325
+ 1134 0116 41F28830 		movw	r0, #5000
+ 1135 011a C3F84005 		str	r0, [r3, #1344]
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1136              		.loc 1 279 5 is_stmt 1 view .LVU326
+ 279:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1137              		.loc 1 279 23 is_stmt 0 view .LVU327
+ 1138 011e 42F21070 		movw	r0, #10000
+ 1139 0122 C3F84405 		str	r0, [r3, #1348]
+ 281:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1140              		.loc 1 281 5 is_stmt 1 view .LVU328
+ 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
+ 1141              		.loc 1 284 26 is_stmt 0 view .LVU329
+ 1142 0126 4FF44030 		mov	r0, #196608
+ 281:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1143              		.loc 1 281 24 view .LVU330
+ 1144 012a C3F800A2 		str	r10, [r3, #512]
+ 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
+ 1145              		.loc 1 284 5 is_stmt 1 view .LVU331
+ 284:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         (TIMER_INTENSET_COMPARE0_Enabled << TIMER_INTENSET_COMPARE0_Pos) |
+ 1146              		.loc 1 284 26 is_stmt 0 view .LVU332
+ 1147 012e C3F80403 		str	r0, [r3, #772]
+ 288:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NVIC_EnableIRQ(TIMER3_IRQn);
+ 1148              		.loc 1 288 5 is_stmt 1 view .LVU333
+ 1149              	.LVL97:
+ 1150              	.LBB107:
+ 1151              	.LBI104:
+1816:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
+ 1152              		.loc 2 1816 22 view .LVU334
+ 1153              	.LBB106:
+1818:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
+ 1154              		.loc 2 1818 3 view .LVU335
+ 1155              		.loc 2 1820 5 view .LVU336
+ 1156              		.loc 2 1820 43 is_stmt 0 view .LVU337
+ 1157 0132 4FF08060 		mov	r0, #67108864
+ 1158 0136 C1F88001 		str	r0, [r1, #384]
+ 1159              	.LVL98:
+ 1160              		.loc 2 1820 43 view .LVU338
+ 1161              	.LBE106:
+ 1162              	.LBE107:
+ 289:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1163              		.loc 1 289 5 is_stmt 1 view .LVU339
+ 1164              	.LBB108:
+ 1165              	.LBI108:
+1725:CMSIS_5/CMSIS/Core/Include/core_cm4.h **** {
+ 1166              		.loc 2 1725 22 view .LVU340
+ 1167              	.LBB109:
+1727:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   {
+ 1168              		.loc 2 1727 3 view .LVU341
+1729:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     NVIC->ISER[(((uint32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)IRQn) & 0x1FUL));
+ 1169              		.loc 2 1729 5 view .LVU342
+1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
+ 1170              		.loc 2 1730 5 view .LVU343
+1730:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****     __COMPILER_BARRIER();
+ 1171              		.loc 2 1730 43 is_stmt 0 view .LVU344
+ 1172 013a 0860     		str	r0, [r1]
+1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
+ 1173              		.loc 2 1731 5 is_stmt 1 view .LVU345
+ 1174              	.LVL99:
+1731:CMSIS_5/CMSIS/Core/Include/core_cm4.h ****   }
+ 1175              		.loc 2 1731 5 is_stmt 0 view .LVU346
+ 1176              	.LBE109:
+ 1177              	.LBE108:
+ 291:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
+ 1178              		.loc 1 291 5 is_stmt 1 view .LVU347
+ 1179              	.LBE103:
+ 1180              	.LBE102:
+ 1181              	.LBB111:
+ 389:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 390:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     while (1)
+ 391:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+ 393:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 394:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             if (!(initial_state_mask & (1ULL << pin)))
+ 395:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 396:/Users/timcarlo/Desktop/testsoftware/core/main.c ****                 debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
+ 397:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 398:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         }
+ 399:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 400:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+ 401:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         // Simple busy-wait delay for NRF52840 (in ms)
+ 402:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         for (volatile uint32_t d = 0; d < 100000; ++d)
+ 1182              		.loc 1 402 41 is_stmt 0 discriminator 1 view .LVU348
+ 1183 013c DFF87890 		ldr	r9, .L68+28
+ 1184              	.LBE111:
+ 1185              	.LBB112:
+ 1186              	.LBB110:
+ 291:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     NRF_TIMER3->TASKS_START = 1;
+ 1187              		.loc 1 291 29 view .LVU349
+ 1188 0140 DA60     		str	r2, [r3, #12]
+ 292:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1189              		.loc 1 292 5 is_stmt 1 view .LVU350
+ 292:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1190              		.loc 1 292 29 is_stmt 0 view .LVU351
+ 1191 0142 1A60     		str	r2, [r3]
+ 1192              	.L60:
+ 1193              	.LBE110:
+ 1194              	.LBE112:
+ 390:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 1195              		.loc 1 390 5 is_stmt 1 view .LVU352
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1196              		.loc 1 392 9 view .LVU353
+ 1197              	.LBB113:
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1198              		.loc 1 392 14 view .LVU354
+ 1199              	.LVL100:
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1200              		.loc 1 392 35 discriminator 1 view .LVU355
+ 1201              	.LBE113:
+ 379:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 1202              		.loc 1 379 5 is_stmt 0 view .LVU356
+ 1203 0144 AB46     		mov	fp, r5
+ 1204 0146 0024     		movs	r4, #0
+ 1205 0148 04E0     		b	.L57
+ 1206              	.LVL101:
+ 1207              	.L56:
+ 1208              	.LBB114:
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1209              		.loc 1 392 58 is_stmt 1 discriminator 2 view .LVU357
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1210              		.loc 1 392 35 discriminator 1 view .LVU358
+ 1211 014a 0134     		adds	r4, r4, #1
+ 1212              	.LVL102:
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1213              		.loc 1 392 35 is_stmt 0 discriminator 1 view .LVU359
+ 1214 014c 302C     		cmp	r4, #48
+ 1215 014e 0BF10A0B 		add	fp, fp, #10
+ 1216 0152 17D0     		beq	.L67
+ 1217              	.LVL103:
+ 1218              	.L57:
+ 394:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 1219              		.loc 1 394 13 is_stmt 1 view .LVU360
+ 394:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 1220              		.loc 1 394 17 is_stmt 0 view .LVU361
+ 1221 0154 D8E90067 		ldrd	r6, [r8]
+ 1222 0158 C4F12001 		rsb	r1, r4, #32
+ 1223 015c A4F12002 		sub	r2, r4, #32
+ 1224 0160 26FA04F3 		lsr	r3, r6, r4
+ 1225 0164 07FA01F1 		lsl	r1, r7, r1
+ 1226 0168 0B43     		orrs	r3, r3, r1
+ 1227 016a 27FA02F2 		lsr	r2, r7, r2
+ 1228 016e 1343     		orrs	r3, r3, r2
+ 394:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             {
+ 1229              		.loc 1 394 16 view .LVU362
+ 1230 0170 DB07     		lsls	r3, r3, #31
+ 1231 0172 EAD4     		bmi	.L56
+ 396:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 1232              		.loc 1 396 17 is_stmt 1 view .LVU363
+ 1233 0174 5846     		mov	r0, fp
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1234              		.loc 1 392 35 is_stmt 0 discriminator 1 view .LVU364
+ 1235 0176 0134     		adds	r4, r4, #1
+ 1236              	.LVL104:
+ 396:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             }
+ 1237              		.loc 1 396 17 view .LVU365
+ 1238 0178 FFF7FEFF 		bl	debug_print_pindata
+ 1239              	.LVL105:
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1240              		.loc 1 392 58 is_stmt 1 discriminator 2 view .LVU366
+ 392:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         {
+ 1241              		.loc 1 392 35 discriminator 1 view .LVU367
+ 1242 017c 302C     		cmp	r4, #48
+ 1243 017e 0BF10A0B 		add	fp, fp, #10
+ 1244 0182 E7D1     		bne	.L57
+ 1245              	.L67:
+ 1246              	.LBE114:
+ 1247              		.loc 1 402 9 view .LVU368
+ 1248              	.LBB115:
+ 1249              		.loc 1 402 14 view .LVU369
+ 1250              		.loc 1 402 32 is_stmt 0 view .LVU370
+ 1251 0184 CDF804A0 		str	r10, [sp, #4]
+ 1252              		.loc 1 402 41 is_stmt 1 discriminator 1 view .LVU371
+ 1253 0188 019B     		ldr	r3, [sp, #4]
+ 1254 018a 4B45     		cmp	r3, r9
+ 1255 018c DAD8     		bhi	.L60
+ 1256              	.L59:
+ 1257              		.loc 1 402 51 discriminator 3 view .LVU372
+ 1258 018e 019B     		ldr	r3, [sp, #4]
+ 1259 0190 0133     		adds	r3, r3, #1
+ 1260 0192 0193     		str	r3, [sp, #4]
+ 1261              		.loc 1 402 41 discriminator 1 view .LVU373
+ 1262 0194 019B     		ldr	r3, [sp, #4]
+ 1263 0196 4B45     		cmp	r3, r9
+ 1264 0198 F9D9     		bls	.L59
+ 1265 019a D3E7     		b	.L60
+ 1266              	.L69:
+ 1267              		.align	2
+ 1268              	.L68:
+ 1269 019c 00000000 		.word	pin_data
+ 1270 01a0 00000000 		.word	.LC3
+ 1271 01a4 10000000 		.word	.LC4
+ 1272 01a8 20000000 		.word	.LC5
+ 1273 01ac 00A00140 		.word	1073848320
+ 1274 01b0 00E100E0 		.word	-536813312
+ 1275 01b4 00000000 		.word	initial_state_mask
+ 1276 01b8 9F860100 		.word	99999
+ 1277              	.LBE115:
+ 1278              		.cfi_endproc
+ 1279              	.LFE141:
+ 1281              		.section	.text.TIMER3_IRQHandler,"ax",%progbits
+ 1282              		.align	1
+ 1283              		.p2align 2,,3
+ 1284              		.global	TIMER3_IRQHandler
+ 1285              		.syntax unified
+ 1286              		.thumb
+ 1287              		.thumb_func
+ 1289              	TIMER3_IRQHandler:
+ 1290              	.LFB142:
+ 403:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             ;
+ 404:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #elif defined(__MSP430FR5994__)
+ 405:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         // Simple busy-wait delay for MSP430 (in ms)
+ 406:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         for (volatile uint32_t d = 0; d < 10000; ++d)
+ 407:/Users/timcarlo/Desktop/testsoftware/core/main.c ****             ;
+ 408:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #endif
+ 409:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 410:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 411:/Users/timcarlo/Desktop/testsoftware/core/main.c **** 
+ 412:/Users/timcarlo/Desktop/testsoftware/core/main.c **** // Interrupt Service Routine for Timer A3
+ 413:/Users/timcarlo/Desktop/testsoftware/core/main.c **** #if defined(NRF52840_XXAA)
+ 414:/Users/timcarlo/Desktop/testsoftware/core/main.c **** void TIMER3_IRQHandler(void)
+ 415:/Users/timcarlo/Desktop/testsoftware/core/main.c **** {
+ 1291              		.loc 1 415 1 view -0
+ 1292              		.cfi_startproc
+ 1293              		@ args = 0, pretend = 0, frame = 0
+ 1294              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1295              		@ link register save eliminated.
+ 416:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     if (NRF_TIMER3->EVENTS_COMPARE[0])
+ 1296              		.loc 1 416 5 view .LVU375
+ 1297              		.loc 1 416 35 is_stmt 0 view .LVU376
+ 1298 0000 084B     		ldr	r3, .L73
+ 1299 0002 D3F84021 		ldr	r2, [r3, #320]
+ 1300              		.loc 1 416 8 view .LVU377
+ 1301 0006 02B9     		cbnz	r2, .L72
+ 417:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     {
+ 418:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->EVENTS_COMPARE[0] = 0;
+ 419:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += READER_INTERVAL_US; // Next reader event in 1ms
+ 420:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();                            // Call the reader ISR
+ 421:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 422:/Users/timcarlo/Desktop/testsoftware/core/main.c **** }
+ 1302              		.loc 1 422 1 view .LVU378
+ 1303 0008 7047     		bx	lr
+ 1304              	.L72:
+ 418:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += READER_INTERVAL_US; // Next reader event in 1ms
+ 1305              		.loc 1 418 9 is_stmt 1 view .LVU379
+ 418:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         NRF_TIMER3->CC[0] += READER_INTERVAL_US; // Next reader event in 1ms
+ 1306              		.loc 1 418 39 is_stmt 0 view .LVU380
+ 1307 000a 0022     		movs	r2, #0
+ 1308 000c C3F84021 		str	r2, [r3, #320]
+ 419:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();                            // Call the reader ISR
+ 1309              		.loc 1 419 9 is_stmt 1 view .LVU381
+ 419:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();                            // Call the reader ISR
+ 1310              		.loc 1 419 23 is_stmt 0 view .LVU382
+ 1311 0010 D3F84025 		ldr	r2, [r3, #1344]
+ 419:/Users/timcarlo/Desktop/testsoftware/core/main.c ****         reader_isr();                            // Call the reader ISR
+ 1312              		.loc 1 419 27 view .LVU383
+ 1313 0014 02F59C52 		add	r2, r2, #4992
+ 1314 0018 0832     		adds	r2, r2, #8
+ 1315 001a C3F84025 		str	r2, [r3, #1344]
+ 420:/Users/timcarlo/Desktop/testsoftware/core/main.c ****     }
+ 1316              		.loc 1 420 9 is_stmt 1 view .LVU384
+ 1317 001e FFF7FEBF 		b	reader_isr
+ 1318              	.LVL106:
+ 1319              	.L74:
+ 1320 0022 00BF     		.align	2
+ 1321              	.L73:
+ 1322 0024 00A00140 		.word	1073848320
+ 1323              		.cfi_endproc
+ 1324              	.LFE142:
+ 1326              		.section	.rodata.required_cycles_lut,"a"
+ 1327              		.align	2
+ 1330              	required_cycles_lut:
+ 1331 0000 0000     		.short	0
+ 1332 0002 2800     		.short	40
+ 1333 0004 7800     		.short	120
+ 1334 0006 DC00     		.short	220
+ 1335              		.global	disable_interrupts
+ 1336              		.section	.bss.disable_interrupts,"aw",%nobits
+ 1339              	disable_interrupts:
+ 1340 0000 00       		.space	1
+ 1341              		.global	number_of_successful_handshakes
+ 1342              		.section	.bss.number_of_successful_handshakes,"aw",%nobits
+ 1343              		.align	2
+ 1346              	number_of_successful_handshakes:
+ 1347 0000 00000000 		.space	4
+ 1348              		.global	initial_state_mask
+ 1349              		.section	.bss.initial_state_mask,"aw",%nobits
+ 1350              		.align	3
+ 1353              	initial_state_mask:
+ 1354 0000 00000000 		.space	8
+ 1354      00000000 
+ 1355              		.global	black_list_mask
+ 1356              		.section	.bss.black_list_mask,"aw",%nobits
+ 1357              		.align	3
+ 1360              	black_list_mask:
+ 1361 0000 00000000 		.space	8
+ 1361      00000000 
+ 1362              		.global	last_rising_pin
+ 1363              		.section	.data.last_rising_pin,"aw"
+ 1366              	last_rising_pin:
+ 1367 0000 FF       		.byte	-1
+ 1368              		.global	last_event_valid
+ 1369              		.section	.bss.last_event_valid,"aw",%nobits
+ 1372              	last_event_valid:
+ 1373 0000 00       		.space	1
+ 1374              		.global	green_led_on
+ 1375              		.section	.bss.green_led_on,"aw",%nobits
+ 1378              	green_led_on:
+ 1379 0000 00       		.space	1
+ 1380              		.global	red_led_on
+ 1381              		.section	.bss.red_led_on,"aw",%nobits
+ 1384              	red_led_on:
+ 1385 0000 00       		.space	1
+ 1386              		.global	pin_data
+ 1387              		.section	.bss.pin_data,"aw",%nobits
+ 1388              		.align	2
+ 1391              	pin_data:
+ 1392 0000 00000000 		.space	480
+ 1392      00000000 
+ 1392      00000000 
+ 1392      00000000 
+ 1392      00000000 
+ 1393              		.text
+ 1394              	.Letext0:
+ 1395              		.file 3 "Include/nrf52840.h"
+ 1396              		.file 4 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/machine/_defa
+ 1397              		.file 5 "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/arm-none-eabi/include/sys/_stdint.h
+ 1398              		.file 6 "/Users/timcarlo/Desktop/testsoftware/common/include/timing_pindata.h"
+ 1399              		.file 7 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_gpio.h"
+ 1400              		.file 8 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_utils.h"
+ 1401              		.file 9 "/Users/timcarlo/Desktop/testsoftware/common/include/check_initial_state.h"
+ 1402              		.file 10 "/Users/timcarlo/Desktop/testsoftware/common/include/printf.h"
+ 1403              		.file 11 "/Users/timcarlo/Desktop/testsoftware/hal/nrf52/nrf52840_helper.h"
 DEFINED SYMBOLS
                             *ABS*:00000000 main.c
-/var/tmp//ccmLVw0b.s:21     .text.manager_isr:00000000 $t
-/var/tmp//ccmLVw0b.s:28     .text.manager_isr:00000000 manager_isr
-/var/tmp//ccmLVw0b.s:91     .text.reader_isr:00000000 $t
-/var/tmp//ccmLVw0b.s:98     .text.reader_isr:00000000 reader_isr
-/var/tmp//ccmLVw0b.s:161    .text.start_isr_timer:00000000 $t
-/var/tmp//ccmLVw0b.s:168    .text.start_isr_timer:00000000 start_isr_timer
-/var/tmp//ccmLVw0b.s:279    .text.start_isr_timer:00000050 $d
-/var/tmp//ccmLVw0b.s:285    .text.stop_isr_timer:00000000 $t
-/var/tmp//ccmLVw0b.s:292    .text.stop_isr_timer:00000000 stop_isr_timer
-/var/tmp//ccmLVw0b.s:309    .text.stop_isr_timer:00000008 $d
-/var/tmp//ccmLVw0b.s:314    .text.set_standart_blacklist_pins:00000000 $t
-/var/tmp//ccmLVw0b.s:321    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
-/var/tmp//ccmLVw0b.s:366    .text.print_active_pins_from_mask:00000000 $t
-/var/tmp//ccmLVw0b.s:373    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
-/var/tmp//ccmLVw0b.s:392    .text.startup.main:00000000 $t
-/var/tmp//ccmLVw0b.s:399    .text.startup.main:00000000 main
-/var/tmp//ccmLVw0b.s:636    .text.startup.main:000000e0 $d
-/var/tmp//ccmLVw0b.s:877    .bss.pin_data:00000000 pin_data
-/var/tmp//ccmLVw0b.s:846    .bss.black_list_mask:00000000 black_list_mask
-/var/tmp//ccmLVw0b.s:646    .text.TIMER3_IRQHandler:00000000 $t
-/var/tmp//ccmLVw0b.s:653    .text.TIMER3_IRQHandler:00000000 TIMER3_IRQHandler
-/var/tmp//ccmLVw0b.s:815    .text.TIMER3_IRQHandler:00000094 $d
-/var/tmp//ccmLVw0b.s:825    .bss.disable_interrupts:00000000 disable_interrupts
-/var/tmp//ccmLVw0b.s:826    .bss.disable_interrupts:00000000 $d
-/var/tmp//ccmLVw0b.s:832    .bss.number_of_successful_handshakes:00000000 number_of_successful_handshakes
-/var/tmp//ccmLVw0b.s:829    .bss.number_of_successful_handshakes:00000000 $d
-/var/tmp//ccmLVw0b.s:839    .bss.initial_state_mask:00000000 initial_state_mask
-/var/tmp//ccmLVw0b.s:836    .bss.initial_state_mask:00000000 $d
-/var/tmp//ccmLVw0b.s:843    .bss.black_list_mask:00000000 $d
-/var/tmp//ccmLVw0b.s:852    .data.last_rising_pin:00000000 last_rising_pin
-/var/tmp//ccmLVw0b.s:858    .bss.last_event_valid:00000000 last_event_valid
-/var/tmp//ccmLVw0b.s:859    .bss.last_event_valid:00000000 $d
-/var/tmp//ccmLVw0b.s:864    .bss.green_led_on:00000000 green_led_on
-/var/tmp//ccmLVw0b.s:865    .bss.green_led_on:00000000 $d
-/var/tmp//ccmLVw0b.s:870    .bss.red_led_on:00000000 red_led_on
-/var/tmp//ccmLVw0b.s:871    .bss.red_led_on:00000000 $d
-/var/tmp//ccmLVw0b.s:874    .bss.pin_data:00000000 $d
+/var/tmp//ccqHfKBZ.s:21     .text.debug_output_binary:00000000 $t
+/var/tmp//ccqHfKBZ.s:28     .text.debug_output_binary:00000000 debug_output_binary
+/var/tmp//ccqHfKBZ.s:118    .text.reader_isr:00000000 $t
+/var/tmp//ccqHfKBZ.s:125    .text.reader_isr:00000000 reader_isr
+/var/tmp//ccqHfKBZ.s:554    .text.reader_isr:00000168 $d
+/var/tmp//ccqHfKBZ.s:1391   .bss.pin_data:00000000 pin_data
+/var/tmp//ccqHfKBZ.s:1353   .bss.initial_state_mask:00000000 initial_state_mask
+/var/tmp//ccqHfKBZ.s:1330   .rodata.required_cycles_lut:00000000 required_cycles_lut
+/var/tmp//ccqHfKBZ.s:563    .text.start_isr_timer:00000000 $t
+/var/tmp//ccqHfKBZ.s:570    .text.start_isr_timer:00000000 start_isr_timer
+/var/tmp//ccqHfKBZ.s:678    .text.start_isr_timer:00000050 $d
+/var/tmp//ccqHfKBZ.s:684    .text.stop_isr_timer:00000000 $t
+/var/tmp//ccqHfKBZ.s:691    .text.stop_isr_timer:00000000 stop_isr_timer
+/var/tmp//ccqHfKBZ.s:708    .text.stop_isr_timer:00000008 $d
+/var/tmp//ccqHfKBZ.s:713    .text.set_standart_blacklist_pins:00000000 $t
+/var/tmp//ccqHfKBZ.s:720    .text.set_standart_blacklist_pins:00000000 set_standart_blacklist_pins
+/var/tmp//ccqHfKBZ.s:765    .rodata.print_active_pins_from_mask.str1.4:00000000 $d
+/var/tmp//ccqHfKBZ.s:775    .text.print_active_pins_from_mask:00000000 $t
+/var/tmp//ccqHfKBZ.s:782    .text.print_active_pins_from_mask:00000000 print_active_pins_from_mask
+/var/tmp//ccqHfKBZ.s:866    .text.print_active_pins_from_mask:0000004c $d
+/var/tmp//ccqHfKBZ.s:873    .rodata.main.str1.4:00000000 $d
+/var/tmp//ccqHfKBZ.s:883    .text.startup.main:00000000 $t
+/var/tmp//ccqHfKBZ.s:890    .text.startup.main:00000000 main
+/var/tmp//ccqHfKBZ.s:1269   .text.startup.main:0000019c $d
+/var/tmp//ccqHfKBZ.s:1282   .text.TIMER3_IRQHandler:00000000 $t
+/var/tmp//ccqHfKBZ.s:1289   .text.TIMER3_IRQHandler:00000000 TIMER3_IRQHandler
+/var/tmp//ccqHfKBZ.s:1322   .text.TIMER3_IRQHandler:00000024 $d
+/var/tmp//ccqHfKBZ.s:1327   .rodata.required_cycles_lut:00000000 $d
+/var/tmp//ccqHfKBZ.s:1339   .bss.disable_interrupts:00000000 disable_interrupts
+/var/tmp//ccqHfKBZ.s:1340   .bss.disable_interrupts:00000000 $d
+/var/tmp//ccqHfKBZ.s:1346   .bss.number_of_successful_handshakes:00000000 number_of_successful_handshakes
+/var/tmp//ccqHfKBZ.s:1343   .bss.number_of_successful_handshakes:00000000 $d
+/var/tmp//ccqHfKBZ.s:1350   .bss.initial_state_mask:00000000 $d
+/var/tmp//ccqHfKBZ.s:1360   .bss.black_list_mask:00000000 black_list_mask
+/var/tmp//ccqHfKBZ.s:1357   .bss.black_list_mask:00000000 $d
+/var/tmp//ccqHfKBZ.s:1366   .data.last_rising_pin:00000000 last_rising_pin
+/var/tmp//ccqHfKBZ.s:1372   .bss.last_event_valid:00000000 last_event_valid
+/var/tmp//ccqHfKBZ.s:1373   .bss.last_event_valid:00000000 $d
+/var/tmp//ccqHfKBZ.s:1378   .bss.green_led_on:00000000 green_led_on
+/var/tmp//ccqHfKBZ.s:1379   .bss.green_led_on:00000000 $d
+/var/tmp//ccqHfKBZ.s:1384   .bss.red_led_on:00000000 red_led_on
+/var/tmp//ccqHfKBZ.s:1385   .bss.red_led_on:00000000 $d
+/var/tmp//ccqHfKBZ.s:1388   .bss.pin_data:00000000 $d
                            .group:00000000 wm4.0.c78fe9a012b08da15ba0560431b6d537
                            .group:00000000 wm4.nrf52840.h.54.2eff2f64e4f718309725743e020c1c3e
                            .group:00000000 wm4._newlib_version.h.4.411db44ea2338a62eca2f0777f81481b
@@ -3167,9 +3937,20 @@ DEFINED SYMBOLS
 UNDEFINED SYMBOLS
 gpio_drive_high
 gpio_drive_low
+get_task
+gpio_read
+gpio_od_release
+set_task
+set_syn
+gpio_od_hold_low
+set_syn_ack
+set_ack
+printf_
 io_init
 initialize_pin_data_array
+get_chip_family_name
+get_unique_id_str
 gpio_output_init
-start_timer
 gpio_od_init
 get_initial_pin_state
+debug_print_pindata

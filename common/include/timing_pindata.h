@@ -21,12 +21,20 @@ typedef struct
     // Status first bit is syn second bit is syn_ack third bit is ack
     // the fouth bit is 1 if he was initiator for handshake, fifth bit is 1 if he was initiator for syn_ack handshake, sixth bit is 1 if he was initiator for ack handshake
     uint8_t status;
-
-    uint8_t job_flags;         // The first bit conducts an syn job, the second bit conducts an syn_ack job, the third bit conducts an ack job
-    uint8_t waiting_counter;   // Counter for waiting for a signal
-    uint8_t sending_counter;   // Counter for sending a signal
-    uint8_t receiving_counter; // Counter for receiving a signal
+    uint8_t current_job;
+    uint8_t initial_delay; // Initial delay in milliseconds
+    uint16_t sending_counter;   // Counter for sending a signal
+    uint16_t receiving_counter; // Counter for receiving a signal
+    uint16_t waiting_counter;   // Counter for waiting for a signal
 } PinData;
+
+typedef enum
+{
+    TASK_NONE = 0,
+    TASK_JOB_SYN = 1,
+    TASK_JOB_SYN_ACK = 2,
+    TASK_JOB_ACK = 3
+} PinDataTask;
 
 // Basis flag functions
 void set_flag(PinData *pin_data, uint8_t mask, bool value);
@@ -54,17 +62,9 @@ bool get_initiator_synack(const PinData *pin_data);
 void set_initiator_ack(PinData *pin_data, bool value);
 bool get_initiator_ack(const PinData *pin_data);
 
-// Job flags
-void set_job_flag(PinData *pin_data, uint8_t mask, bool value);
-bool get_job_flag(const PinData *pin_data, uint8_t mask);
-
-// Job flags for initiator
-void set_job_syn(PinData *pin_data, bool value);
-bool get_job_syn(const PinData *pin_data);
-void set_job_syn_ack(PinData *pin_data, bool value);
-bool get_job_syn_ack(const PinData *pin_data);
-void set_job_ack(PinData *pin_data, bool value);
-bool get_job_ack(const PinData *pin_data);
+// Task functions
+void set_task(PinData *pin_data, PinDataTask task);
+PinDataTask get_task(const PinData *pin_data);
 
 // counters
 void reset_counters(PinData *pin_data);
@@ -78,5 +78,6 @@ void clear_status(PinData *pin_data);
 
 // Helper functions
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
+void debug_print_pindata(const PinData *pin_data);
 
 #endif // TIMING_PINDATA_H

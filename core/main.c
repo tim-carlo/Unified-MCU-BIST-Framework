@@ -1,4 +1,3 @@
-
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_gpio.h"
@@ -26,6 +25,8 @@
 
 #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
+#define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be
 
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
@@ -56,6 +57,8 @@
 
 #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
+#define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
 
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
@@ -78,14 +81,25 @@
 #define INITIATOR_ROLE 0
 #define RESPONDER_ROLE 1
 
-#define READER_INTERVAL_US 1000   // Reader: every 1 ms
+#define READER_INTERVAL_US 5000   // Reader: every 5 ms
 #define MANAGER_INTERVAL_US 10000 // Manager: every 10 ms
-#define PRESCALER_DIV 8 // Prescaler division factor for the timer
-#define READER_TICKS  ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
+#define PRESCALER_DIV 8           // Prescaler division factor for the timer
+#define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 #define MANAGER_TICKS ((MANAGER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 
+#define SYN_DURATION 200     // Duration of SYN signal in microseconds
+#define SYN_ACK_DURATION 600 // Duration of SYN_ACK signal in microseconds
+#define ACK_DURATION 1100    // Duration of ACK signal in microseconds
 
-#define DEBUG 0 // Set to 1 to enable debug logging, 0 to disable
+#define SYN_CYCLES ((uint32_t)SYN_DURATION * 1000UL / READER_INTERVAL_US)
+#define SYN_ACK_CYCLES ((uint32_t)SYN_ACK_DURATION * 1000UL / READER_INTERVAL_US)
+#define ACK_CYCLES ((uint32_t)ACK_DURATION * 1000UL / READER_INTERVAL_US)
+
+#define SIGNAL_INACCURACY 100 // Signal inaccuracy in milliseconds
+#define CYCLE_INACCURACY ((uint32_t)SIGNAL_INACCURACY * 1000UL / READER_INTERVAL_US)
+#define MAXIMUM_WAITING_CYCLES 500 // Maximum waiting cycles for a signal
+
+#define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
@@ -110,24 +124,137 @@ volatile uint64_t initial_state_mask = 0; // Mask to store the initial state of 
 uint32_t number_of_successful_handshakes = 0; // Counter for successful handshakes
 bool disable_interrupts = false;              // Flag to disable interrupts during critical sections
 
-void manager_isr(void)
+void debug_output_binary(uint8_t value)
 {
-    gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
-    // Insert 10 NOPs for timing adjustment
-    for (volatile int i = 0; i < 10; ++i)
-    {
-        __asm__ __volatile__("nop");
-    }
-    gpio_drive_low(DEBUG_PIN2); // Set debug pin low to indicate ISR exit
+    // Output the 2 LSBs of value (0-3) on DEBUG_PIN3 and DEBUG_PIN4
+    if (value & 0x01)
+        gpio_drive_high(DEBUG_PIN3);
+    else
+        gpio_drive_low(DEBUG_PIN3);
+
+    if (value & 0x02)
+        gpio_drive_high(DEBUG_PIN4);
+    else
+        gpio_drive_low(DEBUG_PIN4);
 }
+
+/* void manager_isr(void)
+{
+  //  gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (initial_state_mask & (1ULL << pin))
+            continue; // Skip blacklisted pins
+
+        PinData *data = &pin_data[pin];
+    }
+//    gpio_drive_low(DEBUG_PIN2); // Set debug pin low to indicate ISR exit
+} */
+static const uint16_t required_cycles_lut[] = {
+    [TASK_NONE] = 0,
+    [TASK_JOB_SYN] = SYN_CYCLES,
+    [TASK_JOB_SYN_ACK] = SYN_ACK_CYCLES,
+    [TASK_JOB_ACK] = ACK_CYCLES};
 
 void reader_isr(void)
 {
     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
-    // Insert 10 NOPs for timing adjustment
-    for (volatile int i = 0; i < 10; ++i)
+
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
-        __asm__ __volatile__("nop");
+        bool something_done = false; // Flag to track if any task was done
+        if (initial_state_mask & (1ULL << pin))
+            continue; // Skip blacklisted pins
+
+        PinData *data = &pin_data[pin];
+
+        if (data->waiting_counter >= MAXIMUM_WAITING_CYCLES)
+        {
+            set_task(data, TASK_JOB_SYN);
+            //  debug_output_binary(3); // Debug output for waiting timeout
+            data->waiting_counter = 0; // Reset waiting counter
+        }
+
+        // Check if a task is conducted on this pin
+        PinDataTask task = get_task(data);
+        bool pin_state = gpio_read(pin);
+
+        if (task != TASK_NONE)
+        {
+            something_done = true; // At least one task is being done
+            // Collision detection:
+            // Before sending, check if the pin is high and we are sending
+            if (data->sending_counter == 0 && !pin_state)
+            {
+                set_task(data, TASK_NONE); // Reset task
+            }
+            else
+            {
+                uint16_t required_cycles = required_cycles_lut[task];
+                if (data->sending_counter >= required_cycles)
+                {
+                    gpio_drive_high(DEBUG_PIN2); // Drive pin high to send signal
+                    // Reset when task is complete
+                    gpio_od_release(pin); // Release the pin
+                    data->sending_counter = 0;
+                    set_task(data, TASK_NONE);
+                    gpio_drive_low(DEBUG_PIN2); // Drive pin high to send signal
+                }
+                else
+                {
+                    gpio_od_hold_low(pin);   // Drive pin low to send signal
+                    data->sending_counter++; // Increment cycle counter
+                }
+            }
+        }
+        else
+        {
+            if (!pin_state) // if a signal is received
+            {
+                something_done = true;     // At least one task is being done
+                data->receiving_counter++; // Increment receiving counter
+                debug_output_binary(1);
+            }
+        }
+        if (pin_state) // if no signal is received, reset the receiving counter
+        {
+
+            uint16_t receive_counter = data->receiving_counter;
+            if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLES + CYCLE_INACCURACY))
+            {
+                // SYN signal detected
+                set_syn(data, true);
+                set_task(data, TASK_JOB_SYN_ACK);
+                debug_output_binary(2);
+                data->receiving_counter = 0; // Reset receiving counter after SYN
+            }
+            else if (receive_counter >= (SYN_ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_ACK_CYCLES + CYCLE_INACCURACY))
+            {
+                // SYN_ACK signal detected
+                set_syn_ack(data, true);
+                set_task(data, TASK_JOB_ACK);
+                debug_output_binary(3);
+                data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
+            }
+            else if (receive_counter >= (ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (ACK_CYCLES + CYCLE_INACCURACY))
+            {
+                // ACK signal detected
+                set_ack(data, true);
+                data->receiving_counter = 0; // Reset receiving counter after ACK
+            }
+            else if (receive_counter > (ACK_CYCLES + CYCLE_INACCURACY))
+            {
+                // Signal too long, reset counters
+                data->receiving_counter = 0;
+            }
+        }
+
+        if (!something_done)
+        {
+            data->waiting_counter++; // Increment waiting counter if no task was done
+        }
+
+        debug_output_binary(0); // Reset debug output
     }
     gpio_drive_low(DEBUG_PIN1); // Set debug pin low to indicate ISR exit
 }
@@ -170,11 +297,11 @@ void start_isr_timer(void)
     TA1CTL = MC__STOP | TACLR;
 
     TA1CCR0 = READER_TICKS;
-    TA1CCR1 = MANAGER_TICKS;
+    // TA1CCR1 = MANAGER_TICKS;
 
     // Enable interrupts
     TA1CCTL0 = CCIE;
-    TA1CCTL1 = CCIE;
+    // TA1CCTL1 = CCIE;
 
     TA1CTL = TASSEL__SMCLK | ID__8 | MC__CONTINUOUS | TACLR;
 
@@ -231,23 +358,16 @@ int main(void)
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
+    gpio_output_init(DEBUG_PIN3);
+    gpio_output_init(DEBUG_PIN4);
 
-    start_timer(TIMER_B);
-    start_timer(TIMER_A);
+    //  start_timer(TIMER_B);
+    //    start_timer(TIMER_A);
 
-    gpio_output_init(ABSOLUTE_PIN_GREEN);
-    gpio_output_init(ABSOLUTE_PIN_RED);
-
-// Since the Out Register is initialized to 1, we need to set the LEDs to low
-#if defined(__MSP430FR5994__)
-    gpio_drive_low(ABSOLUTE_PIN_GREEN);
-    gpio_drive_low(ABSOLUTE_PIN_RED);
-#endif
-
-    set_standart_blacklist_pins(&black_list_mask);
+    set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
-        if (black_list_mask & (1ULL << pin))
+        if (initial_state_mask & (1ULL << pin))
             continue;      // Skip blacklisted pins (bit = 1)
         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
@@ -256,9 +376,37 @@ int main(void)
     //  black_list_mask |= ~get_initial_state; // Add initial state to the blacklist mask
 
     LOG("Initial pin state: 0x%016llx\n", get_initial_state);
-    print_active_pins_from_mask(black_list_mask);
+    print_active_pins_from_mask(initial_state_mask);
 
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (!(initial_state_mask & (1ULL << pin)))
+        {
+            debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
+        }
+    }
     start_isr_timer(); // Start the ISR timer
+
+    while (1)
+    {
+        for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+        {
+            if (!(initial_state_mask & (1ULL << pin)))
+            {
+                debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
+            }
+        }
+
+#if defined(NRF52840_XXAA)
+        // Simple busy-wait delay for NRF52840 (in ms)
+        for (volatile uint32_t d = 0; d < 100000; ++d)
+            ;
+#elif defined(__MSP430FR5994__)
+        // Simple busy-wait delay for MSP430 (in ms)
+        for (volatile uint32_t d = 0; d < 10000; ++d)
+            ;
+#endif
+    }
 }
 
 // Interrupt Service Routine for Timer A3
@@ -271,12 +419,6 @@ void TIMER3_IRQHandler(void)
         NRF_TIMER3->CC[0] += READER_INTERVAL_US; // Next reader event in 1ms
         reader_isr();                            // Call the reader ISR
     }
-    if (NRF_TIMER3->EVENTS_COMPARE[1])
-    {
-        NRF_TIMER3->EVENTS_COMPARE[1] = 0;
-        NRF_TIMER3->CC[1] += MANAGER_INTERVAL_US; // Nächstes Manager-Event in 10ms
-        manager_isr();                            // Call the manager ISR
-    }
 }
 #elif defined(__MSP430FR5994__)
 
@@ -286,7 +428,7 @@ void __attribute__((interrupt(TIMER1_A0_VECTOR))) Timer1_A0_ISR(void)
     reader_isr();
 }
 
-void __attribute__((interrupt(TIMER1_A1_VECTOR))) Timer1_A1_ISR(void)
+/* void __attribute__((interrupt(TIMER1_A1_VECTOR))) Timer1_A1_ISR(void)
 {
     switch (__even_in_range(TA1IV, TA1IV_TAIFG))
     {
@@ -298,4 +440,5 @@ void __attribute__((interrupt(TIMER1_A1_VECTOR))) Timer1_A1_ISR(void)
         break;
     }
 }
+ */
 #endif
