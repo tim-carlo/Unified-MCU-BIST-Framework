@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 #include "stack.h"
-#include "pindata.h"
+//#include "pindata.h"
+#include "timing_pindata.h"
 
 #if defined(__MSP430FR5994__)
 #include <msp430.h>

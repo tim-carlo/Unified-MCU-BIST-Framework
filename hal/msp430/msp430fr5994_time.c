@@ -185,7 +185,7 @@ void stop_timer(timer_type timer)
     *r = 0;        // Zur Sicherheit Timer-Register auf 0 schreiben
 }
 
-void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
+/* void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
 {
     switch (__even_in_range(TA1IV, TA1IV_TAIFG))
     {
@@ -194,7 +194,7 @@ void __attribute__((interrupt(TIMER1_A1_VECTOR))) TIMER1_A1_ISR(void)
         break;
         // maybe later add more cases for TA1IV
     }
-}
+} */
 
 void __attribute__((interrupt(TIMER2_A1_VECTOR))) TIMER2_A1_ISR(void)
 {

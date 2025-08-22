@@ -379,7 +379,7 @@ void manchester_transmit_array(uint8_t *data, uint8_t size)
     LOG("Manchester transmission cleanup completed\n");
 }
 
-#if defined(NRF52840_XXAA)
+/* #if defined(NRF52840_XXAA)
 void TIMER4_IRQHandler(void)
 {
     if (NRF_TIMER4->EVENTS_COMPARE[0])
@@ -410,3 +410,4 @@ __attribute__((interrupt(TIMER1_A0_VECTOR))) void TIMER1_A0_ISR(void)
     TA1IV;
 }
 #endif
+ */

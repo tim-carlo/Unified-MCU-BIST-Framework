@@ -17,6 +17,9 @@
         "stack.h": "c",
         "nrf52840_utils.h": "c",
         "nrf52840_time.h": "c",
-        "msp430fr5994_gpio.h": "c"
+        "msp430fr5994_gpio.h": "c",
+        "msp430fr5994_utils.h": "c",
+        "nrf52840_gpio.h": "c",
+        "vector": "c"
     }
 }
