@@ -282,8 +282,8 @@ void TIMER3_IRQHandler(void)
 
 void __attribute__((interrupt(TIMER1_A0_VECTOR))) Timer1_A0_ISR(void)
 {
-    reader_isr();
     TA1CCR0 = TA1R + READER_TICKS; // Set next reader interval
+    reader_isr();
 }
 
 void __attribute__((interrupt(TIMER1_A1_VECTOR))) Timer1_A1_ISR(void)
@@ -291,8 +291,8 @@ void __attribute__((interrupt(TIMER1_A1_VECTOR))) Timer1_A1_ISR(void)
     switch (__even_in_range(TA1IV, TA1IV_TAIFG))
     {
     case TA1IV_TACCR1:
-        manager_isr();
         TA1CCR1 = TA1R + MANAGER_TICKS; // Set next manager interval
+        manager_isr();
         break;
     default:
         break;
