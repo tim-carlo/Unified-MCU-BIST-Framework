@@ -42,6 +42,11 @@ bool get_ack(const PinData *pin_data)
     return get_flag(pin_data, STATUS_ACK);
 }
 
+bool is_successful(const PinData *pin_data)
+{
+    return get_syn(pin_data) && get_syn_ack(pin_data) && get_ack(pin_data);
+}
+
 void set_initiator_syn(PinData *pin_data, bool value)
 {
     set_flag(pin_data, STATUS_INITIATOR_SYN, value);
@@ -147,5 +152,6 @@ void debug_print_pindata(const PinData *pin_data)
     printf("  waiting_counter: %u\n", pin_data->waiting_counter);
     printf("  sending_counter: %u\n", pin_data->sending_counter);
     printf("  receiving_counter: %u\n", pin_data->receiving_counter);
+    printf("  successfull_handshakes: %u\n", pin_data->successfull_handshakes);
     printf("}\n");
 }

@@ -22,10 +22,11 @@ typedef struct
     // the fouth bit is 1 if he was initiator for handshake, fifth bit is 1 if he was initiator for syn_ack handshake, sixth bit is 1 if he was initiator for ack handshake
     uint8_t status;
     uint8_t current_job;
-    uint8_t initial_delay; // Initial delay in milliseconds
+    uint8_t successfull_handshakes; // Flag to indicate if the handshake was successful
     uint16_t sending_counter;   // Counter for sending a signal
     uint16_t receiving_counter; // Counter for receiving a signal
     uint16_t waiting_counter;   // Counter for waiting for a signal
+
 } PinData;
 
 typedef enum
@@ -51,6 +52,9 @@ bool get_syn_ack(const PinData *pin_data);
 // ack flags
 void set_ack(PinData *pin_data, bool value);
 bool get_ack(const PinData *pin_data);
+
+// is successful
+bool is_successful(const PinData *pin_data);
 
 // initiator flags
 void set_initiator_syn(PinData *pin_data, bool value);
