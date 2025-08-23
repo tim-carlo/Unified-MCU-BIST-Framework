@@ -99,6 +99,15 @@
 #define CYCLE_INACCURACY ((uint32_t)SIGNAL_INACCURACY * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_WAITING_CYCLES 500 // Maximum waiting cycles for a signal
 
+#define MIN_SYN_CYCLES ((uint32_t)(SYN_DURATION - SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+#define MIN_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION - SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+#define MIN_ACK_CYCLES ((uint32_t)(ACK_DURATION - SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+
+#define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+#define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+#define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+
+
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -244,7 +253,7 @@ void reader_isr(void)
         if (pin_state) // if no signal is received, reset the receiving counter
         {
             uint16_t receive_counter = data->receiving_counter;
-            if (receive_counter >= (SYN_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_CYCLES + CYCLE_INACCURACY))
+            if (receive_counter >= MIN_SYN_CYCLES && receive_counter <= MAXIMUM_SYN_CYCLES)
             {
                 // SYN signal detected
                 set_syn(data, true);
@@ -253,7 +262,7 @@ void reader_isr(void)
                 data->receiving_counter = 0; // Reset receiving counter after SYN
                 something_done = true;       // Mark that something was done
             }
-            else if (receive_counter >= (SYN_ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (SYN_ACK_CYCLES + CYCLE_INACCURACY))
+            else if (receive_counter >= MIN_SYN_ACK_CYCLES && receive_counter <= MAXIMUM_SYN_ACK_CYCLES)
             {
                 // SYN_ACK signal detected
                 set_syn_ack(data, true);
@@ -262,7 +271,7 @@ void reader_isr(void)
                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
                 something_done = true;       // Mark that something was done
             }
-            else if (receive_counter >= (ACK_CYCLES - CYCLE_INACCURACY) && receive_counter <= (ACK_CYCLES + CYCLE_INACCURACY))
+            else if (receive_counter >= MIN_ACK_CYCLES && receive_counter <= MAXIMUM_ACK_CYCLES)
             {
                 // ACK signal detected
                 set_ack(data, true);
@@ -277,7 +286,7 @@ void reader_isr(void)
                     }
                 }
             }
-            else if (receive_counter > (ACK_CYCLES + CYCLE_INACCURACY))
+            else if (receive_counter > MAXIMUM_ACK_CYCLES)
             {
                 // Signal too long, reset counters
                 data->receiving_counter = 0;
