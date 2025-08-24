@@ -81,7 +81,7 @@
 #define INITIATOR_ROLE 0
 #define RESPONDER_ROLE 1
 
-#define READER_INTERVAL_US 5000   // Reader: every 5 ms
+#define READER_INTERVAL_US 1000   // Reader: every 1 ms
 #define MANAGER_INTERVAL_US 10000 // Manager: every 10 ms
 #define PRESCALER_DIV 8           // Prescaler division factor for the timer
 #define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
@@ -106,7 +106,6 @@
 #define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
-
 
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
@@ -146,41 +145,98 @@ void debug_output_binary(uint8_t value)
     else
         gpio_drive_low(DEBUG_PIN4);
 }
-
-/* void manager_isr(void)
+typedef struct
 {
-  //  gpio_drive_high(DEBUG_PIN2); // Set debug pin high to indicate ISR entry
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    {
-        if (initial_state_mask & (1ULL << pin))
-            continue; // Skip blacklisted pins
+    uint16_t cycles;
+    void (*on_complete)(PinData *);
+} TaskDef;
 
-        PinData *data = &pin_data[pin];
+void on_syn_complete(PinData *data)
+{
+    // SYN task completed, prepare for SYN_ACK
+    set_syn(data, true);           // Set SYN flag
+    set_initiator_syn(data, true); // Mark as initiator for SYN
+    data->sending_counter = 0;     // Reset sending counter for next task
+}
+void on_syn_ack_complete(PinData *data)
+{
+    // SYN_ACK task completed, prepare for ACK
+    set_syn_ack(data, true);          // Set SYN_ACK flag
+    set_initiator_synack(data, true); // Mark as initiator for SYN_ACK
+    data->sending_counter = 0;        // Reset sending counter for next task
+}
+void on_ack_complete(PinData *data)
+{
+    // ACK task completed, reset task to none
+    set_ack(data, true);
+    set_initiator_ack(data, true); // Mark as initiator for ACK
+    data->sending_counter = 0;     // Reset sending counter
+    if (is_successful(data))
+    {
+        data->successfull_handshakes++; // Increment successful handshakes counter
+        if (data->successfull_handshakes >= 5)
+        {
+            initial_state_mask |= (1ULL << data->pin);
+        }
     }
-//    gpio_drive_low(DEBUG_PIN2); // Set debug pin low to indicate ISR exit
-} */
-static const uint16_t required_cycles_lut[] = {
-    [TASK_NONE] = 0,
-    [TASK_JOB_SYN] = SYN_CYCLES,
-    [TASK_JOB_SYN_ACK] = SYN_ACK_CYCLES,
-    [TASK_JOB_ACK] = ACK_CYCLES};
+}
+
+
+// Inspired from Hacker’s Delight by Henry S. Warren, Jr.
+typedef struct
+{
+    uint64_t mask; // Bitmask representing the bitmap
+    uint8_t pos;   // Current position in the bitmap
+} BitmapIterator;
+
+static inline void bitmap_iterator_init(BitmapIterator *it, uint64_t mask)
+{
+    it->mask = mask;
+    it->pos = 0;
+}
+
+static inline bool bitmap_iterator_next(BitmapIterator *it, uint8_t *out_pin)
+{
+    while (it->mask)
+    {
+        // Find lowest set bit
+        uint8_t bit = __builtin_ctzll(it->mask); 
+        it->mask &= it->mask - 1;                // delete lowest set bit
+        *out_pin = bit;
+        return true;
+    }
+    return false; // No more set bits
+}
+
+// Lookup tables are used to avoid switch-case statements in the ISR and optimize performance
+const TaskDef task_lut[] = {
+    [TASK_NONE] = {0, NULL},
+    [TASK_JOB_SYN] = {SYN_CYCLES, &on_syn_complete},
+    [TASK_JOB_SYN_ACK] = {SYN_ACK_CYCLES, &on_syn_ack_complete},
+    [TASK_JOB_ACK] = {ACK_CYCLES, &on_ack_complete}};
 
 void reader_isr(void)
 {
     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
+    BitmapIterator it;
+    uint64_t all_pins_mask = (NUMBER_OF_GPIO_PINS >= 64)
+                                 ? ~0ULL
+                                 : ((1ULL << NUMBER_OF_GPIO_PINS) - 1);
 
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    bitmap_iterator_init(&it, ~initial_state_mask & all_pins_mask);
+
+    uint8_t pin;
+    while (bitmap_iterator_next(&it, &pin))
     {
-        bool something_done = false; // Flag to track if any task was done
+        PinData *data = &pin_data[pin];
         if (initial_state_mask & (1ULL << pin))
             continue; // Skip blacklisted pins
 
-        PinData *data = &pin_data[pin];
+        bool something_done = false; // Flag to track if any task was done
 
         if (data->waiting_counter >= MAXIMUM_WAITING_CYCLES)
         {
             set_task(data, TASK_JOB_SYN);
-            //  debug_output_binary(3); // Debug output for waiting timeout
             data->waiting_counter = 0; // Reset waiting counter
         }
 
@@ -191,7 +247,7 @@ void reader_isr(void)
         if (task != TASK_NONE)
         {
             something_done = true; // At least one task is being done
-            // data->waiting_counter = 0;
+            data->waiting_counter = 0;
             //  Collision detection:
             //  Before sending, check if the pin is high and we are sending
             if (data->sending_counter == 0 && !pin_state)
@@ -200,39 +256,13 @@ void reader_isr(void)
             }
             else
             {
-                uint16_t required_cycles = required_cycles_lut[task];
+                uint16_t required_cycles = task_lut[task].cycles;
                 if (data->sending_counter >= required_cycles)
                 {
                     // Reset when task is complete
-                    gpio_drive_high(DEBUG_PIN2);
                     gpio_od_release(pin); // Release the pin
-                    data->sending_counter = 0;
                     set_task(data, TASK_NONE);
-
-                    switch (task)
-                    {
-                    case TASK_JOB_SYN:
-                        set_syn(data, true); // Set SYN flag
-                        break;
-                    case TASK_JOB_SYN_ACK:
-                        set_syn_ack(data, true); // Set ACK as well
-                        break;
-                    case TASK_JOB_ACK:
-                        set_ack(data, true); // Set ACK flag
-                        if (is_successful(data))
-                        {
-                            data->successfull_handshakes++; // Increment successful handshakes counter
-                            if (data->successfull_handshakes >= 5)
-                            {
-                                initial_state_mask |= (1ULL << pin);
-                            }
-                        }
-
-                        break;
-                    default:
-                        break;
-                    }
-                    gpio_drive_low(DEBUG_PIN2); // Reset debug output pin
+                    task_lut[task].on_complete(data);
                 }
                 else
                 {
@@ -257,6 +287,7 @@ void reader_isr(void)
             {
                 // SYN signal detected
                 set_syn(data, true);
+                set_initiator_syn(data, false); // Mark as responder for SYN
                 set_task(data, TASK_JOB_SYN_ACK);
                 debug_output_binary(2);
                 data->receiving_counter = 0; // Reset receiving counter after SYN
@@ -266,6 +297,7 @@ void reader_isr(void)
             {
                 // SYN_ACK signal detected
                 set_syn_ack(data, true);
+                set_initiator_synack(data, false); // Mark as responder for SYN_ACK
                 set_task(data, TASK_JOB_ACK);
                 debug_output_binary(3);
                 data->receiving_counter = 0; // Reset receiving counter after SYN_ACK
@@ -275,8 +307,9 @@ void reader_isr(void)
             {
                 // ACK signal detected
                 set_ack(data, true);
-                data->receiving_counter = 0; // Reset receiving counter after ACK
-                something_done = true;       // Mark that something was done
+                set_initiator_ack(data, false); // Mark as responder for ACK
+                data->receiving_counter = 0;    // Reset receiving counter after ACK
+                something_done = true;          // Mark that something was done
                 if (is_successful(data))
                 {
                     data->successfull_handshakes++; // Increment successful handshakes counter
@@ -433,7 +466,6 @@ int main(void)
 
     while (1)
     {
-        
     }
 }
 
