@@ -1,9 +1,106 @@
 #include "nrf52840_time.h"
 #include "nrf.h"
 #include "nrf52840.h"
-
+#include <stdbool.h>
+#include <stdint.h>
 
 static void (*timer_event_callback[5])(void) = {NULL, NULL, NULL, NULL, NULL};
+
+/**
+ * @brief Configure the timer with specified prescaler and bitmode
+ *
+ * @param timer Pointer to the NRF_TIMER_Type structure for the timer
+ * @param prescaler Prescaler value (0-9) to set the timer frequency
+ * @param bitmode Bit mode (0=16-bit, 1=8-bit, 2=24-bit, 3=32-bit)
+ */
+void configure_timer(NRF_TIMER_Type *const timer, const uint32_t prescaler, const uint32_t bitmode)
+{
+    timer->TASKS_STOP = 1;                                      // Stop timer before configuration
+    timer->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos; // Timer mode
+    timer->PRESCALER = prescaler & 0x0F;                        // Prescaler 0-9
+
+    // BITMODE: 0=16Bit, 1=8Bit, 2=24Bit, 3=32Bit
+    timer->BITMODE = (bitmode & 0x03) << TIMER_BITMODE_BITMODE_Pos;
+
+    timer->TASKS_CLEAR = 1; // Clear timer counter
+}
+
+/**
+ * @brief Configure timer for time measurement (standard 1MHz setup)
+ */
+void configure_timer_for_measurement(NRF_TIMER_Type *timer)
+{
+    configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit); // 1MHz, 32-bit
+}
+
+/**
+ * @brief Set the compare value for a specific channel of the timer
+ *
+ * @param timer Pointer to the NRF_TIMER_Type structure for the timer
+ * @param channel Compare channel (0-5)
+ * @param value Compare value to set
+ * @param enable_interrupt Whether to enable interrupt for this compare
+ */
+void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, const uint32_t value, const bool enable_interrupt)
+{
+    if (channel < 6)
+    {
+        timer->CC[channel] = value;
+        if (enable_interrupt)
+        {
+            timer->INTENSET = (1 << (16 + channel)); // Enable interrupt for COMPARE[channel]
+        }
+    }
+}
+
+
+/**
+ * @brief General timer start function - only starts without reconfiguring
+ */
+void start_timer(NRF_TIMER_Type *timer)
+{
+    timer->TASKS_START = 1;
+}
+
+/**
+ * @brief General timer stop function - only stops
+ */
+void stop_timer(NRF_TIMER_Type *timer)
+{
+    timer->TASKS_STOP = 1;
+}
+
+/**
+ * @brief Reset the timer counter to zero
+ */
+void reset_timer(NRF_TIMER_Type *timer)
+{
+    timer->TASKS_CLEAR = 1; // Clear the timer counter
+    timer->TASKS_START = 1; // Restart the timer after clearing
+}
+
+/**
+ * @brief Reset timer and start (keeps current configuration)
+ */
+void reset_and_start_timer(NRF_TIMER_Type *timer)
+{
+    timer->TASKS_CLEAR = 1;
+    timer->TASKS_START = 1;
+}
+
+/**
+ * @brief Get the current timer counter value
+ *
+ * This function captures the current value of the timer's counter.
+ * It is used to measure elapsed time in microseconds.
+ * @param timer Pointer to the NRF_TIMER_Type structure for the timer
+ * @return uint32_t Current timer counter value
+ */
+uint32_t get_timer_ticks(NRF_TIMER_Type *timer)
+{
+    timer->TASKS_CAPTURE[0] = 1;
+    return timer->CC[0];
+}
 
 /**
  * @brief Get the elapsed time in microseconds between two timer values
@@ -23,31 +120,76 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
 }
 
 /**
+ * @brief Start time measurement (always 1MHz configuration)
+ */
+void start_time_measurement(NRF_TIMER_Type *timer)
+{
+    configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit); // Always 1MHz
+    timer->TASKS_CLEAR = 1;                                  // Reset counter
+    start_timer_simple(timer);
+}
+
+/**
+ * @brief Stop time measurement and return elapsed time in microseconds
+ */
+uint32_t stop_time_measurement_us(NRF_TIMER_Type *timer)
+{
+    uint32_t ticks = get_timer_ticks(timer);
+    stop_timer_simple(timer);
+    return ticks; // 1MHz = 1 tick per µs
+}
+
+/**
+ * @brief Stop time measurement and return elapsed time in milliseconds
+ */
+uint32_t stop_time_measurement_ms(NRF_TIMER_Type *timer)
+{
+    uint32_t ticks = get_timer_ticks(timer);
+    stop_timer_simple(timer);
+    return ticks / 1000; // Convert µs to ms
+}
+
+/**
+ * @brief Get elapsed time in microseconds without stopping the timer
+ */
+uint32_t get_elapsed_time_us(NRF_TIMER_Type *timer)
+{
+    return get_timer_ticks(timer); // 1MHz = 1 tick per µs
+}
+
+/**
+ * @brief Get elapsed time in milliseconds without stopping the timer
+ */
+uint32_t get_elapsed_time_ms(NRF_TIMER_Type *timer)
+{
+    return get_timer_ticks(timer) / 1000; // Convert µs to ms
+}
+
+/**
  * @brief Delay for a specified number of microseconds
  *
  * @param us Number of microseconds to delay
  */
 void delay_us(uint32_t us)
 {
-    NRF_TIMER3->TASKS_STOP = 1;
-    NRF_TIMER3->TASKS_CLEAR = 1;
+    NRF_TIMER_Type *timer = NRF_TIMER3;
 
-    // TIMER3: 1 MHz:  1 tick = 1 µs
-    NRF_TIMER3->PRESCALER = 4;
-    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    // Configure timer for 1MHz operation (prescaler 4: 16MHz/16 = 1MHz)
+    configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit);
 
-    NRF_TIMER3->CC[0] = us;
-    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
-    NRF_TIMER3->TASKS_START = 1;
+    set_timer_compare(timer, 0, us, false);
+    timer->EVENTS_COMPARE[0] = 0;
 
-    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0)
+    start_timer_simple(timer);
+
+    // Wait for compare event
+    while (timer->EVENTS_COMPARE[0] == 0)
     {
+        // Busy wait
     }
 
-    NRF_TIMER3->TASKS_STOP = 1;
-    // clear the flag
-    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
+    stop_timer_simple(timer);
+    timer->EVENTS_COMPARE[0] = 0; // Clear event
 }
 
 /**
@@ -57,78 +199,63 @@ void delay_us(uint32_t us)
  */
 void delay_ms(uint32_t ms)
 {
-    NRF_TIMER3->TASKS_STOP = 1;
-    NRF_TIMER3->TASKS_CLEAR = 1;
+    NRF_TIMER_Type *timer = NRF_TIMER3;
 
-    // TIMER3: 1 MHz:  1 tick = 1 µs
-    NRF_TIMER3->PRESCALER = 4;
-    NRF_TIMER3->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER3->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
+    // Use prescaler 8 for longer delays
+    configure_timer(timer, 8, TIMER_BITMODE_BITMODE_32Bit);
+    
+    uint32_t ticks = (ms * 625) / 10;  // 62.5 ticks per ms
 
-    NRF_TIMER3->CC[0] = ms * 1000;
-    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
-    NRF_TIMER3->TASKS_START = 1;
+    set_timer_compare(timer, 0, ticks, false);
+    timer->EVENTS_COMPARE[0] = 0;
 
-    while (NRF_TIMER3->EVENTS_COMPARE[0] == 0)
+    start_timer_simple(timer);
+
+    // Wait for compare event
+    while (timer->EVENTS_COMPARE[0] == 0)
     {
+       ; // Busy wait
     }
 
-    NRF_TIMER3->TASKS_STOP = 1;
-    // clear the flag
-    NRF_TIMER3->EVENTS_COMPARE[0] = 0;
+    stop_timer_simple(timer);
+    timer->EVENTS_COMPARE[0] = 0; // Clear event
 }
 
+
 /**
- * @brief Get the current timer counter value
- *
- * This function captures the current value of TIMER0's counter.
- * It is used to measure elapsed time in microseconds.
- * @param timer Pointer to the NRF_TIMER_Type structure for the timer
- * @return uint32_t Current timer counter value
+ * @brief Convert microseconds to ticks (always 1MHz)
  */
-uint32_t get_timer_ticks(NRF_TIMER_Type *timer)
+uint32_t us_to_ticks(uint32_t us)
 {
-    timer->TASKS_CAPTURE[0] = 1;
-    return timer->CC[0];
+    return us; // 1MHz = 1 tick per µs
 }
 
 /**
- * @brief Start the TIMER0 peripheral for timing operations
- *
- * This function configures TIMER0 to run at 1 MHz (1 µs per tick) and starts it.
- * It also records the current time as the starting point for subsequent measurements.
+ * @brief Convert milliseconds to ticks (always 1MHz)
  */
-void start_timer(NRF_TIMER_Type *timer)
+uint32_t ms_to_ticks(uint32_t ms)
 {
-    timer->TASKS_STOP = 1;
-    timer->MODE = TIMER_MODE_MODE_Timer;
-    timer->PRESCALER = 4; // 1 MHz = 1 µs per tick
-    timer->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
-    timer->TASKS_CLEAR = 1; // Reset the counter
-    timer->TASKS_START = 1; // Now
+    return ms * 1000; // Convert to µs, then 1 tick per µs
 }
 
 /**
- * @brief This function stops the TIMER0 peripheral, which is used for timing operations.
- *
+ * @brief Convert ticks to microseconds (always 1MHz)
  */
-void stop_timer(NRF_TIMER_Type *timer)
+uint32_t ticks_to_us_simple(uint32_t ticks)
 {
-    timer->TASKS_STOP = 1; // Stop the specified timer
+    return ticks; // 1MHz = 1 tick per µs
 }
 
 /**
- * @brief Reset the timer counter to zero
- *
+ * @brief Convert ticks to milliseconds (always 1MHz)
  */
-void reset_timer(NRF_TIMER_Type *timer)
+uint32_t ticks_to_ms_simple(uint32_t ticks)
 {
-    timer->TASKS_CLEAR = 1; // Clear the timer counter
-    timer->TASKS_START = 1; // Restart the timer after clearing
+    return ticks / 1000; // Convert µs to ms
 }
 
 /**
- * @brief Get the current timer in microseconds
+ * @brief Get the current timer in microseconds (legacy)
  *
  * @return uint64_t Current timer value in microseconds
  */
@@ -138,7 +265,7 @@ uint32_t ticks_to_us(uint64_t ticks)
 }
 
 /**
- * @brief Convert timer ticks to milliseconds
+ * @brief Convert timer ticks to milliseconds (legacy)
  *
  * @param ticks Timer ticks
  * @return uint32_t Time in milliseconds
@@ -149,7 +276,7 @@ uint32_t ticks_to_ms(uint64_t ticks)
 }
 
 /**
- * @brief Get the current timer value in microseconds
+ * @brief Get the current timer value in microseconds (legacy)
  *
  * @return uint64_t Current timer value in microseconds
  */
@@ -159,7 +286,7 @@ uint32_t timer_diff_us(uint64_t start, uint64_t end)
 }
 
 /**
- * @brief Get the difference between two timer values in milliseconds
+ * @brief Get the difference between two timer values in milliseconds (legacy)
  *
  * @param start Start time in microseconds
  * @param end End time in microseconds
@@ -171,49 +298,12 @@ uint32_t timer_diff_ms(uint64_t start, uint64_t end)
 }
 
 /**
- * @brief Configure the timer with specified prescaler and bitmode
- *
- * @param timer Pointer to the NRF_TIMER_Type structure for the timer
- * @param prescaler Prescaler value (0-9) to set the timer frequency
- * @param bitmode Bit mode (0=16-bit, 1=8-bit, 2=24-bit, 3=32-bit)
- */
-void configure_timer(NRF_TIMER_Type * const timer, const uint32_t prescaler, const uint32_t bitmode)
-{
-    timer->TASKS_STOP = 1;                                      // Stop timer before configuration
-    timer->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos; // Timer mode
-    timer->PRESCALER = prescaler & 0x0F;                        // Prescaler 0-9
-
-    // BITMODE: 0=16Bit, 1=8Bit, 2=24Bit, 3=32Bit
-    timer->BITMODE = (bitmode & 0x03) << TIMER_BITMODE_BITMODE_Pos;
-
-    timer->TASKS_CLEAR = 1; // Clear timer counter
-}
-
-/**
- * @brief Set the compare value for a specific channel of the timer
- *
- * @param timer Pointer to the NRF_TIMER_Type structure for the timer
- * @param channel Compare channel (0-5)
- * @param value Compare value to set
- */
-void set_timer_compare(NRF_TIMER_Type * const timer, const uint32_t channel, const uint32_t value)
-{
-    if (channel < 6)
-    {
-        timer->CC[channel] = value;
-    }
-}
-
-/**
  * @brief Set a callback function to be called on timer compare event
- *
- * Note: This is a placeholder function. Actual implementation of callback
- * registration depends on the specific application and interrupt handling.
  *
  * @param timer Pointer to the NRF_TIMER_Type structure for the timer
  * @param callback Function pointer to the callback function
  */
-void set_timer_event_callback(NRF_TIMER_Type * const timer, void (* const callback)(void))
+void set_timer_event_callback(NRF_TIMER_Type *const timer, void (*const callback)(void))
 {
     int idx = -1;
     IRQn_Type irqn;
@@ -244,11 +334,16 @@ void set_timer_event_callback(NRF_TIMER_Type * const timer, void (* const callba
     }
     if (idx >= 0 && idx < 5)
         timer_event_callback[idx] = callback;
+
+    // Enable interrupt for COMPARE[0]
     NVIC_ClearPendingIRQ(irqn);
     NVIC_EnableIRQ(irqn);
 }
 
-void clear_timer_event_callback(NRF_TIMER_Type * const timer)
+/**
+ * @brief Clear timer event callback
+ */
+void clear_timer_event_callback(NRF_TIMER_Type *const timer)
 {
     int idx = -1;
     IRQn_Type irqn;
@@ -282,17 +377,19 @@ void clear_timer_event_callback(NRF_TIMER_Type * const timer)
     NVIC_DisableIRQ(irqn);
 }
 
-// Timer interrupt handlers
-#define TIMER_ISR(N) \
-void TIMER##N##_IRQHandler(void) \
-{ \
-    if (NRF_TIMER##N->EVENTS_COMPARE[0]) \
-    { \
-        NRF_TIMER##N->EVENTS_COMPARE[0] = 0; \
-        if (timer_event_callback[N]) \
-            timer_event_callback[N](); \
-    } \
-}
+/**
+ * @brief Timer interrupt handler macro
+ */
+#define TIMER_ISR(N)                             \
+    void TIMER##N##_IRQHandler(void)             \
+    {                                            \
+        if (NRF_TIMER##N->EVENTS_COMPARE[0])     \
+        {                                        \
+            NRF_TIMER##N->EVENTS_COMPARE[0] = 0; \
+            if (timer_event_callback[N])         \
+                timer_event_callback[N]();       \
+        }                                        \
+    }
 
 TIMER_ISR(0)
 TIMER_ISR(1)
