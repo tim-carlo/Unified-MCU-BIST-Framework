@@ -68,13 +68,28 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
 void start_timer(timer_type timer);
 void stop_timer(timer_type timer);
 
-uint32_t ticks_elapsed(uint32_t start, uint32_t end);
 uint32_t get_timer_ticks(timer_type timer);
 
 uint32_t ticks_to_ms(uint32_t ticks);
 uint32_t ticks_to_us(uint32_t ticks);
+uint32_t us_to_timer_ticks(timer_type timer, uint32_t us);
+uint32_t ms_to_timer_ticks(timer_type timer, uint32_t ms);
+
 uint32_t timer_diff_ms(uint32_t start, uint32_t end);
 uint32_t timer_diff_us(uint32_t start, uint32_t end);
+
+void configure_timer(timer_type timer, uint16_t divider_setting, uint16_t mode);
+void set_timer_compare(timer_type timer, uint32_t channel, uint32_t value);
+void reset_timer(const timer_type timer);
+void setup_timer_with_overflow_counting(timer_type timer);
+uint32_t get_timer_frequency(timer_type timer);
+
+
+void start_timer_with_interrupt(timer_type timer);
+void set_timer_compare_callback(const timer_type timer, void (*const callback)(void));
+void set_timer_overflow_callback(const timer_type timer, void (*const callback)(void));
+void clear_timer_callbacks(timer_type timer);
+
 
 #ifdef __cplusplus
 }
