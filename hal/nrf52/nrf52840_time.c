@@ -126,7 +126,7 @@ void start_time_measurement(NRF_TIMER_Type *timer)
 {
     configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit); // Always 1MHz
     timer->TASKS_CLEAR = 1;                                  // Reset counter
-    start_timer_simple(timer);
+    start_timer(timer);
 }
 
 /**
@@ -135,7 +135,7 @@ void start_time_measurement(NRF_TIMER_Type *timer)
 uint32_t stop_time_measurement_us(NRF_TIMER_Type *timer)
 {
     uint32_t ticks = get_timer_ticks(timer);
-    stop_timer_simple(timer);
+    stop_timer(timer);
     return ticks; // 1MHz = 1 tick per µs
 }
 
@@ -145,7 +145,7 @@ uint32_t stop_time_measurement_us(NRF_TIMER_Type *timer)
 uint32_t stop_time_measurement_ms(NRF_TIMER_Type *timer)
 {
     uint32_t ticks = get_timer_ticks(timer);
-    stop_timer_simple(timer);
+    stop_timer(timer);
     return ticks / 1000; // Convert µs to ms
 }
 
@@ -180,7 +180,7 @@ void delay_us(uint32_t us)
     set_timer_compare(timer, 0, us, false);
     timer->EVENTS_COMPARE[0] = 0;
 
-    start_timer_simple(timer);
+    start_timer(timer);
 
     // Wait for compare event
     while (timer->EVENTS_COMPARE[0] == 0)
@@ -188,7 +188,7 @@ void delay_us(uint32_t us)
         // Busy wait
     }
 
-    stop_timer_simple(timer);
+    stop_timer(timer);
     timer->EVENTS_COMPARE[0] = 0; // Clear event
 }
 
@@ -209,7 +209,7 @@ void delay_ms(uint32_t ms)
     set_timer_compare(timer, 0, ticks, false);
     timer->EVENTS_COMPARE[0] = 0;
 
-    start_timer_simple(timer);
+    start_timer(timer);
 
     // Wait for compare event
     while (timer->EVENTS_COMPARE[0] == 0)
@@ -217,7 +217,7 @@ void delay_ms(uint32_t ms)
        ; // Busy wait
     }
 
-    stop_timer_simple(timer);
+    stop_timer(timer);
     timer->EVENTS_COMPARE[0] = 0; // Clear event
 }
 
