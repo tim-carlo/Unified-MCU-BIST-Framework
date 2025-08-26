@@ -5,3 +5,4 @@ build/
 .vscode/
 **/.lst
 targets/nrf52/.lst
+.vscode/settings.json
