@@ -40,8 +40,9 @@ void configure_timer_for_measurement(NRF_TIMER_Type *timer)
  * @param channel Compare channel (0-5)
  * @param value Compare value to set
  * @param enable_interrupt Whether to enable interrupt for this compare
+ * @param clear_on_compare Whether to clear the timer on compare match
  */
-void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, const uint32_t value, const bool enable_interrupt)
+void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, const uint32_t value, const bool enable_interrupt, const bool clear_on_compare)
 {
     if (channel < 6)
     {
@@ -49,6 +50,10 @@ void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, cons
         if (enable_interrupt)
         {
             timer->INTENSET = (1 << (16 + channel)); // Enable interrupt for COMPARE[channel]
+        }
+        if (clear_on_compare)
+        {
+            timer->SHORTS |= (1 << (8 + channel)); // Enable shortcut to clear on COMPARE[channel]
         }
     }
 }
