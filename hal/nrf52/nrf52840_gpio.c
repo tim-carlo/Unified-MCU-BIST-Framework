@@ -165,11 +165,23 @@ void gpio_listen_on_all_pins_interrupt(uint64_t blacklist,
 
     NRF_GPIOTE->EVENTS_PORT = 0;
     NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
-  //  NVIC_SetPriority(GPIOTE_IRQn, 0);
+    //  NVIC_SetPriority(GPIOTE_IRQn, 0);
     NVIC_EnableIRQ(GPIOTE_IRQn);
 }
 
-void GPIOTE_IRQHandler(void)
+/**
+ * @brief Disable GPIO interrupts
+ * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
+ */
+void gpio_disable_all_interrupts(uint64_t blacklist_mask)
+{
+    NVIC_DisableIRQ(GPIOTE_IRQn);
+    NRF_GPIOTE->INTENCLR = GPIOTE_INTENCLR_PORT_Msk;
+    NRF_P0->LATCH = 0xFFFFFFFF;
+    NRF_P1->LATCH = 0xFFFFFFFF;
+}
+
+GPIOTE_IRQHandler(void)
 {
     if (!NRF_GPIOTE->EVENTS_PORT)
         return;
@@ -189,7 +201,7 @@ void GPIOTE_IRQHandler(void)
         {
             bool sample0 = pin_level(port, pin_idx);
             bool sample1 = pin_level(port, pin_idx);
-            if(sample0 != sample1)
+            if (sample0 != sample1)
             {
                 return; // Ignore if the pin state is not stable
             }
@@ -197,7 +209,7 @@ void GPIOTE_IRQHandler(void)
             if (!sample0)
             {
                 if (s_falling)
-                   s_falling(abs_pin);
+                    s_falling(abs_pin);
                 // Next: SENSE_High (for Rising)
                 configure_pin_sense(abs_pin, false);
             }
@@ -248,10 +260,10 @@ void gpio_od_hold_low(uint8_t abs_pin)
     NVIC_DisableIRQ(GPIOTE_IRQn);
 
     // Disable SENSE to prevent spurious events while driving low
-    //uint32_t cnf = p->PIN_CNF[idx];
-    //cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
-    //cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
-    //p->PIN_CNF[idx] = cnf;
+    // uint32_t cnf = p->PIN_CNF[idx];
+    // cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
+    // cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    // p->PIN_CNF[idx] = cnf;
 
     // Configure as output and drive low
     p->OUTCLR = (1UL << idx);
@@ -288,7 +300,6 @@ void gpio_od_release(uint8_t abs_pin)
     p->PIN_CNF[idx] = cnf;
 
     NVIC_EnableIRQ(GPIOTE_IRQn);
-
 }
 
 /**

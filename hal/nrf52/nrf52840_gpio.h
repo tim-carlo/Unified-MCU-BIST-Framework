@@ -52,7 +52,7 @@ void gpio_od_init(uint8_t abs_pin);
 void gpio_od_hold_low(uint8_t abs_pin); 
 void gpio_od_release(uint8_t abs_pin); 
 
-void gpio_disable_all_interrupts(void);
+void gpio_disable_all_interrupts(uint64_t blacklist_mask);
 void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
 
 #ifdef __cplusplus

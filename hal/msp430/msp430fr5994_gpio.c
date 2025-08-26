@@ -1,5 +1,5 @@
 #include "msp430fr5994_gpio.h"
-#include <stdint.h> 
+#include <stdint.h>
 
 static volatile uint64_t s_blacklist_mask = 0;
 static gpio_interrupt_handler_t s_falling = NULL;
@@ -42,7 +42,7 @@ static inline uint8_t abs_to_port(uint8_t abs_pin)
 
 void gpio_output_init(uint8_t abs_pin)
 {
-    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← uintptr_t statt uint16_t
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
     uint8_t mask = 1 << abs_to_pinidx(abs_pin);
 
     *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) |= mask; // output
@@ -50,7 +50,7 @@ void gpio_output_init(uint8_t abs_pin)
 
 void gpio_set_pull(uint8_t abs_pin, gpio_pull_t pull)
 {
-    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← uintptr_t statt uint16_t
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
     uint8_t mask = 1 << abs_to_pinidx(abs_pin);
 
     switch (pull)
@@ -144,6 +144,13 @@ static bool is_interupt_blacklisted(uint8_t abs_pin)
 {
     return (s_blacklist_mask >> abs_pin) & 1;
 }
+/**
+ * @brief Enable GPIO interrupts on all pins except those in the blacklist
+ * 
+ * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
+ * @param falling_handler callback for falling edge interrupts
+ * @param rising_handler callback for rising edge interrupts
+ */
 void gpio_listen_on_all_pins_interrupt(uint64_t blacklist_mask,
                                        gpio_interrupt_handler_t falling_handler,
                                        gpio_interrupt_handler_t rising_handler)
@@ -225,6 +232,27 @@ DEFINE_PORT_ISR(6)
 DEFINE_PORT_ISR(7)
 DEFINE_PORT_ISR(8)
 
+
+/**
+ * @brief Disable GPIO interrupts on all pins except those in the blacklist
+ * 
+ * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
+ */
+void gpio_disable_all_pins_interrupt(uint64_t blacklist_mask)
+{
+    for (uint8_t abs_pin = 0; abs_pin < MSP430_NUM_ABS_PINS; abs_pin++)
+    {
+        if ((blacklist_mask >> abs_pin) & 1)
+            continue; // Skip blacklisted pins
+
+        uint8_t port = abs_pin >> 3;
+        uint8_t pin = abs_pin & 0x07;
+
+        *PxIE[port] &= ~(1 << pin);  // Disable interrupt on this pin
+        *PxIFG[port] &= ~(1 << pin); // Clear any pending flag
+    }
+}
+
 /**
  * @brief Initialize GPIO pin in open-drain mode using absolute pin number
  *
@@ -253,12 +281,12 @@ void gpio_od_hold_low(uint8_t abs_pin)
  */
 void gpio_od_release(uint8_t abs_pin)
 {
-    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);  // ← abs_pin statt port verwenden
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← abs_pin statt port verwenden
     uint8_t mask = 1 << abs_to_pinidx(abs_pin);
 
     // DIR = 0
     *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) &= ~mask;
-    // REN = 1 
+    // REN = 1
     *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) |= mask;
     // OUT = 1
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
@@ -279,7 +307,7 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
             continue; // Skip blacklisted pins
         if (gpio_read(abs_pin) == expected_level)
         {
-            printf("Pushing active pin %u to stack\n", (unsigned int)abs_pin);  // ← %u statt %lu
+            printf("Pushing active pin %u to stack\n", (unsigned int)abs_pin); // ← %u statt %lu
             stack_push(stack, &abs_pin);
         }
     }

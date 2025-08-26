@@ -73,7 +73,7 @@ void gpio_listen_on_all_pins_interrupt(
     gpio_interrupt_handler_t falling_handler,
     gpio_interrupt_handler_t rising_handler);
 
-void gpio_disable_all_interrupts(void);
+void gpio_disable_all_interrupts(uint64_t blacklist_mask);
 
 // Stack Operations for GPIO pins
 void push_active_pins_except_blacklist_to_stack(
