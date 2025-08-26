@@ -26,21 +26,17 @@
 #include "stack.h"
 #include "pindata.h"
 
-#define NUMBER_OF_SCANNING_ITERATIONS 10
-#define DELAY_BETWEEN_READS_MS 100
+typedef struct
+{
+    bool state;        // Current state of the pin (high or low)
+    uint8_t pin_number; // Pin number
+    uint8_t number_of_rises;
+    uint8_t number_of_falls;
+} TimingPinData;
 
 
-
-// Add function prototypes here if needed
-/**
- * @brief Get the initial state of all GPIO pins
- *
- * This function reads the state of all GPIO pins and returns a 64-bit value
- * where each bit represents the state of a pin (bit 0 = pin 0, bit 1 = pin 1, ...).
- *
- * @return uint64_t Initial state of GPIO pins
- */
-uint64_t get_initial_pin_state(uint8_t expected_state);
+void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask);
 
 #endif // CHECK_INITIAL_STATE_H
 
+ 
