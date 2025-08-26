@@ -39,8 +39,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h> 
 #include "timing_pindata.h"
+#include "pindata.h"
 #include "bitmap_iterator.h"
+#include "pindata.h"
+
 
 #define READER_INTERVAL_US 1000   // Reader: every 1 ms
 #define MANAGER_INTERVAL_US 10000 // Manager: every 10 ms
@@ -67,11 +71,13 @@
 #define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
+#define DURATION_OF_HANDSHAKE_MS 60000 // Duration of the handshake process in milliseconds
+
 typedef struct
 {
     uint16_t cycles;
-    void (*on_complete)(PinData *);
-} TaskDef;
+    void (*on_complete)(TimingPinData *);
+} TimingTaskDef;
 
 void perform_handshake(PinData *pin_data, uint64_t initial_blacklist_mask);
 
