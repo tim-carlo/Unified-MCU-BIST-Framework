@@ -22,12 +22,12 @@ typedef struct
     // the fouth bit is 1 if he was initiator for handshake, fifth bit is 1 if he was initiator for syn_ack handshake, sixth bit is 1 if he was initiator for ack handshake
     uint8_t status;
     uint8_t current_job;
-    uint8_t successfull_handshakes; // Flag to indicate if the handshake was successful
+    uint8_t successful_handshakes; // Flag to indicate if the handshake was successful
     uint16_t sending_counter;   // Counter for sending a signal
     uint16_t receiving_counter; // Counter for receiving a signal
     uint16_t waiting_counter;   // Counter for waiting for a signal
 
-} PinData;
+} TimingPinData;
 
 typedef enum
 {
@@ -37,51 +37,59 @@ typedef enum
     TASK_JOB_ACK = 3
 } PinDataTask;
 
+typedef enum
+{
+    ROLE_NONE = 0,
+    ROLE_INITIATOR = 1,
+    ROLE_RESPONDER = 2,
+    ROLE_UNCLEAR = 3
+} RoleType;
+
 // Basis flag functions
-void set_flag(PinData *pin_data, uint8_t mask, bool value);
-bool get_flag(const PinData *pin_data, uint8_t mask);
+void set_flag(TimingPinData *pin_data, uint8_t mask, bool value);
+bool get_flag(const TimingPinData *pin_data, uint8_t mask);
 
 // Syn flags
-void set_syn(PinData *pin_data, bool value);
-bool get_syn(const PinData *pin_data);
+void set_syn(TimingPinData *pin_data, bool value);
+bool get_syn(const TimingPinData *pin_data);
 
 // SYN-ACK flags
-void set_syn_ack(PinData *pin_data, bool value);
-bool get_syn_ack(const PinData *pin_data);
+void set_syn_ack(TimingPinData *pin_data, bool value);
+bool get_syn_ack(const TimingPinData *pin_data);
 
 // ack flags
-void set_ack(PinData *pin_data, bool value);
-bool get_ack(const PinData *pin_data);
+void set_ack(TimingPinData *pin_data, bool value);
+bool get_ack(const TimingPinData *pin_data);
 
 // is successful
-bool is_successful(const PinData *pin_data);
+bool is_successful(const TimingPinData *pin_data);
 
 // initiator flags
-void set_initiator_syn(PinData *pin_data, bool value);
-bool get_initiator_syn(const PinData *pin_data);
+void set_initiator_syn(TimingPinData *pin_data, bool value);
+bool get_initiator_syn(const TimingPinData *pin_data);
 
-void set_initiator_synack(PinData *pin_data, bool value);
-bool get_initiator_synack(const PinData *pin_data);
+void set_initiator_synack(TimingPinData *pin_data, bool value);
+bool get_initiator_synack(const TimingPinData *pin_data);
 
-void set_initiator_ack(PinData *pin_data, bool value);
-bool get_initiator_ack(const PinData *pin_data);
+void set_initiator_ack(TimingPinData *pin_data, bool value);
+bool get_initiator_ack(const TimingPinData *pin_data);
+
+RoleType get_role(const TimingPinData *pin_data);
 
 // Task functions
-void set_task(PinData *pin_data, PinDataTask task);
-PinDataTask get_task(const PinData *pin_data);
+void set_task(TimingPinData *pin_data, PinDataTask task);
+PinDataTask get_task(const TimingPinData *pin_data);
 
 // counters
-void reset_counters(PinData *pin_data);
-void increment_waiting(PinData *pin_data);
-void increment_sending(PinData *pin_data);
-void increment_receiving(PinData *pin_data);
+void reset_counters(TimingPinData *pin_data);
+void increment_waiting(TimingPinData *pin_data);
+void increment_sending(TimingPinData *pin_data);
+void increment_receiving(TimingPinData *pin_data);
 
 // Reset status
-void clear_status(PinData *pin_data);
-
+void clear_status(TimingPinData *pin_data);
 
 // Helper functions
-void initialize_pin_data_array(PinData *pindata, uint8_t size);
-void debug_print_pindata(const PinData *pin_data);
+void debug_print_pindata(const TimingPinData *pin_data);
 
 #endif // TIMING_PINDATA_H
