@@ -32,7 +32,7 @@ typedef struct
     uint8_t pin_number; // Pin number
     uint8_t number_of_rises;
     uint8_t number_of_falls;
-} TimingPinData;
+} InitialStatePinData;
 
 
 void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask);

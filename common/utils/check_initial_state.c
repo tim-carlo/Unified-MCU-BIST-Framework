@@ -2,7 +2,7 @@
 #include "bitmap_iterator.h"
 #include "printf.h"
 
-static TimingPinData *internal_pin_data_array = NULL;
+static InitialStatePinData *internal_pin_data_array = NULL;
 
 static void initialstate_rising_isr(uint8_t pin)
 {
@@ -21,7 +21,14 @@ static void initialstate_falling_isr(uint8_t pin)
  */
 void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
 {
-    uint64_t valid_mask = ~(*black_list_mask) & ((1ULL << NUMBER_OF_GPIO_PINS) - 1);
+    uint64_t all_pins_mask;
+    if (NUMBER_OF_GPIO_PINS >= 64) {
+        all_pins_mask = ~0ULL;  // Alle Bits gesetzt wenn >= 64 Pins
+    } else {
+        all_pins_mask = (1ULL << NUMBER_OF_GPIO_PINS) - 1;
+    }
+    
+    uint64_t valid_mask = ~(*black_list_mask) & all_pins_mask;
 
     int pin_count = __builtin_popcountll(valid_mask);
     if (pin_count == 0)
@@ -29,7 +36,7 @@ void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
 
     if (internal_pin_data_array == NULL)
     {
-        internal_pin_data_array = malloc(sizeof(TimingPinData) * pin_count);
+        internal_pin_data_array = malloc(sizeof(InitialStatePinData) * pin_count);
         if (internal_pin_data_array == NULL)
             return; // Allocation failed
     }
@@ -41,6 +48,8 @@ void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
     {
         internal_pin_data_array[idx].pin_number = pin;
         internal_pin_data_array[idx].state = gpio_read(pin);
+        internal_pin_data_array[idx].number_of_rises = 0;  // Initialize
+        internal_pin_data_array[idx].number_of_falls = 0;  // Initialize
         idx++;
     }
 
@@ -51,18 +60,21 @@ void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
     // If a pin is still low, it might be stuck low
     for (uint8_t i = 0; i < pin_count; i++)
     {
+        uint8_t pin = internal_pin_data_array[i].pin_number;
+        
         if (internal_pin_data_array[i].state == 0 &&
             internal_pin_data_array[i].number_of_rises == 0 &&
             internal_pin_data_array[i].number_of_falls == 0)
         {
             // Set the corresponding bit in the blacklist mask
-            *black_list_mask |= (1ULL << internal_pin_data_array[i].pin_number);
+            *black_list_mask |= (1ULL << pin);
 
-            // Log the blacklisted pin
-            if (!internal_pin_data_array[idx].state)
-            {
-                add_pin_event(pin_data_array, pin, PIN_INITIALLY_LOW);
-            }
+            // Add event to pin data array
+            add_pin_event(pin_data_array, pin, PIN_INITIALLY_LOW);
+        }
+        else if (internal_pin_data_array[i].state == 1)
+        {
+            add_pin_event(pin_data_array, pin, PIN_INITIALLY_HIGH);
         }
     }
 
@@ -75,7 +87,9 @@ void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
                internal_pin_data_array[i].number_of_falls,
                internal_pin_data_array[i].state);
     }
+    
     gpio_disable_all_interrupts(*black_list_mask);
+    
     // free internal array
     free(internal_pin_data_array);
     internal_pin_data_array = NULL;
