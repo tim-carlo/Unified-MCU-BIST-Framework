@@ -157,11 +157,7 @@ static void start_handshake_timer(void)
 {
 #if defined(NRF52840_XXAA)
     configure_timer(NRF_TIMER4, 4, TIMER_BITMODE_BITMODE_32Bit); // 1MHz (1µs per tick)
-    set_timer_compare(NRF_TIMER4, 0, READER_INTERVAL_US, true);  // Set compare for 1ms intervals and enable interrupt
-
-    // Enable auto-restart on compare
-    NRF_TIMER4->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
-
+    set_timer_compare(NRF_TIMER4, 0, READER_INTERVAL_US, true, true);  // Set compare for 1ms intervals and enable interrupt
     // Set callback and start
     set_timer_event_callback(NRF_TIMER4, reader_isr);
     start_timer(NRF_TIMER4);
@@ -227,15 +223,15 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
     stop_handshake_timer();
 
     // Copy data
-    BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
-    uint8_t pin, idx = 0;
-    while (bitmap_iterator_next(&it, &pin)) {
-        if (idx < active_pins) {
-            pin_data_array[pin].successful_handshakes =
-                global_timing_pindata[idx].successful_handshakes;
-        }
-        idx++;
-    }
+    // BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
+    // uint8_t pin, idx = 0;
+    // while (bitmap_iterator_next(&it, &pin)) {
+    //     if (idx < active_pins) {
+    //         pin_data_array[pin]. =
+    //             global_timing_pindata[idx].successful_handshakes;
+    //     }
+    //     idx++;
+    // }
 
     // Cleanup
     free(global_timing_pindata);
