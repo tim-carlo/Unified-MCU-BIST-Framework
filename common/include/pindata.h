@@ -14,7 +14,7 @@
 #endif
 
 #define EVENT_BUFFER_SIZE 10
-  
+
 typedef enum
 {
     PIN_INITIALLY_LOW,
@@ -34,8 +34,8 @@ typedef struct
 {
     uint8_t pin;
     PinEventType pin_event[EVENT_BUFFER_SIZE];
-    uint8_t connected_pins[NUMBER_OF_GPIO_PINS];
-    uint8_t event_index; // Index to track the next event position
+    uint8_t *connected_pins;
+    uint8_t event_index;
 } PinData;
 
 typedef struct
@@ -45,6 +45,5 @@ typedef struct
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
-
 
 #endif // PINDATA_H
