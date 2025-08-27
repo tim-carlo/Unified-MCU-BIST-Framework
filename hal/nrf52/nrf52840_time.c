@@ -182,7 +182,7 @@ void delay_us(uint32_t us)
     // Configure timer for 1MHz operation (prescaler 4: 16MHz/16 = 1MHz)
     configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit);
 
-    set_timer_compare(timer, 0, us, false);
+    set_timer_compare(timer, 0, us, false, false);
     timer->EVENTS_COMPARE[0] = 0;
 
     start_timer(timer);
@@ -211,7 +211,7 @@ void delay_ms(uint32_t ms)
     
     uint32_t ticks = (ms * 625) / 10;  // 62.5 ticks per ms
 
-    set_timer_compare(timer, 0, ticks, false);
+    set_timer_compare(timer, 0, ticks, false, false);
     timer->EVENTS_COMPARE[0] = 0;
 
     start_timer(timer);
