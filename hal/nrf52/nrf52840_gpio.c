@@ -181,7 +181,7 @@ void gpio_disable_all_interrupts(uint64_t blacklist_mask)
     NRF_P1->LATCH = 0xFFFFFFFF;
 }
 
-GPIOTE_IRQHandler(void)
+void GPIOTE_IRQHandler(void)
 {
     if (!NRF_GPIOTE->EVENTS_PORT)
         return;
@@ -199,14 +199,9 @@ GPIOTE_IRQHandler(void)
 
         if (port->LATCH & (1UL << pin_idx))
         {
-            bool sample0 = pin_level(port, pin_idx);
-            bool sample1 = pin_level(port, pin_idx);
-            if (sample0 != sample1)
-            {
-                return; // Ignore if the pin state is not stable
-            }
+            bool sample = pin_level(port, pin_idx);
             // Depending on the current state, call the appropriate handler
-            if (!sample0)
+            if (!sample)
             {
                 if (s_falling)
                     s_falling(abs_pin);
