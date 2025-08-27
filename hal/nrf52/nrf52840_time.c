@@ -53,7 +53,7 @@ void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, cons
         }
         if (clear_on_compare)
         {
-            timer->SHORTS |= (1 << (8 + channel)); // Enable shortcut to clear on COMPARE[channel]
+            timer->SHORTS |= (1UL << channel); // Enable shortcut to clear on COMPARE[channel]
         }
     }
 }
