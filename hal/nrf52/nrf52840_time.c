@@ -28,7 +28,7 @@ void configure_timer(NRF_TIMER_Type *const timer, const uint32_t prescaler, cons
 /**
  * @brief Configure timer for time measurement (standard 1MHz setup)
  */
-void configure_timer_for_measurement(NRF_TIMER_Type *timer)
+void configure_timer_for_measurement(NRF_TIMER_Type *const timer)
 {
     configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit); // 1MHz, 32-bit
 }
@@ -58,11 +58,10 @@ void set_timer_compare(NRF_TIMER_Type *const timer, const uint32_t channel, cons
     }
 }
 
-
 /**
  * @brief General timer start function - only starts without reconfiguring
  */
-void start_timer(NRF_TIMER_Type *timer)
+void start_timer(NRF_TIMER_Type *const timer)
 {
     timer->TASKS_START = 1;
 }
@@ -70,7 +69,7 @@ void start_timer(NRF_TIMER_Type *timer)
 /**
  * @brief General timer stop function - only stops
  */
-void stop_timer(NRF_TIMER_Type *timer)
+void stop_timer(NRF_TIMER_Type *const timer)
 {
     timer->TASKS_STOP = 1;
 }
@@ -78,7 +77,7 @@ void stop_timer(NRF_TIMER_Type *timer)
 /**
  * @brief Reset the timer counter to zero
  */
-void reset_timer(NRF_TIMER_Type *timer)
+void reset_timer(NRF_TIMER_Type *const timer)
 {
     timer->TASKS_CLEAR = 1; // Clear the timer counter
     timer->TASKS_START = 1; // Restart the timer after clearing
@@ -87,7 +86,7 @@ void reset_timer(NRF_TIMER_Type *timer)
 /**
  * @brief Reset timer and start (keeps current configuration)
  */
-void reset_and_start_timer(NRF_TIMER_Type *timer)
+void reset_and_start_timer(NRF_TIMER_Type *const timer)
 {
     timer->TASKS_CLEAR = 1;
     timer->TASKS_START = 1;
@@ -101,7 +100,7 @@ void reset_and_start_timer(NRF_TIMER_Type *timer)
  * @param timer Pointer to the NRF_TIMER_Type structure for the timer
  * @return uint32_t Current timer counter value
  */
-uint32_t get_timer_ticks(NRF_TIMER_Type *timer)
+uint32_t get_timer_ticks(NRF_TIMER_Type *const timer)
 {
     timer->TASKS_CAPTURE[0] = 1;
     return timer->CC[0];
@@ -127,7 +126,7 @@ uint32_t get_elapsed_time(uint32_t start, uint32_t current)
 /**
  * @brief Start time measurement (always 1MHz configuration)
  */
-void start_time_measurement(NRF_TIMER_Type *timer)
+void start_time_measurement(NRF_TIMER_Type *const timer)
 {
     configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit); // Always 1MHz
     timer->TASKS_CLEAR = 1;                                  // Reset counter
@@ -137,7 +136,7 @@ void start_time_measurement(NRF_TIMER_Type *timer)
 /**
  * @brief Stop time measurement and return elapsed time in microseconds
  */
-uint32_t stop_time_measurement_us(NRF_TIMER_Type *timer)
+uint32_t stop_time_measurement_us(NRF_TIMER_Type *const timer)
 {
     uint32_t ticks = get_timer_ticks(timer);
     stop_timer(timer);
@@ -147,7 +146,7 @@ uint32_t stop_time_measurement_us(NRF_TIMER_Type *timer)
 /**
  * @brief Stop time measurement and return elapsed time in milliseconds
  */
-uint32_t stop_time_measurement_ms(NRF_TIMER_Type *timer)
+uint32_t stop_time_measurement_ms(NRF_TIMER_Type *const timer)
 {
     uint32_t ticks = get_timer_ticks(timer);
     stop_timer(timer);
@@ -157,7 +156,7 @@ uint32_t stop_time_measurement_ms(NRF_TIMER_Type *timer)
 /**
  * @brief Get elapsed time in microseconds without stopping the timer
  */
-uint32_t get_elapsed_time_us(NRF_TIMER_Type *timer)
+uint32_t get_elapsed_time_us(NRF_TIMER_Type *const timer)
 {
     return get_timer_ticks(timer); // 1MHz = 1 tick per µs
 }
@@ -165,7 +164,7 @@ uint32_t get_elapsed_time_us(NRF_TIMER_Type *timer)
 /**
  * @brief Get elapsed time in milliseconds without stopping the timer
  */
-uint32_t get_elapsed_time_ms(NRF_TIMER_Type *timer)
+uint32_t get_elapsed_time_ms(NRF_TIMER_Type *const timer)
 {
     return get_timer_ticks(timer) / 1000; // Convert µs to ms
 }
@@ -177,7 +176,7 @@ uint32_t get_elapsed_time_ms(NRF_TIMER_Type *timer)
  */
 void delay_us(uint32_t us)
 {
-    NRF_TIMER_Type *timer = NRF_TIMER3;
+    NRF_TIMER_Type *const timer = NRF_TIMER3;  // const für Timer-Definition
 
     // Configure timer for 1MHz operation (prescaler 4: 16MHz/16 = 1MHz)
     configure_timer(timer, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -204,7 +203,7 @@ void delay_us(uint32_t us)
  */
 void delay_ms(uint32_t ms)
 {
-    NRF_TIMER_Type *timer = NRF_TIMER3;
+    NRF_TIMER_Type *const timer = NRF_TIMER3;  // const für Timer-Definition
 
     // Use prescaler 8 for longer delays
     configure_timer(timer, 8, TIMER_BITMODE_BITMODE_32Bit);
@@ -225,7 +224,6 @@ void delay_ms(uint32_t ms)
     stop_timer(timer);
     timer->EVENTS_COMPARE[0] = 0; // Clear event
 }
-
 
 /**
  * @brief Convert microseconds to ticks (always 1MHz)
@@ -347,6 +345,7 @@ void set_timer_event_callback(NRF_TIMER_Type *const timer, void (*const callback
 
 /**
  * @brief Clear timer event callback
+ * @param timer Pointer to the NRF_TIMER_Type structure for the timer
  */
 void clear_timer_event_callback(NRF_TIMER_Type *const timer)
 {
