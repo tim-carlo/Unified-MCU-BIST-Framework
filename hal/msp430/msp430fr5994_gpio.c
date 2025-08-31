@@ -238,7 +238,7 @@ DEFINE_PORT_ISR(8)
  * 
  * @param blacklist_mask Bitmask of pins to exclude (1 for excluded, 0 for included)
  */
-void gpio_disable_all_pins_interrupt(uint64_t blacklist_mask)
+void gpio_disable_all_interrupts(uint64_t blacklist_mask)
 {
     for (uint8_t abs_pin = 0; abs_pin < MSP430_NUM_ABS_PINS; abs_pin++)
     {
