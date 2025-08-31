@@ -63,7 +63,7 @@
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
 
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 
 #endif
 
@@ -73,11 +73,12 @@
 #include "manchester.h"
 #include "random_utils.h"
 #include "handshake.h"
+#include "data_handshake.h"
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
 #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklisting a pin
-#define MAXIMUM_NUMBER_OF_TRIES 5           // Maximum number of tries for a pin before giving up
+                                            // Maximum number of tries for a pin before giving up
 
 #define INITIATOR_ROLE 0
 #define RESPONDER_ROLE 1
@@ -121,7 +122,6 @@ void debug_output_binary(uint8_t value)
         gpio_drive_low(DEBUG_PIN4);
 }
 
-
 // Inspired from Hacker’s Delight by Henry S. Warren, Jr.
 
 void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzufügen
@@ -130,10 +130,10 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
-    *mask &= ~(1ULL << 11); // Pin 11
+    //*mask &= ~(1ULL << 11); // Pin 11
 
 #elif defined(__MSP430FR5994__)
-    *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
+    //  *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
 #endif
 }
@@ -171,23 +171,14 @@ int main(void)
         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
 
-
-    get_initial_pin_state(pin_data, &initial_state_mask);
-
-    while(true)
-    {}
+    // get_initial_pin_state(pin_data, &initial_state_mask);
 
     print_active_pins_from_mask(initial_state_mask);
 
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    {
-        if (!(initial_state_mask & (1ULL << pin)))
-        {
-            debug_print_pindata(&pin_data[pin]); // Print pin data for non-blacklisted pins
-        }
-    }
+    // perform_handshake(pin_data, initial_state_mask);
+    perform_data_handshake(pin_data, initial_state_mask);
 
-    perform_handshake(pin_data, initial_state_mask);
+    print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
     while (true)
     {
