@@ -24,7 +24,7 @@
 #include "nrf52840_gpio.h"
 #include "nrf52840_time.h"
 #ifndef NUMBER_OF_GPIO_PINS
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #endif
 
 #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
@@ -47,7 +47,6 @@
 
 
 #define READER_INTERVAL_US 1000   // Reader: every 1 ms
-#define MANAGER_INTERVAL_US 10000 // Manager: every 10 ms
 #define PRESCALER_DIV 8           // Prescaler division factor for the timer
 #define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 #define MANAGER_TICKS ((MANAGER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
@@ -73,6 +72,8 @@
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define DURATION_OF_HANDSHAKE_MS 60000 // Duration of the handshake process in milliseconds
 
+
+#define MAXIMUM_NUMBER_OF_TRIES 5      // Maximum number of tries for a successful handshake
 typedef struct
 {
     uint16_t cycles;
