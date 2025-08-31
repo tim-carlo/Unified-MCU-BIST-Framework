@@ -26,7 +26,7 @@ typedef struct
     uint16_t sending_counter;   // Counter for sending a signal
     uint16_t receiving_counter; // Counter for receiving a signal
     uint16_t waiting_counter;   // Counter for waiting for a signal
-
+    uint8_t number_of_unsuccessful_syns; // Counter for unsuccessful SYN attempts
 } TimingPinData;
 
 typedef enum
