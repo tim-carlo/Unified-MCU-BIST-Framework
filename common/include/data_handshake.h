@@ -37,6 +37,8 @@
 #include "timing_pindata.h"
 #include "pindata.h"
 #include "bitmap_iterator.h"
+#include "random_utils.h"
+#include "crc.h"
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
 
@@ -46,6 +48,30 @@ typedef struct
     uint8_t number_of_successful_tries;
     uint8_t *data;
 } DataHandshakeData;
+
+// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC]
+typedef struct
+{
+    uint64_t uuid;
+    uint8_t pin;
+    crc crc_value;
+} __attribute__((packed)) RequestDataPacket; // packed to avoid padding
+
+// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
+typedef struct
+{
+    uint64_t received_uuid;
+    uint8_t received_pin;
+    uint64_t own_uuid;
+    uint8_t sending_pin;
+    crc crc_value;
+} __attribute__((packed)) AnswerDataPacket; // packed to avoid padding
+
+typedef enum
+{
+    PACKET_TYPE_REQUEST,
+    PACKET_TYPE_ANSWER,
+} PackageType;
 
 void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask);
 
