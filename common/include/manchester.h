@@ -26,20 +26,31 @@
 #include <msp430.h>
 #endif
 
-#define RATE_300 0
-#define RATE_600 1
-#define RATE_1200 2
-#define RATE_2400 3
-#define RATE_4800 4
-#define RATE_9600 5
-#define RATE_19200 6
-#define RATE_38400 7
+#define TX_RATE 8 // Number of samples per bit (must match encoder/decoder settings)
 
-// Add baud_rates array for supported rates
-static const uint32_t baud_rates[] = {300, 600, 1200, 2400, 4800, 9600, 19200, 38400};
+typedef enum {
+    BAUD_300 = 300,
+    BAUD_600 = 600,
+    BAUD_1200 = 1200,
+    BAUD_2400 = 2400,
+    BAUD_4800 = 4800,
+    BAUD_9600 = 9600,
+    BAUD_19200 = 19200,
+    BAUD_38400 = 38400
+} BaudRate;
 
-void manchester_init(uint8_t tx_pin, uint8_t rx_pin, uint8_t tx_rate);
+
+void manchester_init(BaudRate tx_rate);
+void manchester_deinit();
+void manchester_set_rx_pin(uint8_t pin);
+void manchester_set_tx_pin(uint8_t pin);
+void manchester_set_rx_pin_od(uint8_t pin);
+void manchester_set_tx_pin_od(uint8_t pin);
+
 void manchester_transmit_array(uint8_t *data, uint8_t size);
 bool manchester_receive_array(uint8_t *data, uint8_t size);
+
+// Helpers
+uint32_t get_sample_interval_us(BaudRate rate);
 
 #endif // MANCHESTER_h
