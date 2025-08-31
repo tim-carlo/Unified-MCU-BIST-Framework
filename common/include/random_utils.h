@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
-uint8_t select_random_pin(uint64_t blacklist_mask, uint8_t number_of_pins);
+uint8_t select_random_pin(uint64_t blacklist_mask);
 
 #ifdef __cplusplus
 }
