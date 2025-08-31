@@ -7,13 +7,14 @@
 
 #if defined(NRF52840_XXAA)
 #include "nrf52840_gpio.h"
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_gpio.h"
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #define EVENT_BUFFER_SIZE 10
+#define MY_DEVICE_ID 0
 
 typedef enum
 {
@@ -30,20 +31,27 @@ typedef enum
 
 } PinEventType;
 
+
+// Need to log the connected Device IDs as well
+typedef struct
+{
+    uint8_t pin;
+    uint8_t other_pin;
+    uint8_t device_id;
+} PinConnection;
+
+
 typedef struct
 {
     uint8_t pin;
     PinEventType pin_event[EVENT_BUFFER_SIZE];
-    uint8_t *connected_pins;
+    PinConnection *connections;
     uint8_t event_index;
 } PinData;
 
-typedef struct
-{
-    uint8_t event_type;
-} PinEvent;
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
+void print_pin_data_array(const PinData *pindata, uint8_t size);
 
 #endif // PINDATA_H
