@@ -63,8 +63,6 @@
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
 
-
-
 #endif
 
 #include "stack.h"
@@ -93,34 +91,9 @@
 // Global variables
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 
-// State tracking
-bool red_led_on = false;
-bool green_led_on = false;
-
-volatile bool last_event_valid = false;
-volatile uint8_t last_rising_pin = INVALID_PIN; // Global variable to store the last rising pin event
-
 // Flags controlled via interrupts
 
-volatile uint64_t black_list_mask = 0;    // Global blacklist mask for GPIO pins
-volatile uint64_t initial_state_mask = 0; // Mask to store the initial state of pins
-
-uint32_t number_of_successful_handshakes = 0; // Counter for successful handshakes
-bool disable_interrupts = false;              // Flag to disable interrupts during critical sections
-
-void debug_output_binary(uint8_t value)
-{
-    // Output the 2 LSBs of value (0-3) on DEBUG_PIN3 and DEBUG_PIN4
-    if (value & 0x01)
-        gpio_drive_high(DEBUG_PIN3);
-    else
-        gpio_drive_low(DEBUG_PIN3);
-
-    if (value & 0x02)
-        gpio_drive_high(DEBUG_PIN4);
-    else
-        gpio_drive_low(DEBUG_PIN4);
-}
+volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
 
 // Inspired from Hacker’s Delight by Henry S. Warren, Jr.
 
@@ -130,10 +103,10 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
-    //*mask &= ~(1ULL << 11); // Pin 11
+    *mask &= ~(1ULL << 11); // Pin 11
 
 #elif defined(__MSP430FR5994__)
-    //  *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
+    *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
 #endif
 }
@@ -151,10 +124,23 @@ void print_active_pins_from_mask(uint64_t mask)
     LOG("\n");
 }
 
+void set_role_debug()
+{
+#if defined(NRF52840_XXAA)
+    add_pin_event(pin_data, 11, HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, 12, HANDSHAKE_OK_RESPONDER);
+
+#elif defined(__MSP430FR5994__)
+    add_pin_event(pin_data, ABS_PIN(3, 6), HANDSHAKE_OK_RESPONDER);
+    add_pin_event(pin_data, ABS_PIN(3, 7), HANDSHAKE_OK_INITIATOR);
+#endif
+}
+
 int main(void)
 {
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+
     LOG("Running on %s\n", get_chip_family_name());
     LOG("Chip UID: %s\n", get_unique_id_str());
 
@@ -175,6 +161,8 @@ int main(void)
 
     print_active_pins_from_mask(initial_state_mask);
 
+    printf("Starting data handshake...\n");
+    set_role_debug();
     // perform_handshake(pin_data, initial_state_mask);
     perform_data_handshake(pin_data, initial_state_mask);
 

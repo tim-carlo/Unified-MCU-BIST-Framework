@@ -119,6 +119,12 @@ void gpio_drive_low(uint8_t abs_pin)
     uint8_t mask = 1 << abs_to_pinidx(abs_pin);
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
 }
+void gpio_toggle(uint8_t abs_pin)
+{
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) ^= mask;
+}
 
 bool gpio_read(uint8_t abs_pin)
 {

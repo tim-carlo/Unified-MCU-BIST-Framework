@@ -6,10 +6,12 @@
 #include "nrf52840_helper.h"
 #include "nrf52840_time.h"
 #include "nrf52840_gpio.h"
+#define DEBUG_PIN_ABS 38 // Pin 1.6
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
+#define DEBUG_PIN_ABS ABS_PIN(3,0)
 #endif
 
 
@@ -71,11 +73,7 @@ static bool read_Rx()
 static void manchester_timer_isr(void)
 {
 #if DEBUG == 1
-#if defined(NRF52840_XXAA)
-    NRF_P0->OUT ^= (1 << 11);
-#elif defined(__MSP430FR5994__)
-    P3OUT ^= BIT5;
-#endif
+    gpio_toggle(DEBUG_PIN_ABS);
 #endif
     interrupt_flag = 1;
 }
@@ -151,7 +149,6 @@ void manchester_set_tx_pin_od(uint8_t pin)
 {
     tx_pin = pin;
     gpio_od_init(tx_pin);
-    set_TX(false); // Start with line held low
 }
 
 void manchester_init(BaudRate rate)
@@ -175,11 +172,7 @@ void manchester_init(BaudRate rate)
     setup_and_start_timer(sample_interval_us);
 
 #if DEBUG == 1
-#if defined(NRF52840_XXAA)
-    gpio_output_init(11);
-#elif defined(__MSP430FR5994__)
-    gpio_output_init(ABS_PIN(3, 5));
-#endif
+    gpio_output_init(DEBUG_PIN_ABS);
 #endif
 }
 void manchester_deinit()
@@ -252,7 +245,6 @@ void manchester_transmit_array(uint8_t *data, uint8_t size)
         return;
     }
 
-    setup_and_start_timer(1000);
 
     bool transmission_complete = false;
     interrupt_flag = 0;
@@ -286,7 +278,6 @@ void manchester_transmit_array(uint8_t *data, uint8_t size)
         }
     }
 
-    manchester_stop_timer();
-    set_TX(false);
+    set_TX(true);
     interrupt_flag = 0;
 }

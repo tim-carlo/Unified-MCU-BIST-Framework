@@ -54,4 +54,5 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
 void print_pin_data_array(const PinData *pindata, uint8_t size);
 
+
 #endif // PINDATA_H

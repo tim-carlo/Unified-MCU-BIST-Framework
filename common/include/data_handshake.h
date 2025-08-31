@@ -8,6 +8,11 @@
 #include "msp430fr5994_utils.h"
 #define DATA_TIMER TIMER_B0
 
+#define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
+#define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be changed as needed
+
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
 #elif defined(NRF52840_XXAA)
@@ -16,7 +21,10 @@
 #include "nrf52840_gpio.h"
 #include "nrf52840_utils.h"
 #define DATA_TIMER NRF_TIMER3
-
+#define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
+#define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
+#define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
 
 #endif
 
@@ -31,7 +39,6 @@
 #include "bitmap_iterator.h"
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
-
 
 typedef struct
 {

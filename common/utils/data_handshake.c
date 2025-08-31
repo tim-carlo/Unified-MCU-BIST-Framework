@@ -3,7 +3,17 @@
 #include "random_utils.h"
 #include "crc.h"
 
+#define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
+#if DEBUG == 1
+#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define LOG(fmt, ...)
+#endif
+
+
 static volatile uint64_t internal_blacklist_mask = 0;
+static volatile uint64_t responder_mask = 0;
+static volatile uint64_t initiator_mask = 0;
 static volatile bool interrupt_flag = false;
 static volatile uint8_t selected_pin = 0;
 static volatile uint32_t listen_until_time = 0;
@@ -13,9 +23,56 @@ static volatile uint64_t uuid = 0;
 
 static const uint64_t all_pins_mask = (1ULL << NUMBER_OF_GPIO_PINS) - 1;
 
+
+static void analyze_pindata_events(PinData *pindata)
+{
+    // Reset masks
+    initiator_mask = 0;
+    responder_mask = 0;
+    
+    // Iterate through all pins that are not blacklisted
+    BitmapIterator it = bitmap_iterator_create(~internal_blacklist_mask & all_pins_mask);
+    uint8_t pin;
+    
+    while (bitmap_iterator_next(&it, &pin))
+    {
+        // Check events for this pin
+        for (uint8_t i = 0; i < pindata[pin].event_index && i < EVENT_BUFFER_SIZE; i++)
+        {
+            PinEventType event = pindata[pin].pin_event[i];
+            
+            switch (event)
+            {
+            case HANDSHAKE_OK_INITIATOR:
+                // Set bit in initiator mask
+                initiator_mask |= (1ULL << pin);
+                LOG("Pin %u set as INITIATOR (event: %d)\n", pin, event);
+                break;
+                
+            case HANDSHAKE_OK_RESPONDER:
+                // Set bit in responder mask
+                responder_mask |= (1ULL << pin);
+                LOG("Pin %u set as RESPONDER (event: %d)\n", pin, event);
+                break;
+            default:
+                // Other events are ignored for role determination
+                break;
+            }
+        }
+    }
+    LOG("Blacklist mask: 0x%016llx \n", (unsigned long long)internal_blacklist_mask);
+    LOG("Initiator mask: 0x%016llx \n", (unsigned long long)initiator_mask);
+    LOG("Responder mask: 0x%016llx \n", (unsigned long long)responder_mask);
+}   
+
 static void send_data_isr(void)
 {
     interrupt_flag = true;
+}
+
+static uint32_t get_listen_until_time()
+{
+    return 200 + (random32() % 10000); // 200-10000ms
 }
 
 static void start_send_data_timer(void)
@@ -40,7 +97,7 @@ static void start_send_data_timer(void)
 static void stop_send_data_timer(void)
 {
 #if defined(NRF52840_XXAA)
-    clear_timer_event_callback(DATA_TIMER);  // NRF52-spezifisch
+    clear_timer_event_callback(DATA_TIMER); // NRF52-spezifisch
     stop_timer(DATA_TIMER);
 
 #elif defined(__MSP430FR5994__)
@@ -75,9 +132,31 @@ typedef struct
     crc crc_value;
 } __attribute__((packed)) AnswerDataPacket; // packed to avoid padding
 
+static void log_request_data_packet(const RequestDataPacket *packet)
+{
+    LOG("RequestDataPacket: uuid=0x%016llx, pin=%u, crc=0x%08x\n",
+        (unsigned long long)packet->uuid,
+        packet->pin,
+        packet->crc_value);
+}
+
+static void log_answer_data_packet(const AnswerDataPacket *packet)
+{
+    LOG("AnswerDataPacket: received_uuid=0x%016llx, received_pin=%u, own_uuid=0x%016llx, sending_pin=%u, crc=0x%08x\n",
+        (unsigned long long)packet->received_uuid,
+        packet->received_pin,
+        (unsigned long long)packet->own_uuid,
+        packet->sending_pin,
+        packet->crc_value);
+}
+
 // Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC]
 static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
 {
+    // Set first byte to 0xAA (1010 1010) for packet type
+    uint8_t *packet_bytes = (uint8_t *)packet;
+    packet_bytes[0] = 0xAA;
+
     packet->crc_value = crcFast((uint8_t *)packet, offsetof(RequestDataPacket, crc_value));
     memcpy(data, packet, sizeof(RequestDataPacket));
 }
@@ -85,19 +164,35 @@ static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *da
 // Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
 static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
 {
-    packet->crc_value = crcFast((uint8_t *)&packet, offsetof(AnswerDataPacket, crc_value));
+    // Set first byte to 0xFF (255) for packet type
+    uint8_t *packet_bytes = (uint8_t *)packet;
+    packet_bytes[0] = 0xFF;
+
+    packet->crc_value = crcFast((uint8_t *)packet, offsetof(AnswerDataPacket, crc_value));
     memcpy(data, packet, sizeof(AnswerDataPacket));
 }
 
-// static void deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
-// {
-//     memcpy(packet, data, sizeof(RequestDataPacket));
-// }
+static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
+{
+    if (data[0] != 0xAA)
+    {
+        return false; // Invalid packet type
+    }
+    // Skip the first byte (packet type)
+    memcpy(packet, data + 1, sizeof(RequestDataPacket));
+    return true;
+}
 
-// static void deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket *packet)
-// {
-//     memcpy(packet, data, sizeof(AnswerDataPacket));
-// }
+static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket *packet)
+{
+    if (data[0] != 0xFF)
+    {
+        return false; // Invalid packet type
+    }
+    // Skip the first byte (packet type)
+    memcpy(packet, data + 1, sizeof(AnswerDataPacket));
+    return true;
+}
 
 typedef enum
 {
@@ -114,14 +209,16 @@ uint8_t *send_buffer;
 #define ANSWER_PACKSIZE 22
 static void fsm_data_handshake(void)
 {
+
     switch (current_state)
     {
     case STATE_IDLE:
     {
-        BitmapIterator it = bitmap_iterator_create(~internal_blacklist_mask & all_pins_mask);
+        BitmapIterator it = bitmap_iterator_create(responder_mask & all_pins_mask);
         uint8_t pin;
+        gpio_drive_high(DEBUG_PIN1);
 
-        // Eingehende Requests prüfen
+        // Check all valid pins for incoming requests
         while (bitmap_iterator_next(&it, &pin))
         {
             if (!gpio_read(pin))
@@ -131,26 +228,28 @@ static void fsm_data_handshake(void)
                 if (manchester_receive_array(receive_buffer, REQUEST_PACKSIZE))
                 {
                     RequestDataPacket req;
-                    memcpy(&req, receive_buffer, sizeof(RequestDataPacket));
-
-                    crc calc_crc = crcFast((uint8_t *)&req, offsetof(RequestDataPacket, crc_value));
-                    if (calc_crc == req.crc_value)
+                    if (deconstruct_request_data_packet(receive_buffer, &req))
                     {
-                        LOG("Received valid request on pin %u\n", pin);
 
-                        // Antwort vorbereiten und senden
-                        AnswerDataPacket ans;
-                        ans.own_uuid = uuid;
-                        ans.sending_pin = pin;
-                        ans.received_uuid = req.uuid;
-                        ans.received_pin = req.pin;
-                        construct_answer_data_packet(&ans, send_buffer);
-                        manchester_set_tx_pin(pin);
-                        manchester_transmit_array(send_buffer, sizeof(AnswerDataPacket));
+                        crc calc_crc = crcFast((uint8_t *)&req, offsetof(RequestDataPacket, crc_value));
+                        if (calc_crc == req.crc_value)
+                        {
+                            LOG("Received valid request on pin %u\n", pin);
 
-                        // Danach sofort wieder idle
-                        current_state = STATE_IDLE;
-                        break; // aus while, zurück zum switch
+                            // Send answer
+                            AnswerDataPacket ans;
+                            ans.own_uuid = uuid;
+                            ans.sending_pin = pin;
+                            ans.received_uuid = req.uuid;
+                            ans.received_pin = req.pin;
+                            construct_answer_data_packet(&ans, send_buffer);
+                            manchester_set_tx_pin(pin);
+                            manchester_transmit_array(send_buffer, sizeof(AnswerDataPacket));
+
+                            // Then back to idle state
+                            current_state = STATE_IDLE;
+                            break; // Exit while loop to restart checking from first pin
+                        }
                     }
                 }
             }
@@ -159,7 +258,11 @@ static void fsm_data_handshake(void)
         // If timeout reached, send new request
         if (counter > listen_until_time)
         {
-            selected_pin = select_random_pin(internal_blacklist_mask, number_of_pins);
+
+            selected_pin = select_random_pin(~initiator_mask, number_of_pins);
+            gpio_od_hold_low(selected_pin);
+
+            LOG("Timeout reached, sending request on pin %u\n", selected_pin);
             if (selected_pin != 0xFF)
             {
                 RequestDataPacket req;
@@ -167,10 +270,11 @@ static void fsm_data_handshake(void)
                 req.pin = selected_pin;
                 construct_request_data_packet(&req, send_buffer);
 
+                gpio_od_release(selected_pin);
                 manchester_set_tx_pin(selected_pin);
                 manchester_transmit_array(send_buffer, sizeof(RequestDataPacket));
 
-                // Jetzt auf Antwort warten
+                // After sending request, wait for answer
                 current_state = STATE_WAIT_FOR_ANSWER;
             }
             else
@@ -179,8 +283,10 @@ static void fsm_data_handshake(void)
                 current_state = STATE_IDLE; // Stay in idle if no pins available
             }
             counter = 0;
-            listen_until_time = 200 + (random32() % 800); // 200-1000ms
+            listen_until_time = get_listen_until_time(); // Set new random listen time
+            LOG("New listen time: %lu ms\n", (unsigned long)listen_until_time);
         }
+        gpio_drive_low(DEBUG_PIN1);
         break;
     }
 
@@ -190,18 +296,23 @@ static void fsm_data_handshake(void)
         if (manchester_receive_array(receive_buffer, ANSWER_PACKSIZE))
         {
             AnswerDataPacket ans;
-            memcpy(&ans, receive_buffer, sizeof(AnswerDataPacket));
+            deconstruct_answer_data_packet(receive_buffer, &ans);
+            log_answer_data_packet(&ans);
 
             crc calc_crc = crcFast((uint8_t *)&ans, offsetof(AnswerDataPacket, crc_value));
             if (calc_crc == ans.crc_value)
             {
-                LOG("Received valid answer on pin %u\n", selected_pin);
-                internal_blacklist_mask |= (1ULL << selected_pin);
+                LOG("Received valid answer on pin%u\n", selected_pin);
+                initiator_mask |= (1ULL << selected_pin);
             }
             else
             {
                 LOG("CRC mismatch in answer on pin %u\n", selected_pin);
             }
+        }
+        else
+        {
+            LOG("No answer received on pin %u\n", selected_pin);
         }
         current_state = STATE_IDLE;
         break;
@@ -225,8 +336,10 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     internal_blacklist_mask = blacklist_mask;
 
     // Calculate valid pins mask
-    uint64_t all_pins_mask = (NUMBER_OF_GPIO_PINS >= 64) ? ~0ULL : ((1ULL << NUMBER_OF_GPIO_PINS) - 1);
     uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
+
+    analyze_pindata_events(pindata);
+
 
     number_of_pins = __builtin_popcountll(valid_pins_mask);
     uuid = get_unique_id();
@@ -247,10 +360,13 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
         free(send_buffer);
         return;
     }
-    // GANZZZZZZ WICHITG FÜGE DIE PIN NUMMER AN PIN DATA ARRAY
+    // set initial listening time
+    listen_until_time = get_listen_until_time();
+    LOG("Initial listen time: %lu ms\n", (unsigned long)listen_until_time);
 
     // Start timer
     start_send_data_timer();
+    manchester_init(BAUD_300);
 
     while (true)
     {
