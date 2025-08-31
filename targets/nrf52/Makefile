@@ -35,8 +35,8 @@ INCLUDES := $(addprefix -I,$(INC_DIRS))
 
 CFLAGS := $(INCLUDES) -O3 -g3
 CFLAGS += -DNRF${NRF_DEV_NUM}_XXAA -DARM_MATH_CM4 -DFLOAT_ABI_HARD
-CFLAGS += -Wall -fno-builtin -mthumb -mcpu=cortex-m4
-CFLAGS += -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+CFLAGS += -Wall -fno-builtin -mthumb -mcpu=cortex-m4 
+CFLAGS += -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 
 CFLAGS += -fsingle-precision-constant -ffunction-sections -fdata-sections
 CFLAGS += -Wa,-adhlns=$@.lst
 
@@ -46,9 +46,9 @@ ASMFLAGS := $(filter-out -std=gnu99,$(CFLAGS))
 LDFLAGS += $(OPT)
 LDFLAGS += -T$(LINKER_SCRIPT)
 LDFLAGS += -Wl,--gc-sections,-Map=${OUTPUT_DIR}/build.map
-LDFLAGS += --specs=nosys.specs --specs=nano.specs  # Beide specs hinzufügen
-LDFLAGS += -Wl,--entry=Reset_Handler  # Expliziter Entry Point
-LDFLAGS += -Wl,--no-warn-rwx-segments  # Unterdrückt Warnungen
+LDFLAGS += --specs=nosys.specs --specs=nano.specs  
+LDFLAGS += -Wl,--entry=Reset_Handler 
+LDFLAGS += -Wl,--no-warn-rwx-segments  
 LDFLAGS += -mthumb -mabi=aapcs -mcpu=cortex-m4
 LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
