@@ -126,8 +126,9 @@ void set_timer_compare_callback(const timer_type timer, void (*const callback)(v
 
 /**
  * @brief Clear all timer callbacks and disable interrupts
+ * @param timer Timer to clear callbacks for
  */
-void clear_timer_callbacks(const timer_type timer)
+void clear_timer_event_callback(const timer_type timer)
 {
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
     volatile uint16_t *ctl = GET_TxxCTL(timer);
@@ -143,6 +144,7 @@ void clear_timer_callbacks(const timer_type timer)
 
 /**
  * @brief Start timer with interrupt
+ * @param timer Timer to start
  */
 void start_timer_with_interrupt(const timer_type timer)
 {
@@ -158,8 +160,9 @@ void start_timer_with_interrupt(const timer_type timer)
 
 /**
  * @brief Stop the specified timer
+ * @param timer Timer to stop
  */
-void stop_timer(timer_type timer)
+void stop_timer(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     volatile uint16_t *r = GET_TxxR(timer);
@@ -171,8 +174,9 @@ void stop_timer(timer_type timer)
 
 /**
  * @brief Start the specified timer in continuous mode
+ * @param timer Timer to start
  */
-void start_timer(timer_type timer)
+void start_timer(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
 
@@ -186,8 +190,9 @@ void start_timer(timer_type timer)
 
 /**
  * @brief Default overflow counter callback
+ * @param timer Timer for which overflow occurred
  */
-static void default_overflow_counter(timer_type timer)
+static void default_overflow_counter(const timer_type timer)
 {
     switch (timer) {
         case TIMER_A0:
@@ -237,6 +242,7 @@ static void delay_overflow_callback(void)
 
 /**
  * @brief Delay for a specified number of timer ticks using callbacks
+ * @param ticks Number of timer ticks to delay
  */
 void delay_ticks(uint32_t ticks)
 {
@@ -278,7 +284,7 @@ void delay_ticks(uint32_t ticks)
     }
 
     // Cleanup
-    clear_timer_callbacks(TIMER_A0);
+    clear_timer_event_callback(TIMER_A0);
     
     // Restore previous timer configuration
     TA0CTL = saved_config;
@@ -287,7 +293,7 @@ void delay_ticks(uint32_t ticks)
 /**
  * @brief Get timer ticks with overflow handling
  */
-uint32_t get_timer_ticks(timer_type timer)
+uint32_t get_timer_ticks(const timer_type timer)
 {
     volatile uint16_t *timer_r = GET_TxxR(timer);
     uint16_t counter = *timer_r;
@@ -317,7 +323,7 @@ uint32_t get_timer_ticks(timer_type timer)
 /**
  * @brief Setup timer for continuous operation with overflow counting
  */
-void setup_timer_with_overflow_counting(timer_type timer)
+void setup_timer_with_overflow_counting(const timer_type timer)
 {
     // Configure timer for continuous mode
     configure_timer(timer, 1, MC__CONTINUOUS);
@@ -355,7 +361,7 @@ void delay_ms(uint32_t ms)
 }
 
 // Timer utility functions
-uint32_t get_timer_frequency(timer_type timer)
+uint32_t get_timer_frequency(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     uint16_t id_bits = (*ctl & ID_3) >> 6;
@@ -371,13 +377,13 @@ uint32_t get_timer_frequency(timer_type timer)
     return SMCLK_HZ / prescaler;
 }
 
-uint32_t us_to_timer_ticks(timer_type timer, uint32_t us)
+uint32_t us_to_timer_ticks(const timer_type timer, uint32_t us)
 {
     uint32_t freq = get_timer_frequency(timer);
     return (freq / 1000000UL) * us;
 }
 
-uint32_t ms_to_timer_ticks(timer_type timer, uint32_t ms)
+uint32_t ms_to_timer_ticks(const timer_type timer, uint32_t ms)
 {
     uint32_t freq = get_timer_frequency(timer);
     return (freq / 1000UL) * ms;
@@ -402,8 +408,6 @@ uint32_t timer_diff_us(uint32_t start, uint32_t end)
 {
     return ticks_to_us(end - start);
 }
-
-// ===== INTERRUPT SERVICE ROUTINES =====
 
 // Timer A0 ISRs
 __attribute__((interrupt(TIMER0_A0_VECTOR))) void TIMER0_A0_ISR(void)

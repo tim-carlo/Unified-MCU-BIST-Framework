@@ -88,7 +88,7 @@ uint32_t get_timer_frequency(timer_type timer);
 void start_timer_with_interrupt(timer_type timer);
 void set_timer_compare_callback(const timer_type timer, void (*const callback)(void));
 void set_timer_overflow_callback(const timer_type timer, void (*const callback)(void));
-void clear_timer_callbacks(timer_type timer);
+void clear_timer_event_callback(const timer_type timer);
 
 
 #ifdef __cplusplus
