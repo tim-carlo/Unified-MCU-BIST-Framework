@@ -20,7 +20,7 @@
 #include "nrf52840_time.h"
 #include "nrf52840_utils.h"
 #include "printf.h"
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #endif
 
 #include "stack.h"
