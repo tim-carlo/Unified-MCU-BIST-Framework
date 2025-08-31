@@ -21,14 +21,17 @@
 #include "nrf52840_utils.h"
 #include "nrf52840_gpio.h"
 
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #endif 
+
+#include "bitmap_iterator.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask);
+uint8_t select_random_pin(uint64_t blacklist_mask, uint8_t number_of_pins);
 
 #ifdef __cplusplus
 }

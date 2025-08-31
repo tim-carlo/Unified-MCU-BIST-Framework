@@ -7,7 +7,7 @@
  * @param length Number of elements in the array
  * @return uint32_t Pin number, or 0xFFFFFFFF if none available
  */
-uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask)
+/* uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, uint64_t blacklist_mask)
 {
     // Count valid pins that are not blacklisted and not successful
     uint8_t valid_count = 0;
@@ -45,4 +45,34 @@ uint8_t select_random_non_blacklisted_and_not_successful_pin(PinData *pindata, u
         }
     }
     return 255; // Should never reach here, but return 255 as a fallback
+} */
+
+/**
+ * @brief Select a random pin from the available (non-blacklisted) pins
+ * 
+ * @param internal_blacklist_mask Bitmask of blacklisted pins (1 = blacklisted, 0 = available)
+ * @return uint8_t Pin number, or 0xFF if none available
+ */
+uint8_t select_random_pin(uint64_t internal_blacklist_mask, uint8_t number_of_pins)
+{
+    uint64_t available_mask = ~internal_blacklist_mask;
+
+    if (available_mask == 0)
+        return 0xFF; // No available pins
+
+    
+    // Pick a random index
+    uint32_t random_number = random32() % number_of_pins;
+
+    // Iterate again to select the random_number-th available pin
+    BitmapIterator it = bitmap_iterator_create(available_mask);
+    uint8_t pin;
+    while (bitmap_iterator_next(&it, &pin))
+    {
+        if (random_number == 0)
+            return pin;
+        random_number--;
+    }
+
+    return 0xFF;
 }
