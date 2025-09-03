@@ -7,23 +7,28 @@
 #define LOG(fmt, ...)
 #endif
 
-#define REQUEST_PACKSIZE 13
-#define ANSWER_PACKSIZE 22
+#define SEND_INACCURACY 20 // Acceptable inaccuracy in ms for timing checks
+#define INITIAL_LOW_TIME_REQUEST_MS 50
+#define INITIAL_LOW_TIME_REQUEST_MIN_MS (INITIAL_LOW_TIME_REQUEST_MS - SEND_INACCURACY)
+#define INITIAL_LOW_TIME_REQUEST_MAX_MS (INITIAL_LOW_TIME_REQUEST_MS + SEND_INACCURACY)
+
+#define INITIAL_LOW_TIME_ANSWER_MS 100
+#define INITIAL_LOW_TIME_ANSWER_MIN_MS (INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY)
+#define INITIAL_LOW_TIME_ANSWER_MAX_MS (INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY)
 
 // Global variables
 PinData *global_pindata;
 
-static volatile uint64_t internal_blacklist_mask = 0;
-static volatile uint64_t responder_mask = 0;
-static volatile uint64_t initiator_mask = 0;
-static volatile uint64_t uuid = 0;
+static uint64_t internal_blacklist_mask = 0;
+static uint64_t responder_mask = 0;
+static uint64_t initiator_mask = 0;
+static uint64_t uuid = 0;
+static uint32_t listen_until_time = 0;
+static uint32_t counter = 0;
 static volatile bool interrupt_flag = false;
-static volatile uint32_t listen_until_time = 0;
-static volatile uint32_t counter = 0;
 
-
-static volatile uint8_t number_of_pins = 0;
-static volatile uint8_t selected_pin = 0;
+static uint8_t number_of_pins = 0;
+static uint8_t selected_pin = 0;
 
 static const uint64_t all_pins_mask = (1ULL << NUMBER_OF_GPIO_PINS) - 1;
 
@@ -70,6 +75,7 @@ static void analyze_pindata_events(PinData *pindata)
 
 static void send_data_isr(void)
 {
+    gpio_toggle(DEBUG_PIN1); // Toggle debug pin to indicate ISR entry
     interrupt_flag = true;
 }
 
@@ -138,36 +144,73 @@ static void log_answer_data_packet(const AnswerDataPacket *packet)
         packet->crc_value);
 }
 
-// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC]
-static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
+static void write_u64_le(uint8_t *dst, uint64_t val)
 {
-    // Set first byte to 0xAA (1010 1010) for packet type
-    uint8_t *packet_bytes = (uint8_t *)packet;
-    packet_bytes[0] = 0xAA;
-
-    packet->crc_value = crcFast((uint8_t *)packet, offsetof(RequestDataPacket, crc_value));
-    memcpy(data, packet, sizeof(RequestDataPacket));
+    for (int i = 0; i < 8; i++)
+    {
+        dst[i] = (uint8_t)(val >> (8 * i));
+    }
 }
 
-// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
+static uint64_t read_u64_le(const uint8_t *src)
+{
+    uint64_t val = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        val |= ((uint64_t)src[i]) << (8 * i);
+    }
+    return val;
+}
+
+static void write_u32_le(uint8_t *dst, uint32_t val)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        dst[i] = (uint8_t)(val >> (8 * i));
+    }
+}
+
+static uint32_t read_u32_le(const uint8_t *src)
+{
+    uint32_t val = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        val |= ((uint32_t)src[i]) << (8 * i);
+    }
+    return val;
+}
+
+// Packet format: [1 byte type][8 bytes UUID][1 byte Pin][4 bytes CRC]
+static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
+{
+    data[0] = 0xAA; // Packet type
+    write_u64_le(&data[1], packet->uuid);
+    data[9] = packet->pin;
+    packet->crc_value = crcFast(data, 10); // Calculate CRC over type, uuid, and pin
+    write_u32_le(&data[10], packet->crc_value);
+}
+
+// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
 static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
 {
-    // Set first byte to 0xFF (255) for packet type
-    uint8_t *packet_bytes = (uint8_t *)packet;
-    packet_bytes[0] = 0xFF;
-
-    packet->crc_value = crcFast((uint8_t *)packet, offsetof(AnswerDataPacket, crc_value));
-    memcpy(data, packet, sizeof(AnswerDataPacket));
+    data[0] = 0xFF; // Packet type
+    write_u64_le(&data[1], packet->received_uuid);
+    data[9] = packet->received_pin;
+    write_u64_le(&data[10], packet->own_uuid);
+    data[18] = packet->sending_pin;
+    packet->crc_value = crcFast(data, 19); // Calculate CRC over type, received_uuid, received_pin, own_uuid, sending_pin
+    write_u32_le(&data[19], packet->crc_value);
 }
 
 static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
 {
     if (data[0] != 0xAA)
     {
-        return false; // Invalid packet type
+        return false;
     }
-    // Skip the first byte (packet type)
-    memcpy(packet, data + 1, sizeof(RequestDataPacket));
+    packet->uuid = read_u64_le(&data[1]);
+    packet->pin = data[9];
+    packet->crc_value = read_u32_le(&data[10]);
     return true;
 }
 
@@ -175,125 +218,198 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
 {
     if (data[0] != 0xFF)
     {
-        return false; // Invalid packet type
+        return false;
     }
-    // Skip the first byte (packet type)
-    memcpy(packet, data + 1, sizeof(AnswerDataPacket));
+    packet->received_uuid = read_u64_le(&data[1]);
+    packet->received_pin = data[9];
+    packet->own_uuid = read_u64_le(&data[10]);
+    packet->sending_pin = data[18];
+    packet->crc_value = read_u32_le(&data[19]);
     return true;
 }
 
-bool disable_isr = false;
-static void rising_edge_isr(uint8_t pin)
+uint8_t *receive_request_buffer;
+uint8_t *receive_answer_buffer;
+uint8_t *send_request_buffer;
+uint8_t *send_answer_buffer;
+
+typedef enum
 {
-}
-uint8_t *receive_buffer;
-uint8_t *send_buffer;
-static void falling_edge_isr(uint8_t pin)
-{
-    if (disable_isr)
-        return;
-    if (!gpio_read(pin))
-        return; // Debounce
-    gpio_toggle(DEBUG_PIN1);
+    SEND_ANSWER_JOB,
+    SEND_REQUEST_JOB,
+    NO_JOB
+} BackgroundJobType;
 
-    disable_isr = true;
-    manchester_set_rx_pin(pin);
-
-    if (!manchester_receive_array(receive_buffer, REQUEST_PACKSIZE))
-    {
-        disable_isr = false;
-        return;
-    }
-
-    switch (get_package_type_from_data(receive_buffer))
-    {
-    case PACKET_TYPE_REQUEST:
-    {
-        const RequestDataPacket *req = (const RequestDataPacket *)(receive_buffer + 1);
-        // crc calc_crc = crcFast((const uint8_t *)req, offsetof(RequestDataPacket, crc_value));
-        // if (calc_crc != req->crc_value)
-        //     break;
-
-        AnswerDataPacket ans = {
-            .own_uuid = uuid,
-            .sending_pin = pin,
-            .received_uuid = req->uuid,
-            .received_pin = req->pin};
-        construct_answer_data_packet(&ans, send_buffer);
-        manchester_set_tx_pin(pin);
-        manchester_transmit_array(send_buffer, sizeof(AnswerDataPacket));
-        break;
-    }
-
-    case PACKET_TYPE_ANSWER:
-    {
-        const AnswerDataPacket *ans = (const AnswerDataPacket *)(receive_buffer + 1);
-        // crc calc_crc = crcFast((const uint8_t *)ans, offsetof(AnswerDataPacket, crc_value));
-        // if (calc_crc != ans->crc_value)
-        //     break;
-
-        if (ans->received_uuid == uuid)
-        {
-            add_pin_event(global_pindata, ans->received_pin, DATA_HANDSHAKE_OK);
-            LOG("Received valid answer on pin %u from pin %u\n", ans->received_pin, ans->sending_pin);
-        }
-        break;
-    }
-    default:
-        break;
-    }
-    disable_isr = false;
-}
+BackgroundJobType current_job = NO_JOB;
+uint32_t trigger_job_time = 0;
 
 bool send_initial_low_phase = false;
+bool is_waiting_for_response = false;
+
+uint8_t receiving_counter = 0;
+uint8_t response_receiving_counter = 0;
+uint8_t last_resonse_receiving_pin = 255;
+uint8_t last_receiving_pin = 255;
+
 
 static void fsm_data_handshake(void)
 {
-    
+
+    gpio_drive_high(DEBUG_PIN1);
+    if (current_job != SEND_ANSWER_JOB)
+    {
+        BitmapIterator responder_iterator = bitmap_iterator_create(responder_mask & all_pins_mask);
+        uint8_t responder_pin;
+        while (bitmap_iterator_next(&responder_iterator, &responder_pin))
+        {
+            bool value = gpio_read(responder_pin);
+            if (!value)
+            {
+                if (last_receiving_pin == 255 || last_receiving_pin != responder_pin)
+                {
+                    last_receiving_pin = responder_pin;
+                    receiving_counter = 0;
+                }
+                receiving_counter++;
+            }
+        }
+        if (receiving_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receiving_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
+        {
+            receiving_counter = 0;
+            manchester_set_rx_pin(last_receiving_pin);
+
+            bool decoder_result = manchester_receive_array(receive_request_buffer, REQUEST_PACKSIZE);
+            if (!decoder_result)
+                return;
+            RequestDataPacket req;
+
+            LOG("Received buffer: ");
+            for (int i = 0; i < REQUEST_PACKSIZE; i++)
+            {
+                LOG("%02X ", receive_request_buffer[i]);
+            }
+            LOG("\n");
+
+            if (deconstruct_request_data_packet(receive_request_buffer, &req))
+            {
+                log_request_data_packet(&req);
+                add_pin_event(global_pindata, req.pin, DATA_HANDSHAKE_OK);
+                LOG("Received valid request from pin %u\n", req.pin);
+
+                // Send answer
+                AnswerDataPacket ans = {
+                    .own_uuid = uuid,
+                    .sending_pin = last_receiving_pin,
+                    .received_uuid = req.uuid,
+                    .received_pin = req.pin};
+                selected_pin = last_receiving_pin;
+                construct_answer_data_packet(&ans, send_answer_buffer);
+                current_job = SEND_ANSWER_JOB;
+                trigger_job_time = counter + INITIAL_LOW_TIME_ANSWER_MS; // Hold low for 100ms
+                gpio_od_hold_low(last_receiving_pin);
+            }
+        }
+    }
+
+    if (is_waiting_for_response && manchester_transmit_in_background_complete())
+    {
+        gpio_drive_high(DEBUG_PIN2);
+        BitmapIterator initiator_iterator = bitmap_iterator_create(initiator_mask & all_pins_mask);
+        uint8_t initiator_pin;
+        while (bitmap_iterator_next(&initiator_iterator, &initiator_pin))
+        {
+            bool value = gpio_read(initiator_pin);
+            if (!value)
+            {
+                if (response_receiving_counter == 255 || last_resonse_receiving_pin != initiator_pin)
+                {
+                    last_resonse_receiving_pin = initiator_pin;
+                    response_receiving_counter = 0;
+                }
+                response_receiving_counter++;
+            }
+        }
+        if (response_receiving_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && response_receiving_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+        {
+
+            response_receiving_counter = 0;
+            manchester_set_rx_pin(last_resonse_receiving_pin);
+            bool decoder_result = manchester_receive_array(receive_answer_buffer, ANSWER_PACKSIZE);
+            LOG("Received answer buffer: ");
+            for (int i = 0; i < ANSWER_PACKSIZE; i++)
+            {
+                LOG("%02X ", receive_answer_buffer[i]);
+            }
+            if (!decoder_result)
+                return;
+            AnswerDataPacket ans;
+            if (deconstruct_answer_data_packet(receive_answer_buffer, &ans))
+            {
+                log_answer_data_packet(&ans);
+                if (ans.received_uuid == uuid)
+                {
+                    add_pin_event(global_pindata, ans.received_pin, DATA_HANDSHAKE_OK);
+                    LOG("Received valid answer on pin %u from pin %u\n", ans.received_pin, ans.sending_pin);
+                    is_waiting_for_response = false;
+                }
+            }
+        }
+        gpio_drive_low(DEBUG_PIN2);
+    }
 
     // If timeout reached, send new request
-    if (counter >= listen_until_time && !send_initial_low_phase)
+    if (counter >= listen_until_time && current_job == NO_JOB)
     {
+
         selected_pin = select_random_pin(~initiator_mask);
 
         LOG("Timeout reached, sending request on pin %u\n", selected_pin);
         if (selected_pin != 255)
         {
             gpio_od_hold_low(selected_pin);
-            send_initial_low_phase = true;
-            listen_until_time = counter + 50; // Hold low for 50ms
+            current_job = SEND_REQUEST_JOB;
+            RequestDataPacket req;
+            req.uuid = uuid;
+            req.pin = selected_pin;
+            construct_request_data_packet(&req, send_request_buffer);
+            trigger_job_time = counter + INITIAL_LOW_TIME_REQUEST_MS; // Hold low for 50ms
         }
         else
         {
             LOG("No available pins to send request\n");
             counter = 0;
             listen_until_time = get_listen_until_time(); // Set new random listen time
-            LOG("New listen time: %lu ms\n", (unsigned long)listen_until_time);
         }
     }
-    else if (counter >= listen_until_time && send_initial_low_phase)
+    else if (counter >= trigger_job_time && current_job == SEND_REQUEST_JOB)
     {
-
-        disable_isr = true;
+        gpio_drive_high(DEBUG_PIN2);
         gpio_od_release(selected_pin);
-        send_initial_low_phase = false;
-
-        RequestDataPacket req;
-        req.uuid = uuid;
-        req.pin = selected_pin;
-        construct_request_data_packet(&req, send_buffer);
+        current_job = NO_JOB;
 
         manchester_set_tx_pin(selected_pin);
 
-        manchester_transmit_array(send_buffer, sizeof(RequestDataPacket));
-        disable_isr = false;
+        manchester_transmit_array_in_background(send_request_buffer, REQUEST_PACKSIZE);
+        is_waiting_for_response = true;
         counter = 0;
         listen_until_time = get_listen_until_time();
+        gpio_drive_low(DEBUG_PIN2);
     }
-    counter++;
-}
+    if (counter >= trigger_job_time && current_job == SEND_ANSWER_JOB)
+    {
 
-uint32_t initial_delay = 5000; // Maximum initial listening delay
+        gpio_drive_high(DEBUG_PIN2);
+        gpio_od_release(selected_pin);
+        current_job = NO_JOB;
+
+        manchester_set_tx_pin(selected_pin);
+        manchester_transmit_array(send_answer_buffer, ANSWER_PACKSIZE);
+        gpio_drive_low(DEBUG_PIN2);
+    }
+
+    counter++;
+    gpio_drive_low(DEBUG_PIN1);
+}
 
 /**
  * @brief Updated data handshake function that sends UUID package
@@ -306,8 +422,13 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     // Calculate valid pins mask
     uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
 
+    uint8_t request_data_size = sizeof(RequestDataPacket);
+    uint8_t answer_data_size = sizeof(AnswerDataPacket);
+
+    LOG("RequestDataPacket size: %u bytes\n", request_data_size);
+    LOG("AnswerDataPacket size: %u bytes\n", answer_data_size);
+
     analyze_pindata_events(pindata);
-    gpio_listen_on_all_pins_interrupt(internal_blacklist_mask, rising_edge_isr, falling_edge_isr);
 
     number_of_pins = __builtin_popcountll(valid_pins_mask);
     uuid = get_unique_id();
@@ -319,12 +440,19 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     }
 
     // receive_buffer = malloc(REQUEST_PACKSIZE);
-    send_buffer = malloc(REQUEST_PACKSIZE);
+    send_request_buffer = malloc(REQUEST_PACKSIZE);
+    send_answer_buffer = malloc(ANSWER_PACKSIZE);
 
-    if (!send_buffer)
+    receive_request_buffer = malloc(REQUEST_PACKSIZE);
+    receive_answer_buffer = malloc(ANSWER_PACKSIZE);
+
+    if (!send_request_buffer || !send_answer_buffer || !receive_request_buffer || !receive_answer_buffer)
     {
-        LOG("Memory allocation failed for send_buffer buffer\n");
-        free(send_buffer);
+        LOG("Memory allocation failed for buffers\n");
+        free(send_request_buffer);
+        free(send_answer_buffer);
+        free(receive_request_buffer);
+        free(receive_answer_buffer);
         return;
     }
     // set initial listening time
@@ -346,8 +474,12 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     stop_send_data_timer();
 
     // Clean up
-    free(receive_buffer);
-    free(send_buffer);
-    receive_buffer = NULL;
-    send_buffer = NULL;
+    free(receive_request_buffer);
+    free(receive_answer_buffer);
+    free(send_request_buffer);
+    free(send_answer_buffer);
+    receive_request_buffer = NULL;
+    receive_answer_buffer = NULL;
+    send_request_buffer = NULL;
+    send_answer_buffer = NULL;
 }

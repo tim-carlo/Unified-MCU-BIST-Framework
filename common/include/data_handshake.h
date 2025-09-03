@@ -55,7 +55,7 @@ typedef struct
     uint64_t uuid;
     uint8_t pin;
     crc crc_value;
-} __attribute__((packed)) RequestDataPacket; // packed to avoid padding
+}  RequestDataPacket;
 
 // Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
 typedef struct
@@ -65,7 +65,10 @@ typedef struct
     uint64_t own_uuid;
     uint8_t sending_pin;
     crc crc_value;
-} __attribute__((packed)) AnswerDataPacket; // packed to avoid padding
+}  AnswerDataPacket; 
+
+#define REQUEST_PACKSIZE 14
+#define ANSWER_PACKSIZE 23
 
 typedef enum
 {
