@@ -47,7 +47,9 @@ void manchester_set_tx_pin(uint8_t pin);
 void manchester_set_rx_pin_od(uint8_t pin);
 void manchester_set_tx_pin_od(uint8_t pin);
 
-void manchester_transmit_array(uint8_t *data, uint8_t size);
+bool manchester_transmit_in_background_complete(void);
+bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size);
+bool manchester_transmit_array(uint8_t *data, uint8_t size);
 bool manchester_receive_array(uint8_t *data, uint8_t size);
 
 // Helpers

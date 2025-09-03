@@ -11,16 +11,12 @@
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
-#define DEBUG_PIN_ABS ABS_PIN(3,0)
+#define DEBUG_PIN_ABS ABS_PIN(3, 0)
 #endif
-
-
 
 #define ENCODER_BUFFER_SIZE 32
 #define DECODER_BUFFER_SIZE 32
 #define DEBUG 1
-
-
 
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -28,16 +24,17 @@
 #define LOG(fmt, ...)
 #endif
 
-enum Mode
+typedef enum
 {
-    SEND,
-    RECEIVE
-};
+    MANCHESTER_SEND,
+    MANCHESTER_RECEIVE,
+    MANCHESTER_NONE
+} ManchesterMode;
 
-static volatile enum Mode mode = RECEIVE;
+static volatile ManchesterMode mode = MANCHESTER_NONE;
 static volatile uint8_t tx_pin = 255;
 static volatile uint8_t rx_pin = 255;
-static volatile uint16_t interrupt_flag = 0;
+static volatile uint8_t interrupt_flag = 0;
 
 static uint8_t encoder_buffer[ENCODER_BUFFER_SIZE];
 static uint8_t decoder_buffer[DECODER_BUFFER_SIZE];
@@ -46,6 +43,7 @@ static struct spooky_encoder enc;
 static struct spooky_decoder dec;
 static bool encoder_initialized = false;
 static bool decoder_initialized = false;
+static volatile bool transmission_complete = false;
 
 #if defined(NRF52840_XXAA)
 #define MANCHESTER_TIMER NRF_TIMER4
@@ -75,7 +73,40 @@ static void manchester_timer_isr(void)
 #if DEBUG == 1
     gpio_toggle(DEBUG_PIN_ABS);
 #endif
-    interrupt_flag = 1;
+    switch (mode)
+    {
+    case MANCHESTER_SEND:
+    {
+        enum spooky_encoder_step_res step_result = spooky_encoder_step(&enc);
+
+        switch (step_result)
+        {
+        case SPOOKY_ENCODER_STEP_OK_DONE:
+            set_TX(true); // release the line
+            transmission_complete = true;
+            mode = MANCHESTER_NONE;
+            break;
+        case SPOOKY_ENCODER_STEP_OK_LOW:
+            set_TX(false);
+            break;
+        case SPOOKY_ENCODER_STEP_OK_HIGH:
+            set_TX(true);
+            break;
+        case SPOOKY_ENCODER_STEP_OK:
+            break;
+        default:
+            break;
+        }
+        break;
+    }
+    case MANCHESTER_RECEIVE:
+    {
+        interrupt_flag = 1;
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 static void setup_and_start_timer(uint16_t sample_interval_us)
@@ -115,10 +146,13 @@ static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
 {
     if (data_size < 2)
         return;
-
-    if (receive_buffer != NULL && data_size >= 2)
+    free(receive_buffer);
+    receive_buffer = malloc(data_size);
+    if (receive_buffer != NULL)
     {
         memcpy(receive_buffer, data, data_size);
+        LOG("Received data length: %u\n", data_size);
+
         LOG("Data copied to receive_buffer\n");
     }
 }
@@ -186,32 +220,25 @@ void manchester_deinit()
 
 bool manchester_receive_array(uint8_t *data, uint8_t size)
 {
-    if (rx_pin == 255 || tx_pin == 255 || !decoder_initialized ||
-        data == NULL || size == 0 || size > DECODER_BUFFER_SIZE)
+    if (rx_pin == 255 || !decoder_initialized)
     {
         return false;
     }
 
-    mode = RECEIVE;
+    mode = MANCHESTER_RECEIVE;
     receive_buffer = data;
-    memset(data, 0, size);
-
-
-    bool finish_decoding = false;
     uint32_t timeout_counter = 0;
     const uint32_t max_timeout = 10000000;
 
-    while (!finish_decoding && timeout_counter < max_timeout)
+    bool decoder_succesfull = false;
+
+    while (timeout_counter < max_timeout)
     {
-        while (!interrupt_flag && timeout_counter < max_timeout)
+        while (!interrupt_flag)
         {
             timeout_counter++;
         }
 
-        if (timeout_counter >= max_timeout)
-        {
-            return false;
-        }
 
         interrupt_flag = 0;
         bool rx_state = read_Rx();
@@ -219,65 +246,62 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
 
         if (step_result == SPOOKY_DECODER_STEP_DONE)
         {
-            finish_decoding = true;
+            decoder_succesfull = true;
+            break;
         }
         else if (step_result < 0)
         {
             return false;
         }
     }
-    return finish_decoding;
+
+    mode = MANCHESTER_NONE;
+    return decoder_succesfull;
 }
 
-void manchester_transmit_array(uint8_t *data, uint8_t size)
+bool manchester_transmit_in_background_complete(void)
 {
-    if (tx_pin == 255 || !encoder_initialized || data == NULL ||
-        size == 0 || size > ENCODER_BUFFER_SIZE)
-    {
-        return;
-    }
+    return transmission_complete;
+}
 
-    mode = SEND;
+
+bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
+{
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
+    {
+        return false;
+    }
     spooky_encoder_clear(&enc);
 
     if (spooky_encoder_enqueue(&enc, data, size) != SPOOKY_ENCODER_ENQUEUE_OK)
     {
-        return;
+        return false;
+    }
+    mode = MANCHESTER_SEND;
+    transmission_complete = false;
+    return true;
+}
+
+bool manchester_transmit_array(uint8_t *data, uint8_t size)
+{
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
+    {
+        return false;
     }
 
+    mode = MANCHESTER_SEND;
+    transmission_complete = false;
+    spooky_encoder_clear(&enc);
 
-    bool transmission_complete = false;
-    interrupt_flag = 0;
+    if (spooky_encoder_enqueue(&enc, data, size) != SPOOKY_ENCODER_ENQUEUE_OK)
+    {
+        return false;
+    }
+
 
     while (!transmission_complete)
     {
-        while (interrupt_flag == 0)
-        {
-        }
-        interrupt_flag = 0;
-
-        enum spooky_encoder_step_res step_result = spooky_encoder_step(&enc);
-
-        switch (step_result)
-        {
-        case SPOOKY_ENCODER_STEP_OK_DONE:
-            set_TX(false);
-            transmission_complete = true;
-            break;
-        case SPOOKY_ENCODER_STEP_OK_LOW:
-            set_TX(false);
-            break;
-        case SPOOKY_ENCODER_STEP_OK_HIGH:
-            set_TX(true);
-            break;
-        case SPOOKY_ENCODER_STEP_OK:
-            break;
-        default:
-            transmission_complete = true;
-            break;
-        }
     }
-
-    set_TX(true);
-    interrupt_flag = 0;
+    LOG("Transmission complete\n");
+    return true;
 }
