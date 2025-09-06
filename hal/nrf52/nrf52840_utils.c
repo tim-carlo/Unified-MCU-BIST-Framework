@@ -19,15 +19,37 @@ uint32_t random32_lfsr(void)
  */
 uint32_t random32(void)
 {
-    if (NRF_RNG->TASKS_START == 0)
+    uint32_t rnd = 0;
+    for (int i = 0; i < 4; i++)
     {
-        NRF_RNG->TASKS_START = 1;
+        if (NRF_RNG->TASKS_START == 0)
+            NRF_RNG->TASKS_START = 1;
+
+        while (!NRF_RNG->EVENTS_VALRDY)
+        {
+        }
+
+        rnd |= ((uint32_t)NRF_RNG->VALUE) << (8 * i);
+        NRF_RNG->EVENTS_VALRDY = 0;
     }
-    while (!NRF_RNG->EVENTS_VALRDY)
+    return rnd;
+}
+
+uint16_t random16(void)
+{
+    uint16_t rnd = 0;
+    for (int i = 0; i < 2; i++)
     {
+        if (NRF_RNG->TASKS_START == 0)
+            NRF_RNG->TASKS_START = 1;
+
+        while (!NRF_RNG->EVENTS_VALRDY)
+        {
+        }
+
+        rnd |= ((uint16_t)NRF_RNG->VALUE) << (8 * i);
+        NRF_RNG->EVENTS_VALRDY = 0;
     }
-    uint32_t rnd = NRF_RNG->VALUE;
-    NRF_RNG->EVENTS_VALRDY = 0;
     return rnd;
 }
 
