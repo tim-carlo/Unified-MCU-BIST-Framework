@@ -53,26 +53,26 @@
  * @param internal_blacklist_mask Bitmask of blacklisted pins (1 = blacklisted, 0 = available)
  * @return uint8_t Pin number, or 0xFF if none available
  */
-uint8_t select_random_pin(uint64_t internal_blacklist_mask, uint8_t number_of_pins)
+uint8_t select_random_pin(uint64_t blacklist_mask)
 {
-    uint64_t available_mask = ~internal_blacklist_mask;
+    // gültige Pins berechnen (alle erlaubten bis NUMBER_OF_GPIO_PINS)
+    uint64_t all     = (1ULL << NUMBER_OF_GPIO_PINS) - 1ULL;
+    uint64_t allowed = all & ~blacklist_mask;
+    if (allowed == 0)
+        return 0xFF;
+    // Number of available pins
+    uint32_t avail = __builtin_popcountll(allowed);
 
-    if (available_mask == 0)
-        return 0xFF; // No available pins
+    // Random index in available pins
+    uint32_t k = random32() % avail;
 
-    
-    // Pick a random index
-    uint32_t random_number = random32() % number_of_pins;
-
-    // Iterate again to select the random_number-th available pin
-    BitmapIterator it = bitmap_iterator_create(available_mask);
+    // Iterate to find the k-th set bit in allowed
+    BitmapIterator it = bitmap_iterator_create(allowed);
     uint8_t pin;
-    while (bitmap_iterator_next(&it, &pin))
-    {
-        if (random_number == 0)
+    while (bitmap_iterator_next(&it, &pin)) {
+        if (k-- == 0)
             return pin;
-        random_number--;
     }
 
-    return 0xFF;
+    return 0xFF; // Should never reach here
 }
