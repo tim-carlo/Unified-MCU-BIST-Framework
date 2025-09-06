@@ -1,5 +1,7 @@
 #include "msp430fr5994_helper.h"
 
+uint32_t lfsr32;
+uint32_t lfsr31;
 
 static void configure_timer(volatile uint16_t *timer_ctl, uint16_t divider_setting)
 {
@@ -8,6 +10,42 @@ static void configure_timer(volatile uint16_t *timer_ctl, uint16_t divider_setti
                  | MC__STOP        // Timer stopped initially
                  | TACLR           // Clear the timer
                  | TAIE;           // Enable overflow interrupt
+}
+
+
+
+
+// Read 128 bits from the RNG peripheral
+static void get_random_128(uint8_t *buffer)
+{
+    for (int i = 0; i < 16; i++) {
+        buffer[i] = RNG_BYTES[i];
+    }
+}
+
+// Initialize seeds for LFSR generators
+void init_seeds(void)
+{
+    uint8_t rand128[16];
+    get_random_128(rand128);
+
+
+    lfsr32 = ((uint32_t)rand128[0] << 24) |
+             ((uint32_t)rand128[1] << 16) |
+             ((uint32_t)rand128[2] <<  8) |
+             ((uint32_t)rand128[3]);
+
+    lfsr31 = ((uint32_t)rand128[4] << 24) |
+             ((uint32_t)rand128[5] << 16) |
+             ((uint32_t)rand128[6] <<  8) |
+             ((uint32_t)rand128[7]);
+
+    // Ensure seeds are non-zero         
+    if (lfsr32 == 0) lfsr32 = 0x1;
+    if (lfsr31 == 0) lfsr31 = 0x1;
+
+    // Ensure lfsr31 is 31 bits
+    lfsr31 &= 0x7FFFFFFF;
 }
 
 /**
@@ -48,6 +86,9 @@ void io_init()
     configure_timer((volatile uint16_t *)&TA2CTL, ID__8); // Configure Timer A2
     configure_timer((volatile uint16_t *)&TA4CTL, ID__8); // Configure Timer A4
     configure_timer((volatile uint16_t *)&TB0CTL, ID__8); // Configure Timer B0
+
+
+    init_seeds(); // Initialize LFSR seeds
 
     __enable_interrupt(); // Enable global interrupts
 }
