@@ -19,6 +19,8 @@ extern "C" {
 #define ABS_TO_PINIDX(abs_pin) ((uint32_t)((abs_pin) % 8)) // Pin index within port (0-7)
 #define ABS_BIT(abs_pin) (1ULL << (uint64_t)(abs_pin))
 
+#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
+
 // Register offsets from port base
 #define PORT_IN_OFFSET  0x00
 #define PORT_OUT_OFFSET 0x02
