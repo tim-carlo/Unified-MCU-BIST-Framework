@@ -43,16 +43,16 @@ void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
  *
  * @param data Pointer to the PinData structure
  * @param other_pin The connected pin number
- * @param other_device_id Pointer to the connected device ID
+ * @param device_index Index of the device in seen_devices array
  * @return true
  * @return false
  */
-bool connection_exists(PinData *data, uint8_t other_pin, uint64_t *other_device_id)
+bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_index)
 {
     for (uint8_t i = 0; i < data->connection_index; i++)
     {
         if (data->connections[i].other_pin == other_pin &&
-            data->connections[i].other_device_id == other_device_id)
+            data->connections[i].device_index == device_index)
         {
             return true;
         }
@@ -64,15 +64,16 @@ bool connection_exists(PinData *data, uint8_t other_pin, uint64_t *other_device_
  * @brief Add a device ID to the seen devices list if not already present
  *
  * @param other_device_id Pointer to the device ID to add
+ * @return Index of the device in seen_devices array, or 255 if failed
  */
-void add_seen_device(uint64_t *other_device_id)
+uint8_t add_seen_device(uint64_t *other_device_id)
 {
     // already seen?
     for (uint8_t i = 0; i < seen_devices_count; i++)
     {
         if (seen_devices[i] == *other_device_id)
         {
-            return; // no duplicate
+            return i; // return existing index
         }
     }
 
@@ -83,13 +84,12 @@ void add_seen_device(uint64_t *other_device_id)
         {
             seen_devices = new_seen;
             seen_devices[seen_devices_count] = *other_device_id;
+            uint8_t new_index = seen_devices_count;
             seen_devices_count++;
-        }
-        else
-        {
-            return; // realloc failed, do not add
+            return new_index;
         }
     }
+    return 255; // failure indicator
 }
 
 /**
@@ -102,6 +102,12 @@ void add_seen_device(uint64_t *other_device_id)
 void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin, uint64_t *other_device_id)
 {
     PinData *data = &pindata[pin];
+
+    // Get or add device to seen_devices list
+    uint8_t device_index = add_seen_device(other_device_id);
+    if (device_index == 255) {
+        return; // Failed to add device
+    }
 
     // Init connection list if needed
     if (data->connections == NULL)
@@ -116,7 +122,7 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin, uint64
     }
 
     // Prevent duplicate connections
-    if (connection_exists(data, other_pin, other_device_id))
+    if (connection_exists(data, other_pin, device_index))
     {
         return;
     }
@@ -136,14 +142,10 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin, uint64
         data->connection_capacity = new_capacity;
     }
 
-    // Add new connection
-    data->connections[data->connection_index].pin = pin;
+    // Add new connection with device index
     data->connections[data->connection_index].other_pin = other_pin;
-    data->connections[data->connection_index].other_device_id = other_device_id;
+    data->connections[data->connection_index].device_index = device_index;
     data->connection_index++;
-
-    // Track seen device
-    add_seen_device(other_device_id);
 }
 
 /**

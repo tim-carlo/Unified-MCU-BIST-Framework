@@ -30,12 +30,13 @@ typedef enum
     PIN_IS_CONNECTED_WITH_OTHER_PIN = 8,
 } PinEventType;
 
+// Hier den Grunddatentype Typ definieren um das zu minimieren.
+
 // Need to log the connected Device IDs as well
 typedef struct
 {
-    uint8_t pin;
     uint8_t other_pin;
-    uint64_t *other_device_id;
+    uint8_t device_index;  // Index into seen_devices array
 } PinConnection;
 
 
@@ -59,8 +60,8 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
 
 
-void add_seen_device(uint64_t *other_device_id);
-bool connection_exists(PinData *data, uint8_t other_pin, uint64_t *other_device_id);
+uint8_t add_seen_device(uint64_t *other_device_id);
+bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_index);
 void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin, uint64_t *other_device_id);
 
 void print_pin_data_array(const PinData *pindata, uint8_t size);
