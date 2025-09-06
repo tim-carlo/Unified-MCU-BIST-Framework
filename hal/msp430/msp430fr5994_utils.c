@@ -27,15 +27,24 @@ const char *get_unique_id_str(void)
 
 /**
  * @brief Generate a random 32-bit number using the LFSR algorithm
- * from Wikipedia: https://de.wikipedia.org/wiki/Linear_r%C3%BCckgekoppeltes_Schieberegister
+ * from: https://gist.github.com/nurpax/d32529b017f71fd0e77c89a9b5a5e328
  *
  */
-uint32_t random32_lfsr(void)
+uint32_t shift_lsfr(uint32_t* lfsr, uint32_t polynomial_mask)
 {
-    static unsigned r = 1;
-    unsigned b = r & 1;
-    r = (r >> 1) ^ (-b & 0xc3308398);
-    return b;
+    int feedback = *lfsr & 1;
+    *lfsr >>= 1;
+    if (feedback) {
+        *lfsr ^= polynomial_mask;
+    }
+    return *lfsr;
+}
+uint32_t get_random()
+{
+    shift_lsfr(&lfsr32, POLYMASK_32);
+    uint32_t a = shift_lsfr(&lfsr32, POLYMASK_32);
+    uint32_t b = shift_lsfr(&lfsr31, POLYMASK_31);
+    return (a ^ b) & 0xffff;
 }
 
 /**
@@ -45,7 +54,7 @@ uint32_t random32_lfsr(void)
  */
 uint32_t random32(void)
 {
-    return random32_lfsr(); // Use LFSR for now, as RNG is not available on MSP430
+    return get_random(); // Use LFSR for now, as RNG is not available on MSP430
 }
 
 /**

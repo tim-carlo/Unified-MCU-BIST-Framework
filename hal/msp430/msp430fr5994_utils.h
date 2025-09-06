@@ -5,6 +5,10 @@
 #include <msp430.h>
 #include <msp430fr5994.h>
 #include "printf.h"
+#include "msp430fr5994_helper.h"
+#define POLYMASK_32 0xb4bcd35c
+#define POLYMASK_31 0x7a5bc2e3
+
 
 #ifdef __cplusplus
 extern "C" {
