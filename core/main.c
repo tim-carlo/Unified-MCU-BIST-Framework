@@ -62,7 +62,6 @@
 
 #define MANCHESTER_TX_PIN 12
 #define MANCHESTER_RX_PIN 12
-
 #endif
 
 #include "stack.h"
@@ -72,6 +71,7 @@
 #include "random_utils.h"
 #include "handshake.h"
 #include "data_handshake.h"
+#include "serialisation.h"
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
@@ -149,6 +149,7 @@ int main(void)
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
 
+
     set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
@@ -164,9 +165,12 @@ int main(void)
     printf("Starting data handshake...\n");
     set_role_debug();
     // perform_handshake(pin_data, initial_state_mask);
-    perform_data_handshake(pin_data, initial_state_mask);
+   // perform_data_handshake(pin_data, initial_state_mask);
 
-    print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+   // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+    example_cbor_header_transmission();
+
+    printf("Entering main loop...\n");
 
     while (true)
     {
