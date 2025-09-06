@@ -29,6 +29,14 @@
         "limits": "c",
         "optional": "c",
         "ratio": "c",
-        "msp430fr5994_time.h": "c"
+        "msp430fr5994_time.h": "c",
+        "timing_pindata.h": "c",
+        "__hash_table": "c",
+        "__split_buffer": "c",
+        "array": "c",
+        "initializer_list": "c",
+        "string": "c",
+        "string_view": "c",
+        "unordered_map": "c"
     }
 }
