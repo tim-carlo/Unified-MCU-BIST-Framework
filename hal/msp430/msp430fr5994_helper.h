@@ -13,6 +13,7 @@
 #include "pindata.h" // PinData structure and helper functions
 
 #define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
+#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
 // UART configuration - Fixed to UCA0 at 9600 baud
 #define UART_ID 0 // Identifier for UCA0
@@ -41,8 +42,10 @@
 // Clock definitions
 #define SMCLK_HZ        16000000UL  // SMCLK frequency: 16 MHz
 
-                                                                          
-
+#define RNG_BASE    0x01A30
+#define RNG_BYTES   ((volatile uint8_t *)RNG_BASE)
+extern uint32_t lfsr32;
+extern uint32_t lfsr31;                                                                  
 
 
 #ifdef __cplusplus
