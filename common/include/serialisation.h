@@ -32,6 +32,37 @@ extern "C" {
 #include "xxhash.h"
 
 // Serialization constants
+#ifndef NUMBER_OF_GPIO_PINS
+#define NUMBER_OF_GPIO_PINS 32
+#endif
+
+SerializedChunk *current_chunk = NULL;
+static PinData *current_pindata = NULL;
+static uint32_t current_hash = 0;
+static uint32_t current_header_hash = 0;
+uint8_t current_pin_data_index = 0;
+uint8_t current_chunk_id = 0;
+static uint8_t actual_pindata_size = 0;
+#define KEY_CHUNK_ID 0
+#define KEY_NUM_ENTRIES 1
+#define KEY_PINS 2
+#define KEY_CRC 3
+#define KEY_PIN 4
+#define KEY_EVENTS 5
+#define KEY_CONNECTIONS 6
+#define KEY_OTHER_PIN 7
+#define KEY_DEVICE_ID 8
+
+#define HEADER_KEY_DEVICE_UUID 0
+#define HEADER_KEY_DEVICE_FAMILY 1
+#define HEADER_KEY_TOTAL_CHUNKS 2
+#define HEADER_KEY_TOTAL_PINS 3
+#define HEADER_KEY_ACTIVE_PINS 4
+#define HEADER_KEY_HEADER_HASH 5
+
+#define HEADER_VERSION 1
+#define HEADER_BUFFER_SIZE 64
+#define CHUNK_BUFFER_SIZE 128
 #define NUMBER_OF_ENTRIES_PER_CHUNK 5
 
 // Error codes for serialization operations
@@ -62,12 +93,9 @@ typedef struct {
 } Chunk;
 
 // Function declarations
-InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata);
+InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size);
 SerializationResult serialize_next_chunk();
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size);
-SerializationResult send_complete_transmission_with_header(PinData *pindata, uint8_t pindata_size);
-SerializationResult send_binary_transmission(PinData *pindata, uint8_t pin_count, uint64_t device_id);
-void example_cbor_header_transmission(void);
 
 
 #ifdef __cplusplus
