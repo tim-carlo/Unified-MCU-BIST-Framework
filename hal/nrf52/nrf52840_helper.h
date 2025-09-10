@@ -10,6 +10,7 @@
 #include "stack.h"
 #include "pindata.h"
 #include "printf.h"
+#include "nrf52840_uart.h"
 
 #define NUMBER_OF_GPIO_PINS 48
 #define UART_PIN_TX 6
