@@ -3,6 +3,7 @@
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_utils.h"
+#include "msp430fr5994_uart.h"
 #include "printf.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,14 +32,13 @@
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
-// #include "nrf52840_gpio.h"
-
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_time.h"
 #include "nrf52840_helper.h"
 #include "nrf52840_utils.h"
 #include "nrf52840_gpio.h"
+#include "nrf52840_uart.h"
 
 #include "printf.h"
 #define TEST_PIN 3
@@ -72,6 +72,8 @@
 #include "handshake.h"
 #include "data_handshake.h"
 #include "serialisation.h"
+#include "xxhash.h"
+#include "uart_transmitter.h"
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
@@ -149,6 +151,15 @@ int main(void)
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
 
+    // xxHash test
+    const char *test_string = "Hello, World!";
+    uint32_t hash = XXH32(test_string, strlen(test_string), 0);
+    LOG("xxHash of '%s': 0x%08lX\n", test_string, (unsigned long)hash);
+
+    // Initialize UART transmitter
+    uart_transmitter_init();
+
+    printf("UART ready - type messages and press Enter\n");
 
     set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
@@ -165,14 +176,11 @@ int main(void)
     printf("Starting data handshake...\n");
     set_role_debug();
     // perform_handshake(pin_data, initial_state_mask);
-   // perform_data_handshake(pin_data, initial_state_mask);
-
-   // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    example_cbor_header_transmission();
+    // perform_data_handshake(pin_data, initial_state_mask);
+    // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+    example_cbor_header_transmission_with_ack();
 
     printf("Entering main loop...\n");
 
-    while (true)
-    {
-    }
+    
 }
