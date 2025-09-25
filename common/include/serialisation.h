@@ -31,18 +31,22 @@ extern "C" {
 #include "crc.h"
 #include "xxhash.h"
 
+typedef struct
+{
+    uint8_t *data;
+    size_t size_in_bytes;
+} SerializedChunk;
+
+
 // Serialization constants
 #ifndef NUMBER_OF_GPIO_PINS
 #define NUMBER_OF_GPIO_PINS 32
 #endif
 
-SerializedChunk *current_chunk = NULL;
-static PinData *current_pindata = NULL;
-static uint32_t current_hash = 0;
-static uint32_t current_header_hash = 0;
-uint8_t current_pin_data_index = 0;
-uint8_t current_chunk_id = 0;
-static uint8_t actual_pindata_size = 0;
+extern SerializedChunk *current_chunk;
+extern uint8_t current_pin_data_index;
+extern uint8_t current_chunk_id;
+
 #define KEY_CHUNK_ID 0
 #define KEY_NUM_ENTRIES 1
 #define KEY_PINS 2
@@ -79,11 +83,6 @@ typedef enum {
     INITIALIZATION_OK = 0,
     INITIALIZATION_ERROR = -1
 } InitializationResult;
-
-typedef struct {
-    uint8_t *data;
-    size_t size_in_bytes;
-} SerializedChunk;
 
 typedef struct {
     uint8_t chunk_id;

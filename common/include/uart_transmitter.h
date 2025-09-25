@@ -1,5 +1,8 @@
+#ifndef UART_TRANSMITTER_H
+#define UART_TRANSMITTER_H
+
 #include "serialisation.h"
-#define NRF52840_XXAA
+
 #if defined(NRF52840_XXAA)
 #include "nrf52840_helper.h"
 #include "nrf52840_gpio.h"
@@ -12,7 +15,6 @@
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_utils.h"
 #include "msp430fr5994_uart.h"
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #define MAX_TIMEOUT 500000
@@ -29,11 +31,6 @@
 
 // Error identifier
 #define ERROR_IDENTIFIER 0xE0E1E2E3
-
-// External variables from serialization.c
-extern SerializedChunk *current_chunk;
-extern uint8_t current_pin_data_index;
-extern uint8_t current_chunk_id;
 
 typedef enum
 {
@@ -59,3 +56,5 @@ typedef enum
 void uart_transmitter_init(void);
 UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uint8_t pindata_size);
 void example_cbor_header_transmission_with_ack(void);
+
+#endif // UART_TRANSMITTER_H

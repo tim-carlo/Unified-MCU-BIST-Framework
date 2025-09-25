@@ -1,4 +1,14 @@
 #include "serialisation.h"
+#include <string.h>
+
+SerializedChunk *current_chunk = NULL;
+uint8_t current_pin_data_index = 0;
+uint8_t current_chunk_id = 0;
+
+static PinData *current_pindata = NULL;
+static uint8_t actual_pindata_size = 0;
+static uint32_t current_hash = 0;
+static uint32_t current_header_hash = 0;
 
 InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size)
 {
