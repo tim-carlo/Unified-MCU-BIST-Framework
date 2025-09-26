@@ -33,6 +33,9 @@ static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pul
     case GPIO_PULL_DOWN:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown);
         break;
+    case GPIO_NO_PULL:
+        cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled);
+        break;
     default:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled);
         break;
