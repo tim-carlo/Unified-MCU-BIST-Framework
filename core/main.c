@@ -177,8 +177,35 @@ int main(void)
     // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
     //example_cbor_header_transmission_with_ack();
     run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
-    
-    printf("Entering main loop...\n");
 
     
+    // Send the collected pin data over UART
+    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+    
+    switch (uart_result)
+    {
+        case UART_TRANSMISSION_OK:
+            printf("SUCCESS: Pin data transmitted successfully via UART\n");
+            break;
+        case UART_TRANSMISSION_ERROR_INIT_FAILED:
+            printf("ERROR: UART initialization failed\n");
+            break;
+        case UART_TRANSMISSION_ERROR_SEND_FAILED:
+            printf("ERROR: UART transmission failed\n");
+            break;
+        case UART_TRANSMISSION_ERROR_ACK_FAILED:
+            printf("ERROR: UART acknowledgement failed\n");
+            break;
+        case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
+            printf("ERROR: Memory allocation failed during UART transmission\n");
+            break;
+        case UART_TRANSMISSION_ERROR_NULL_POINTER:
+            printf("ERROR: Null pointer in UART transmission\n");
+            break;
+        default:
+            printf("ERROR: Unknown UART transmission error occurred\n");
+            break;
+    }
+    
+    printf("Test finished - UART transmission result: %d\n", uart_result);
 }
