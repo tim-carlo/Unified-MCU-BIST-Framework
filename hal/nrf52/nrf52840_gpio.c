@@ -23,12 +23,14 @@ static inline NRF_GPIO_Type *port_ptr(uint32_t port)
 static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pull)
 {
     // DIR=Input, INPUT=Connect, DRIVE=S0S1 (default), SENSE=Disabled
-    uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) | BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
 
     switch (pull)
     {
     case GPIO_PULL_UP:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup);
+        // This means that the pin
+        //     cnf |= BV_BY_NAME(GPIO_DRIVE_MODE, D0S1);
         break;
     case GPIO_PULL_DOWN:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown);
@@ -44,8 +46,9 @@ static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pul
 }
 static inline void cfg_pin_output(NRF_GPIO_Type *p, uint32_t idx)
 {
-    // DIR=Output, INPUT=Disconnect, PULL=Disabled, DRIVE=S0S1, SENSE=Disabled
-    uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Output) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Disconnect) | BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled) | BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+    // DIR=Output, INPUT=Connected, PULL=Disabled, DRIVE=S0S1, SENSE=Disabled
+    // The Inputregister is still connected, so we can read the pin state even if it is an output
+    uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Output) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) | BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled) | BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
     p->PIN_CNF[idx] = cnf;
 }
 
@@ -83,6 +86,18 @@ void gpio_drive_low(uint8_t abs_pin)
     uint32_t port = ABS_TO_PORT(abs_pin);
     uint32_t idx = ABS_TO_PINIDX(abs_pin);
     port_ptr(port)->OUTCLR = (1UL << idx);
+}
+void gpio_reset(uint8_t abs_pin)
+{
+    uint32_t port = ABS_TO_PORT(abs_pin);
+    uint32_t idx = ABS_TO_PINIDX(abs_pin);
+
+    port_ptr(port)->PIN_CNF[idx] =
+        (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
+        (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
+        (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos) |
+        (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos) |
+        (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
 }
 
 void gpio_toggle(uint8_t abs_pin)
