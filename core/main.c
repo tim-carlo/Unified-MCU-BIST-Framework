@@ -74,6 +74,7 @@
 #include "serialisation.h"
 #include "xxhash.h"
 #include "uart_transmitter.h"
+#include "set_one_high_measure_all.h"
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
@@ -151,10 +152,6 @@ int main(void)
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
 
-    // xxHash test
-    const char *test_string = "Hello, World!";
-    uint32_t hash = XXH32(test_string, strlen(test_string), 0);
-    LOG("xxHash of '%s': 0x%08lX\n", test_string, (unsigned long)hash);
 
     // Initialize UART transmitter
     uart_transmitter_init();
@@ -178,8 +175,9 @@ int main(void)
     // perform_handshake(pin_data, initial_state_mask);
     // perform_data_handshake(pin_data, initial_state_mask);
     // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    example_cbor_header_transmission_with_ack();
-
+    //example_cbor_header_transmission_with_ack();
+    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+    
     printf("Entering main loop...\n");
 
     
