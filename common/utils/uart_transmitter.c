@@ -327,8 +327,8 @@ void example_cbor_header_transmission_with_ack(void)
 
     add_pin_event(test_pins, 12, DATA_HANDSHAKE_OK);
     add_pin_event(test_pins, 8, PIN_DISTURBED);
-    add_pin_connection(test_pins, 8, 3, &(uint64_t){0x123456789ABCDEF0});
-    add_pin_connection(test_pins, 5, 10, &(uint64_t){0x0FEDCBA987654321});
+    add_pin_connection(test_pins, 8, 3, 0);
+    add_pin_connection(test_pins, 5, 10, 0);
 
     // Test complete transmission with header and acknowledgement checking
     UartTransmissionResult result = send_complete_transmission_with_ack(test_pins, 32);
