@@ -11,7 +11,7 @@
 #endif
 
 // Global UART instance for transmission
-static uart_instance_t tx_uart = NULL;
+static uart_instance_t *tx_uart = NULL;
 
 /**
  * @brief Initialize UART transmitter with platform-specific setup
@@ -24,7 +24,7 @@ void uart_transmitter_init(void)
     uart_pins = create_uart_pins(6, 8);
     //  uart_init(tx_uart, 115200, &uart_pins);
 #elif defined(__MSP430FR5994__)
-    tx_uart = &MSP430_UART0;
+    tx_uart = MSP430_UART0;
     uart_pins_t uart_pins;
     uart_pins = create_uart_pins(8, 9);
     //  uart_init(tx_uart, 115200, &uart_pins);
