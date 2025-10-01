@@ -126,6 +126,21 @@ void gpio_toggle(uint8_t abs_pin)
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) ^= mask;
 }
 
+void gpio_reset(uint8_t abs_pin)
+{
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
+    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    
+    // Reset to input mode (clear DIR bit)
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) &= ~mask;
+    
+    // Disable resistor enable (clear REN bit)
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_REN_OFFSET)) &= ~mask;
+    
+    // Clear output bit
+    *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
+}
+
 bool gpio_read(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
