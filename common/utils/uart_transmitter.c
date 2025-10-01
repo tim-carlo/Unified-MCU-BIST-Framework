@@ -4,6 +4,12 @@
 #include <string.h>
 #include <stdbool.h>
 
+#if defined(NRF52840_XXAA)
+#include "endian.h"
+#elif defined(__MSP430FR5994__)
+#include "endian.h"
+#endif
+
 // Global UART instance for transmission
 static uart_instance_t tx_uart = NULL;
 
@@ -66,19 +72,15 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
         return WAIT_FOR_ACK_TIMEOUT;
     }
 
-    // Parse big-endian values
-    uint32_t start_id = ((uint32_t)ack_bytes[0] << 24) |
-                        ((uint32_t)ack_bytes[1] << 16) |
-                        ((uint32_t)ack_bytes[2] << 8) |
-                        (uint32_t)ack_bytes[3];
-    uint32_t received_hash = ((uint32_t)ack_bytes[4] << 24) |
-                             ((uint32_t)ack_bytes[5] << 16) |
-                             ((uint32_t)ack_bytes[6] << 8) |
-                             (uint32_t)ack_bytes[7];
-    uint32_t end_id = ((uint32_t)ack_bytes[8] << 24) |
-                      ((uint32_t)ack_bytes[9] << 16) |
-                      ((uint32_t)ack_bytes[10] << 8) |
-                      (uint32_t)ack_bytes[11];
+    // Parse big-endian values using endian conversion
+    uint32_t be_start_id, be_received_hash, be_end_id;
+    memcpy(&be_start_id, &ack_bytes[0], sizeof(be_start_id));
+    memcpy(&be_received_hash, &ack_bytes[4], sizeof(be_received_hash));
+    memcpy(&be_end_id, &ack_bytes[8], sizeof(be_end_id));
+    
+    uint32_t start_id = be32toh(be_start_id);
+    uint32_t received_hash = be32toh(be_received_hash);
+    uint32_t end_id = be32toh(be_end_id);
     if (start_id != ACK_START_IDENTIFIER)
     {
         printf("ACK START identifier mismatch! Expected: 0x%08lX, Got: 0x%08lX\n", (unsigned long)ACK_START_IDENTIFIER, (unsigned long)start_id);
@@ -155,10 +157,9 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     }
 
     uint8_t *hash_ptr = header_chunk.data + header_chunk.size_in_bytes - 4;
-    expected_hash = ((uint32_t)hash_ptr[0] << 24) |
-                    ((uint32_t)hash_ptr[1] << 16) |
-                    ((uint32_t)hash_ptr[2] << 8) |
-                    (uint32_t)hash_ptr[3];
+    uint32_t be_expected_hash;
+    memcpy(&be_expected_hash, hash_ptr, sizeof(be_expected_hash));
+    expected_hash = be32toh(be_expected_hash);
 
     // Wait for header acknowledgement with retry logic
     uint8_t header_retry_count = 0;
@@ -222,10 +223,9 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
 
             // Send 2-byte chunk ID (big-endian)
-            uint8_t id_bytes[2] = {
-                (packet_count >> 8) & 0xFF, // High byte first
-                packet_count & 0xFF         // Low byte last
-            };
+            uint16_t be_packet_count = htobe16(packet_count);
+            uint8_t id_bytes[2];
+            memcpy(id_bytes, &be_packet_count, sizeof(id_bytes));
             uart_write_bytes(tx_uart, id_bytes, 2);
 
             // Send complete packet [2 byte length][CBOR][4 byte hash]
@@ -245,10 +245,9 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             }
 
             uint8_t *hash_ptr = chunk.data + chunk.size_in_bytes - 4;
-            uint32_t chunk_expected_hash = ((uint32_t)hash_ptr[0] << 24) |
-                                           ((uint32_t)hash_ptr[1] << 16) |
-                                           ((uint32_t)hash_ptr[2] << 8) |
-                                           (uint32_t)hash_ptr[3];
+            uint32_t be_chunk_expected_hash;
+            memcpy(&be_chunk_expected_hash, hash_ptr, sizeof(be_chunk_expected_hash));
+            uint32_t chunk_expected_hash = be32toh(be_chunk_expected_hash);
 
             // Wait for packet acknowledgement with retry logic
             uint8_t chunk_retry_count = 0;
@@ -261,10 +260,9 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
                     uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
 
                     // Send 2-byte chunk ID (big-endian)
-                    uint8_t id_bytes[2] = {
-                        (packet_count >> 8) & 0xFF, // High byte first
-                        packet_count & 0xFF         // Low byte last
-                    };
+                    uint16_t be_packet_count = htobe16(packet_count);
+                    uint8_t id_bytes[2];
+                    memcpy(id_bytes, &be_packet_count, sizeof(id_bytes));
                     uart_write_bytes(tx_uart, id_bytes, 2);
 
                     // Send complete packet [2 byte length][CBOR][4 byte hash]
