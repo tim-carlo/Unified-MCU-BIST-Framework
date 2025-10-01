@@ -151,19 +151,19 @@ static void log_answer_data_packet(const AnswerDataPacket *packet)
         packet->hash_value);
 }
 
-// Packet format: [1 byte type][8 bytes UUID][1 byte Pin][4 bytes XXHASH32]
+// Packet format: [1 byte type][8 bytes UUID][1 byte Pin][4 bytes CRC32]
 static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
 {
     data[0] = 0xAA; // Packet type
     uint64_t le_uuid = htole64(packet->uuid);
     memcpy(&data[1], &le_uuid, sizeof(le_uuid));
     data[9] = packet->pin;
-    packet->hash_value = XXH32(data, 10, 0); 
+    packet->hash_value = crcFast((unsigned char const*)data, 10); 
     uint32_t le_hash = htole32(packet->hash_value);
     memcpy(&data[10], &le_hash, sizeof(le_hash));
 }
 
-// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes XXHASH32]
+// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC32]
 static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
 {
     data[0] = 0xFF; // Packet type
@@ -173,7 +173,7 @@ static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data
     uint64_t le_own_uuid = htole64(packet->own_uuid);
     memcpy(&data[10], &le_own_uuid, sizeof(le_own_uuid));
     data[18] = packet->sending_pin;
-    packet->hash_value = XXH32(data, 19, 0); // Calculate XXHASH32 over type, received_uuid, received_pin, own_uuid, sending_pin
+    packet->hash_value = crcFast((unsigned char const*)data, 19); // Calculate CRC32 over type, received_uuid, received_pin, own_uuid, sending_pin
     uint32_t le_hash = htole32(packet->hash_value);
     memcpy(&data[19], &le_hash, sizeof(le_hash));
 }
