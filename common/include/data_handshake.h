@@ -26,6 +26,8 @@
 #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
 #define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
 
+#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
+
 #endif
 
 #include "manchester.h"
@@ -38,7 +40,7 @@
 #include "pindata.h"
 #include "bitmap_iterator.h"
 #include "random_utils.h"
-#include "crc.h"
+#include "xxhash.h"
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
 
@@ -49,22 +51,22 @@ typedef struct
     uint8_t *data;
 } DataHandshakeData;
 
-// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC]
+// Packet format: [8 bytes UUID][1 byte Pin][4 bytes XXHASH32]
 typedef struct
 {
     uint64_t uuid;
     uint8_t pin;
-    crc crc_value;
+    XXH32_hash_t hash_value;
 }  RequestDataPacket;
 
-// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
+// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes XXHASH32]
 typedef struct
 {
     uint64_t received_uuid;
     uint8_t received_pin;
     uint64_t own_uuid;
     uint8_t sending_pin;
-    crc crc_value;
+    XXH32_hash_t hash_value;
 }  AnswerDataPacket; 
 
 #define REQUEST_PACKSIZE 14

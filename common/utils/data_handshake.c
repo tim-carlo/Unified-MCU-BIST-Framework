@@ -1,5 +1,12 @@
 #include "data_handshake.h"
 
+#if defined(NRF52840_XXAA)
+#include "endian.h"
+#elif defined(__MSP430FR5994__)
+#include "endian.h"
+#endif
+#include <string.h>
+
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -128,78 +135,47 @@ static PackageType get_package_type_from_data(const uint8_t *data)
 
 static void log_request_data_packet(const RequestDataPacket *packet)
 {
-    LOG("RequestDataPacket: uuid=0x%016llx, pin=%u, crc=0x%08x\n",
+    LOG("RequestDataPacket: uuid=0x%016llx, pin=%u, hash=0x%08x\n",
         (unsigned long long)packet->uuid,
         packet->pin,
-        packet->crc_value);
+        packet->hash_value);
 }
 
 static void log_answer_data_packet(const AnswerDataPacket *packet)
 {
-    LOG("AnswerDataPacket: received_uuid=0x%016llx, received_pin=%u, own_uuid=0x%016llx, sending_pin=%u, crc=0x%08x\n",
+    LOG("AnswerDataPacket: received_uuid=0x%016llx, received_pin=%u, own_uuid=0x%016llx, sending_pin=%u, hash=0x%08x\n",
         (unsigned long long)packet->received_uuid,
         packet->received_pin,
         (unsigned long long)packet->own_uuid,
         packet->sending_pin,
-        packet->crc_value);
+        packet->hash_value);
 }
 
-static void write_u64_le(uint8_t *dst, uint64_t val)
-{
-    for (int i = 0; i < 8; i++)
-    {
-        dst[i] = (uint8_t)(val >> (8 * i));
-    }
-}
-
-static uint64_t read_u64_le(const uint8_t *src)
-{
-    uint64_t val = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        val |= ((uint64_t)src[i]) << (8 * i);
-    }
-    return val;
-}
-
-static void write_u32_le(uint8_t *dst, uint32_t val)
-{
-    for (int i = 0; i < 4; i++)
-    {
-        dst[i] = (uint8_t)(val >> (8 * i));
-    }
-}
-
-static uint32_t read_u32_le(const uint8_t *src)
-{
-    uint32_t val = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        val |= ((uint32_t)src[i]) << (8 * i);
-    }
-    return val;
-}
-
-// Packet format: [1 byte type][8 bytes UUID][1 byte Pin][4 bytes CRC]
+// Packet format: [1 byte type][8 bytes UUID][1 byte Pin][4 bytes XXHASH32]
 static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
 {
     data[0] = 0xAA; // Packet type
-    write_u64_le(&data[1], packet->uuid);
+    uint64_t le_uuid = htole64(packet->uuid);
+    memcpy(&data[1], &le_uuid, sizeof(le_uuid));
     data[9] = packet->pin;
-    packet->crc_value = crcFast(data, 10); // Calculate CRC over type, uuid, and pin
-    write_u32_le(&data[10], packet->crc_value);
+    packet->hash_value = XXH32(data, 10, 0); 
+    uint32_t le_hash = htole32(packet->hash_value);
+    memcpy(&data[10], &le_hash, sizeof(le_hash));
 }
 
-// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
+// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes XXHASH32]
 static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
 {
     data[0] = 0xFF; // Packet type
-    write_u64_le(&data[1], packet->received_uuid);
+    uint64_t le_received_uuid = htole64(packet->received_uuid);
+    memcpy(&data[1], &le_received_uuid, sizeof(le_received_uuid));
     data[9] = packet->received_pin;
-    write_u64_le(&data[10], packet->own_uuid);
+    uint64_t le_own_uuid = htole64(packet->own_uuid);
+    memcpy(&data[10], &le_own_uuid, sizeof(le_own_uuid));
     data[18] = packet->sending_pin;
-    packet->crc_value = crcFast(data, 19); // Calculate CRC over type, received_uuid, received_pin, own_uuid, sending_pin
-    write_u32_le(&data[19], packet->crc_value);
+    packet->hash_value = XXH32(data, 19, 0); // Calculate XXHASH32 over type, received_uuid, received_pin, own_uuid, sending_pin
+    uint32_t le_hash = htole32(packet->hash_value);
+    memcpy(&data[19], &le_hash, sizeof(le_hash));
 }
 
 static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
@@ -208,9 +184,13 @@ static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPack
     {
         return false;
     }
-    packet->uuid = read_u64_le(&data[1]);
+    uint64_t le_uuid;
+    memcpy(&le_uuid, &data[1], sizeof(le_uuid));
+    packet->uuid = le64toh(le_uuid);
     packet->pin = data[9];
-    packet->crc_value = read_u32_le(&data[10]);
+    uint32_t le_hash;
+    memcpy(&le_hash, &data[10], sizeof(le_hash));
+    packet->hash_value = le32toh(le_hash);
     return true;
 }
 
@@ -220,11 +200,17 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     {
         return false;
     }
-    packet->received_uuid = read_u64_le(&data[1]);
+    uint64_t le_received_uuid;
+    memcpy(&le_received_uuid, &data[1], sizeof(le_received_uuid));
+    packet->received_uuid = le64toh(le_received_uuid);
     packet->received_pin = data[9];
-    packet->own_uuid = read_u64_le(&data[10]);
+    uint64_t le_own_uuid;
+    memcpy(&le_own_uuid, &data[10], sizeof(le_own_uuid));
+    packet->own_uuid = le64toh(le_own_uuid);
     packet->sending_pin = data[18];
-    packet->crc_value = read_u32_le(&data[19]);
+    uint32_t le_hash;
+    memcpy(&le_hash, &data[19], sizeof(le_hash));
+    packet->hash_value = le32toh(le_hash);
     return true;
 }
 
