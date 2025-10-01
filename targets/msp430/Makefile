@@ -35,13 +35,22 @@ CSRC_FILES := \
     $(wildcard $(HAL_DIR)/*.c) \
     $(wildcard $(COMMON_UTILS_DIR)/*.c)
 
+ASRC_FILES := \
+    $(wildcard $(CORE_DIR)/*.S) \
+    $(wildcard $(HAL_DIR)/*.S) \
+    $(wildcard $(COMMON_UTILS_DIR)/*.S)
+
 # Debug: Show found source files
 $(info === Found C source files ===)
 $(foreach file,$(CSRC_FILES),$(info - $(file)))
+$(info === Found Assembly source files ===)
+$(foreach file,$(ASRC_FILES),$(info - $(file)))
 $(info =============================)
 
 # Object files with directory structure
-OBJ_FILES := $(patsubst $(PROJECT_ROOT)/%.c,$(OUTPUT_DIR)/%.o,$(CSRC_FILES))
+OBJ_FILES := \
+    $(patsubst $(PROJECT_ROOT)/%.c,$(OUTPUT_DIR)/%.o,$(CSRC_FILES)) \
+    $(patsubst $(PROJECT_ROOT)/%.S,$(OUTPUT_DIR)/%.o,$(ASRC_FILES))
 
 # Dependency files
 DEP_FILES := $(OBJ_FILES:.o=.d)
@@ -86,6 +95,12 @@ $(OUTPUT_DIR)/%.o: $(PROJECT_ROOT)/%.c
 	@mkdir -p $(@D)
 	$(PREFIX)gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"
+
+# Compile assembly source to .o
+$(OUTPUT_DIR)/%.o: $(PROJECT_ROOT)/%.S
+	@mkdir -p $(@D)
+	$(PREFIX)gcc $(CFLAGS) -c $< -o $@
+	@echo "AS $<"
 
 # Link
 $(OUTPUT_DIR)/build.elf: $(OBJ_FILES)
