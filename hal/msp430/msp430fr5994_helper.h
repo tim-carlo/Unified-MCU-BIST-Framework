@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include "printf.h"  // Custom printf implementation
-#include "putchar.h" // Custom putchar implementation
 #include "stack.h"   // Stack implementation for managing GPIO states
 #include "pindata.h" // PinData structure and helper functions
 

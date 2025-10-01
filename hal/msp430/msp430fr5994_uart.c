@@ -98,7 +98,7 @@ static void calculate_baud_rate(unsigned long baud_rate, uint16_t *br0, uint16_t
  * @param baud_rate Baud rate
  * @param pins Pin configuration structure
  */
-void uart_init(uart_instance_t uart, const unsigned long baud_rate, const uart_pins_t* pins) {
+void uart_init(uart_instance_t *uart, const unsigned long baud_rate, const uart_pins_t* pins) {
     if (uart == NULL || pins == NULL) return;
     uint16_t br0, br1, mctlw;
     *(uart->CTLW0) = UCSWRST;
@@ -125,7 +125,7 @@ void uart_init(uart_instance_t uart, const unsigned long baud_rate, const uart_p
  * @param uart UART instance
  * @return true if data is ready, false otherwise
  */
-bool uart_data_ready(uart_instance_t uart) {
+bool uart_data_ready(uart_instance_t *uart) {
     if (uart == NULL) return false;
     return (*(uart->IFG) & uart->rx_flag_bit) != 0;
 }
@@ -136,7 +136,7 @@ bool uart_data_ready(uart_instance_t uart) {
  * @param uart UART instance
  * @return true if TX is idle, false otherwise
  */
-bool uart_tx_idle(uart_instance_t uart) {
+bool uart_tx_idle(uart_instance_t *uart) {
     if (uart == NULL) return true;
     return (*(uart->IFG) & uart->tx_flag_bit) != 0;
 }
@@ -147,7 +147,7 @@ bool uart_tx_idle(uart_instance_t uart) {
  * @param uart UART instance
  * @return received byte
  */
-char uart_read(uart_instance_t uart) {
+char uart_read(uart_instance_t *uart) {
     if (uart == NULL) return 0;
     
     // Wait for data to be ready
@@ -167,7 +167,7 @@ char uart_read(uart_instance_t uart) {
  * @param delimiter Delimiter string
  * @param attempts Number of attempts (255 for infinite)
  */
-void uart_read_text(uart_instance_t uart, char *output, char *delimiter, char attempts) {
+void uart_read_text(uart_instance_t *uart, char *output, char *delimiter, char attempts) {
     if (uart == NULL || output == NULL || delimiter == NULL) return;
     
     char received_char;
@@ -210,7 +210,7 @@ void uart_read_text(uart_instance_t uart, char *output, char *delimiter, char at
  * @param uart UART instance
  * @param data_ Byte to send
  */
-void uart_write(uart_instance_t uart, char data_) {
+void uart_write(uart_instance_t *uart, char data_) {
     if (uart == NULL) return;
     
     // Wait for transmit buffer to be ready
@@ -228,7 +228,7 @@ void uart_write(uart_instance_t uart, char data_) {
  * @param uart UART instance
  * @param uart_text Null-terminated string to send
  */
-void uart_write_text(uart_instance_t uart, char *uart_text) {
+void uart_write_text(uart_instance_t *uart, char *uart_text) {
     if (uart == NULL || uart_text == NULL) return;
     
     while (*uart_text) {
@@ -243,7 +243,7 @@ void uart_write_text(uart_instance_t uart, char *uart_text) {
  * @param data Pointer to data buffer
  * @param length Number of bytes to send
  */
-void uart_write_bytes(uart_instance_t uart, const uint8_t* data, size_t length) {
+void uart_write_bytes(uart_instance_t *uart, const uint8_t* data, size_t length) {
     if (uart == NULL || data == NULL || length == 0) return;
     
     for (size_t i = 0; i < length; i++) {
@@ -257,7 +257,7 @@ void uart_write_bytes(uart_instance_t uart, const uint8_t* data, size_t length) 
  * @param uart UART instance
  * @param value 32-bit value to send (big-endian)
  */
-void uart_write_uint32(uart_instance_t uart, uint32_t value) {
+void uart_write_uint32(uart_instance_t *uart, uint32_t value) {
     if (uart == NULL) return;
     
     uint8_t bytes[4] = {
@@ -275,7 +275,7 @@ void uart_write_uint32(uart_instance_t uart, uint32_t value) {
  * @param uart UART instance
  * @param enable true to enable receive mode, false to disable
  */
-void uart_set_receive_mode(uart_instance_t uart, bool enable) {
+void uart_set_receive_mode(uart_instance_t *uart, bool enable) {
     if (uart == NULL) return;
     
     if (enable) {
