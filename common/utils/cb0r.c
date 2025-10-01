@@ -4,23 +4,7 @@
 #include "cb0r.h"
 
 #if defined(NRF52840_XXAA)
-// 16-bit swap
-static inline uint16_t htobe16(uint16_t x)
-{
-  return __builtin_bswap16(x);
-}
-
-// 32-bit swap
-static inline uint32_t htobe32(uint32_t x)
-{
-  return __builtin_bswap32(x);
-}
-
-// 64-bit swap
-static inline uint64_t htobe64(uint64_t x)
-{
-  return __builtin_bswap64(x);
-}
+#include "endian.h"
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
 #endif
