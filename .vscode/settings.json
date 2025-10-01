@@ -37,6 +37,10 @@
         "initializer_list": "c",
         "string": "c",
         "string_view": "c",
-        "unordered_map": "c"
+        "unordered_map": "c",
+        "serialisation.h": "c",
+        "set_one_high_measure_all.h": "c",
+        "uart_transmitter.h": "c",
+        "data_handshake.h": "c"
     }
 }
