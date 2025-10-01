@@ -40,7 +40,7 @@
 #include "pindata.h"
 #include "bitmap_iterator.h"
 #include "random_utils.h"
-#include "xxhash.h"
+#include "crc.h"
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
 
@@ -51,22 +51,22 @@ typedef struct
     uint8_t *data;
 } DataHandshakeData;
 
-// Packet format: [8 bytes UUID][1 byte Pin][4 bytes XXHASH32]
+// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC32]
 typedef struct
 {
     uint64_t uuid;
     uint8_t pin;
-    XXH32_hash_t hash_value;
+    crc hash_value;
 }  RequestDataPacket;
 
-// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes XXHASH32]
+// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC32]
 typedef struct
 {
     uint64_t received_uuid;
     uint8_t received_pin;
     uint64_t own_uuid;
     uint8_t sending_pin;
-    XXH32_hash_t hash_value;
+    crc hash_value;
 }  AnswerDataPacket; 
 
 #define REQUEST_PACKSIZE 14
