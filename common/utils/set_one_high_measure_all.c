@@ -1,6 +1,4 @@
 #include "set_one_high_measure_all.h"
-#include "nrf52840_time.h"
-#include "nrf52840_gpio.h"
 
 #include "bitmap_iterator.h"
 #include "pindata.h"
