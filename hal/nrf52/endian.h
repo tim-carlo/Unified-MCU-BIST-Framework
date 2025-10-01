@@ -1,16 +1,33 @@
-#include <stdint.h>
+#ifndef _ENDIAN_H_
+#define _ENDIAN_H_
 
-// 16-bit swap
-static inline uint16_t htobe16(uint16_t x) {
-    return __builtin_bswap16(x);
-}
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN    4321
 
-// 32-bit swap
-static inline uint32_t htobe32(uint32_t x) {
-    return __builtin_bswap32(x);
-}
+/* nRF52840 (ARM Cortex-M4) is always little-endian */
+#define __BYTE_ORDER __LITTLE_ENDIAN
 
-// 64-bit swap
-static inline uint64_t htobe64(uint64_t x) {
-    return __builtin_bswap64(x);
-}
+/* Use GCC builtins for byte swap */
+#define __bswap_16(x) __builtin_bswap16(x)
+#define __bswap_32(x) __builtin_bswap32(x)
+#define __bswap_64(x) __builtin_bswap64(x)
+
+/* 16-bit conversions */
+#define htobe16(x) __bswap_16(x)
+#define htole16(x) (x)
+#define be16toh(x) __bswap_16(x)
+#define le16toh(x) (x)
+
+/* 32-bit conversions */
+#define htobe32(x) __bswap_32(x)
+#define htole32(x) (x)
+#define be32toh(x) __bswap_32(x)
+#define le32toh(x) (x)
+
+/* 64-bit conversions */
+#define htobe64(x) __bswap_64(x)
+#define htole64(x) (x)
+#define be64toh(x) __bswap_64(x)
+#define le64toh(x) (x)
+
+#endif /* _ENDIAN_H_ */
