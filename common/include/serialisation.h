@@ -29,7 +29,7 @@ extern "C" {
 #include "printf.h"
 #include "cb0r.h"
 #include "crc.h"
-#include "xxhash.h"
+#include "crc.h"
 
 typedef struct
 {
@@ -87,7 +87,7 @@ typedef enum {
 typedef struct {
     uint8_t chunk_id;
     uint8_t num_entries;
-    crc crc_value;
+    uint32_t crc_value;
     PinData *pindata;
 } Chunk;
 

@@ -161,9 +161,9 @@ SerializationResult serialize_next_chunk()
         serialized_count++;
     }
 
-    // Calculate xxHash for integrity over CBOR data
+    // Calculate CRC32 for integrity over CBOR data
     size_t cbor_data_size = write_ptr - cbor_buffer;
-    current_hash = XXH32(cbor_buffer, cbor_data_size, 0);
+    current_hash = crcFast((unsigned char const*)cbor_buffer, cbor_data_size);
 
     // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE HASH]
     size_t total_packet_size = 2 + cbor_data_size + 4; // Length + CBOR + Hash
@@ -282,9 +282,9 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_INT, active_pins);
     write_ptr += bytes_written;
 
-    // Calculate xxHash for header integrity over CBOR data
+    // Calculate CRC32 for header integrity over CBOR data
     size_t header_data_size = write_ptr - cbor_buffer;
-    current_header_hash = XXH32(cbor_buffer, header_data_size, 0);
+    current_header_hash = crcFast((unsigned char const*)cbor_buffer, header_data_size);
 
     // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE HASH]
     size_t total_packet_size = 2 + header_data_size + 4; // Length + CBOR + Hash
