@@ -31,8 +31,8 @@
  *
  */
 
-#ifndef _BITS_BYTESWAP_H_
-#define _BITS_BYTESWAP_H_
+#ifndef BYTESWAP_H
+#define BYTESWAP_H
 
 #include <stdint.h>
 
@@ -55,4 +55,4 @@ extern uint64_t __bswap_64 (uint64_t v) __attribute__((__const__));
 }
 #endif /* __cplusplus */
 
-#endif /* _BITS_BYTESWAP_H_ */
+#endif // BYTESWAP_H
