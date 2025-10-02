@@ -72,7 +72,6 @@
 #include "handshake.h"
 #include "data_handshake.h"
 #include "serialisation.h"
-#include "xxhash.h"
 #include "uart_transmitter.h"
 #include "set_one_high_measure_all.h"
 
@@ -114,18 +113,6 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #endif
 }
 
-void print_active_pins_from_mask(uint64_t mask)
-{
-    LOG("Blacklist mask: ");
-    for (uint8_t pin = 0; pin < 64; ++pin)
-    {
-        if ((mask >> pin) & 1)
-        {
-            LOG("%u ", (unsigned int)pin);
-        }
-    }
-    LOG("\n");
-}
 
 void set_role_debug()
 {
@@ -144,8 +131,8 @@ int main(void)
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-    LOG("Running on %s\n", get_chip_family_name());
-    LOG("Chip UID: %s\n", get_unique_id_str());
+   // LOG("Running on %s\n", get_chip_family_name());
+   // LOG("Chip UID: %s\n", get_unique_id_str());
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
@@ -155,8 +142,6 @@ int main(void)
 
     // Initialize UART transmitter
     uart_transmitter_init();
-
-    printf("UART ready - type messages and press Enter\n");
 
     set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
@@ -168,9 +153,8 @@ int main(void)
 
     // get_initial_pin_state(pin_data, &initial_state_mask);
 
-    print_active_pins_from_mask(initial_state_mask);
+   // print_active_pins_from_mask(initial_state_mask);
 
-    printf("Starting data handshake...\n");
     set_role_debug();
     // perform_handshake(pin_data, initial_state_mask);
     // perform_data_handshake(pin_data, initial_state_mask);
@@ -207,5 +191,4 @@ int main(void)
             break;
     }
     
-    printf("Test finished - UART transmission result: %d\n", uart_result);
 }
