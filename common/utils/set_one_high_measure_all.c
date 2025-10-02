@@ -26,7 +26,7 @@ static uint64_t read_all_pins(uint64_t blacklist_mask)
             }
         }
         result &= sample;
-        delay_ms(1);
+        delay_us(SETTLE_TIME_US); // Allow time for signals to stabilize
     }
     return result;
 }
@@ -40,7 +40,7 @@ static bool sample_own_pin(uint8_t pin, bool expected_state)
         {
             return false;
         }
-        delay_ms(1);
+        delay_us(SETTLE_TIME_US); // Allow time for signals to stabilize
     }
     return true;
 }
@@ -54,7 +54,7 @@ static bool sample_pin_state(uint8_t pin, bool expected_state)
         {
             return false;
         }
-        delay_ms(1);
+        delay_us(SETTLE_TIME_US);
     }
     return true;
 }
@@ -70,13 +70,10 @@ static void reset_all_pins(uint64_t blacklist_mask)
     BitmapIterator it = bitmap_iterator_create(test_mask);
     uint8_t pin;
 
-    printf("Resetting pins to high impedance: ");
     while (bitmap_iterator_next(&it, &pin))
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
-        printf("%d ", pin);
     }
-    printf("\n");
 }
 
 static void sample_pin_changes(uint64_t blacklist_mask, uint64_t initial_state, uint8_t test_pin, uint8_t *counter)
@@ -107,7 +104,6 @@ static void sample_pin_changes(uint64_t blacklist_mask, uint64_t initial_state, 
  */
 static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
-    printf("Sample Pins with Pull-Down: ");
     uint64_t test_mask = ~blacklist_mask; // Invert: 0=test becomes 1=test
     BitmapIterator it = bitmap_iterator_create(test_mask);
     uint8_t pin;
@@ -116,7 +112,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-    printf("\n");
     uint64_t initial_state = read_all_pins(blacklist_mask);
 
     // counter for pin changes
@@ -126,7 +121,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     it = bitmap_iterator_create(test_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %d (pull-down config):\n", pin);
 
         gpio_drive_high(DEBUG_PIN);
         // Pin als Input mit Pull-Down konfigurieren
@@ -135,9 +129,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
         // measure own pin to verify it is actually low
         if (!sample_own_pin(pin, false))
         {
-            printf("DEBUG: Pin %d state after driving high: %d\n", pin, gpio_read(pin));
-
-            printf("    Warning: Pin %d did not go low when pulled down!\n", pin);
             add_pin_event(pindata, pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
         }
 
@@ -152,7 +143,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
         {
             if (print_pin != pin && counter[print_pin] > 0)
             {
-                printf("    Pin %d: %d times\n", print_pin, counter[print_pin]);
                 add_pin_connection(pindata, pin, print_pin, MY_DEVICE_ID_INDEX);
                 add_pin_event(pindata, pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
             }
@@ -163,8 +153,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
         memset(counter, 0, sizeof(counter));
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-
-    printf("Phase 0 completed.\n");
 
     // Reset all pins to clean state
     reset_all_pins(blacklist_mask);
@@ -178,7 +166,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
  */
 static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
-    printf("Sample Pins with Pull-Up: ");
     uint64_t test_mask = ~blacklist_mask; // Invert: 0=test becomes 1=test
     BitmapIterator it = bitmap_iterator_create(test_mask);
     uint8_t pin;
@@ -188,7 +175,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-    printf("\n");
     uint64_t initial_state = read_all_pins(blacklist_mask);
 
     // counter for pin changes
@@ -198,8 +184,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     it = bitmap_iterator_create(test_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %d (driving high):\n", pin);
-
         gpio_input_init(pin, GPIO_PULL_UP);
         gpio_drive_high(DEBUG_PIN);
         
@@ -209,9 +193,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
         // Validate that pin goes high when pulled up
         if (!sample_pin_state(pin, true))
         {
-            printf("DEBUG: Pin %d state after driving high: %d\n", pin, gpio_read(pin));
-
-            printf("    Warning: Pin %d did not go high when pulled up!\n", pin);
             add_pin_event(pindata, pin, PIN_IS_NOT_HIGH_WHEN_PULLED_UP);
         }
 
@@ -226,7 +207,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
         {
             if (print_pin != pin && counter[print_pin] > 0)
             {
-                printf("    Pin %d: %d times\n", print_pin, counter[print_pin]);
                 add_pin_connection(pindata, pin, print_pin, MY_DEVICE_ID_INDEX);
                 add_pin_event(pindata, pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
             }
@@ -237,8 +217,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
         memset(counter, 0, sizeof(counter));
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-
-    printf("Phase 1 completed.\n");
 
     // Reset all pins to clean state
     reset_all_pins(blacklist_mask);
@@ -252,7 +230,6 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
  */
 static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
-    printf("Sample Pins with active drive high: ");
     uint64_t test_mask = ~blacklist_mask; // Invert: 0=test becomes 1=test
     BitmapIterator it = bitmap_iterator_create(test_mask);
     uint8_t pin;
@@ -262,7 +239,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-    printf("\n");
     uint64_t initial_state = read_all_pins(blacklist_mask);
 
     // counter for pin changes
@@ -272,8 +248,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     it = bitmap_iterator_create(test_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %d (driving high):\n", pin);
-
         // Configure test pin as output and drive high
         gpio_output_init(pin);
         gpio_drive_high(pin);
@@ -284,8 +258,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         if (!sample_pin_state(pin, true))
         {
             // print debug message
-            printf("DEBUG: Pin %d state after driving high: %d\n", pin, gpio_read(pin));
-            printf("    Warning: Pin %d did not go high when driven high!\n", pin);
             add_pin_event(pindata, pin, PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH);
         }
 
@@ -302,7 +274,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         {
             if (print_pin != pin && counter[print_pin] > 0)
             {
-                printf("    Pin %d: %d times\n", print_pin, counter[print_pin]);
                 add_pin_connection(pindata, pin, print_pin, MY_DEVICE_ID_INDEX);
                 add_pin_event(pindata, pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
             }
@@ -314,8 +285,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         gpio_reset(pin);
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-
-    printf("Phase 2 completed.\n");
 
     // Reset all pins to clean state
     reset_all_pins(blacklist_mask);
@@ -329,7 +298,6 @@ static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
  */
 static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
-    printf("Sample Pins with active drive low: ");
     uint64_t test_mask = ~blacklist_mask; // Invert: 0=test becomes 1=test
     BitmapIterator it = bitmap_iterator_create(test_mask);
     uint8_t pin;
@@ -339,7 +307,6 @@ static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
-    printf("\n");
     uint64_t initial_state = read_all_pins(blacklist_mask);
 
     // counter for pin changes
@@ -349,8 +316,6 @@ static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     it = bitmap_iterator_create(test_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %d (driving low):\n", pin);
-
         // Configure test pin as output and drive low
         gpio_output_init(pin);
         gpio_drive_low(pin);
@@ -358,8 +323,6 @@ static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         // Validate that pin goes low when driven low
         if (!sample_pin_state(pin, false))
         {
-            printf("DEBUG: Pin %d state after driving high: %d\n", pin, gpio_read(pin));
-            printf("    Warning: Pin %d did not go low when driven low!\n", pin);
             add_pin_event(pindata, pin, PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW);
         }
 
@@ -376,12 +339,11 @@ static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         {
             if (print_pin != pin && counter[print_pin] > 0)
             {
-                printf("    Pin %d: %d times\n", print_pin, counter[print_pin]);
                 add_pin_connection(pindata, pin, print_pin, MY_DEVICE_ID_INDEX);
                 add_pin_event(pindata, pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
             }
         }
-        delay_ms(40);
+        //delay_ms(40);
         gpio_drive_low(DEBUG_PIN);
         // reset counter
         memset(counter, 0, sizeof(counter));
@@ -391,8 +353,6 @@ static void phase_3_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         gpio_input_init(pin, GPIO_PULL_NONE);
         
     }
-
-    printf("Phase 3 completed.\n");
 
     // Reset all pins to clean state
     reset_all_pins(blacklist_mask);
@@ -415,25 +375,4 @@ void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uin
     phase_2_no_pull_drive_high(blacklist_mask, pindata);
     phase_3_no_pull_drive_low(blacklist_mask, pindata);
     gpio_reset(DEBUG_PIN);
-
-    printf("\n=== Pin connectivity test completed ===\n");
-
-    // Optional: Print summary of discovered connections
-    printf("\n=== Connection Summary ===\n");
-    uint64_t test_mask = ~blacklist_mask; // Invert: 0=test becomes 1=test
-    BitmapIterator summary_it = bitmap_iterator_create(test_mask);
-    uint8_t pin;
-    while (bitmap_iterator_next(&summary_it, &pin))
-    {
-        if (pindata[pin].connection_index > 0)
-        {
-            printf("Pin %d has %d connections:\n", pin, pindata[pin].connection_index);
-            for (uint8_t i = 0; i < pindata[pin].connection_index; i++)
-            {
-                printf("  -> Pin %d (device %d)\n",
-                       pindata[pin].connections[i].other_pin,
-                       pindata[pin].connections[i].device_index);
-            }
-        }
-    }
 }
