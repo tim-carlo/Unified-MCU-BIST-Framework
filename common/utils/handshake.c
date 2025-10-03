@@ -208,7 +208,7 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
             .pin = physical_pin,
             .status = 0,
             .current_job = TASK_JOB_SYN,
-            .number_of_unsuccessful_syns = 1, // Start mit 1 → erlaubt initial SYN
+            .number_of_unsuccessful_syns = 1, // start with 1 to avoid immediate retry
         };
     }
 
