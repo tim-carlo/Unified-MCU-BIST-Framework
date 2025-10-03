@@ -56,6 +56,14 @@ void uart_write_uint32(uart_instance_t *uart, uint32_t value);
 // UART mode control functions
 void uart_set_receive_mode(uart_instance_t *uart, bool enable);
 
+// Non-blocking read function for debugging
+bool uart_read_nonblocking(uart_instance_t *uart, char *data);
+
+// UART status and error handling functions
+uint16_t uart_get_status(uart_instance_t *uart);
+uint16_t uart_get_errors(uart_instance_t *uart);
+void uart_clear_errors(uart_instance_t *uart);
+
 // Helper function to create pin configuration from absolute pin numbers
 uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin);
 

@@ -176,19 +176,18 @@ SerializationResult serialize_next_chunk()
     uint8_t *packet_ptr = packet_buffer;
     
     // Write 2-byte length (big endian)
-    uint16_t cbor_size = (uint16_t)cbor_data_size;
-    *packet_ptr++ = (uint8_t)((cbor_size >> 8) & 0xFF);
-    *packet_ptr++ = (uint8_t)(cbor_size & 0xFF);
+    uint16_t cbor_size_be = htobe16((uint16_t)cbor_data_size);
+    memcpy(packet_ptr, &cbor_size_be, sizeof(uint16_t));
+    packet_ptr += sizeof(uint16_t);
     
     // Copy CBOR data
     memcpy(packet_ptr, cbor_buffer, cbor_data_size);
     packet_ptr += cbor_data_size;
     
     // Write 4-byte hash (big endian)
-    *packet_ptr++ = (uint8_t)((current_hash >> 24) & 0xFF);
-    *packet_ptr++ = (uint8_t)((current_hash >> 16) & 0xFF);
-    *packet_ptr++ = (uint8_t)((current_hash >> 8) & 0xFF);
-    *packet_ptr++ = (uint8_t)(current_hash & 0xFF);
+    uint32_t hash_be = htobe32(current_hash);
+    memcpy(packet_ptr, &hash_be, sizeof(uint32_t));
+    packet_ptr += sizeof(uint32_t);
 
     // Set final packet data
     free(cbor_buffer);
@@ -298,19 +297,18 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     uint8_t *packet_ptr = packet_buffer;
     
     // Write 2-byte length (big endian)
-    uint16_t cbor_size = (uint16_t)header_data_size;
-    *packet_ptr++ = (uint8_t)((cbor_size >> 8) & 0xFF);
-    *packet_ptr++ = (uint8_t)(cbor_size & 0xFF);
+    uint16_t cbor_size_be = htobe16((uint16_t)header_data_size);
+    memcpy(packet_ptr, &cbor_size_be, sizeof(uint16_t));
+    packet_ptr += sizeof(uint16_t);
     
     // Copy CBOR data
     memcpy(packet_ptr, cbor_buffer, header_data_size);
     packet_ptr += header_data_size;
     
     // Write 4-byte hash (big endian)
-    *packet_ptr++ = (uint8_t)((current_header_hash >> 24) & 0xFF);
-    *packet_ptr++ = (uint8_t)((current_header_hash >> 16) & 0xFF);
-    *packet_ptr++ = (uint8_t)((current_header_hash >> 8) & 0xFF);
-    *packet_ptr++ = (uint8_t)(current_header_hash & 0xFF);
+    uint32_t hash_be = htobe32(current_header_hash);
+    memcpy(packet_ptr, &hash_be, sizeof(uint32_t));
+    packet_ptr += sizeof(uint32_t);
 
     // Set final packet data
     free(cbor_buffer);

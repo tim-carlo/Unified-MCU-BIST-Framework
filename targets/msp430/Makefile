@@ -40,12 +40,6 @@ ASRC_FILES := \
     $(wildcard $(HAL_DIR)/*.S) \
     $(wildcard $(COMMON_UTILS_DIR)/*.S)
 
-# Debug: Show found source files
-$(info === Found C source files ===)
-$(foreach file,$(CSRC_FILES),$(info - $(file)))
-$(info === Found Assembly source files ===)
-$(foreach file,$(ASRC_FILES),$(info - $(file)))
-$(info =============================)
 
 # Object files with directory structure
 OBJ_FILES := \
@@ -65,7 +59,7 @@ INC_DIRS := \
 INCLUDES := $(foreach dir,$(INC_DIRS),-I$(dir))
 
 # Compiler flags
-CFLAGS += -O3 -g3 -Wall -mlarge -mmcu=$(DEVICE) $(INCLUDES)
+CFLAGS += -Os -g3 -flto -Wall -msmall -mmcu=$(DEVICE) $(INCLUDES)
 CFLAGS += -MMD -MP  # Generate dependencies
 
 # Linker flags

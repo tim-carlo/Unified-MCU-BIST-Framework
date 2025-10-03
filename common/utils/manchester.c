@@ -261,6 +261,8 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
 
 bool manchester_transmit_in_background_complete(void)
 {
+    bool transmission = transmission_complete;
+    transmission_complete = false;
     return transmission_complete;
 }
 

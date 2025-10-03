@@ -75,6 +75,8 @@
 #include "uart_transmitter.h"
 #include "set_one_high_measure_all.h"
 
+#include "crc.h"
+
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
 #define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklisting a pin
@@ -113,7 +115,6 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #endif
 }
 
-
 void set_role_debug()
 {
 #if defined(NRF52840_XXAA)
@@ -131,14 +132,13 @@ int main(void)
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-   // LOG("Running on %s\n", get_chip_family_name());
-   // LOG("Chip UID: %s\n", get_unique_id_str());
+    // LOG("Running on %s\n", get_chip_family_name());
+    // LOG("Chip UID: %s\n", get_unique_id_str());
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
-
 
     // Initialize UART transmitter
     uart_transmitter_init();
@@ -153,42 +153,40 @@ int main(void)
 
     // get_initial_pin_state(pin_data, &initial_state_mask);
 
-   // print_active_pins_from_mask(initial_state_mask);
+    // print_active_pins_from_mask(initial_state_mask);
 
     set_role_debug();
     // perform_handshake(pin_data, initial_state_mask);
-    // perform_data_handshake(pin_data, initial_state_mask);
+    perform_data_handshake(pin_data, initial_state_mask);
     // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    //example_cbor_header_transmission_with_ack();
-    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+    // example_cbor_header_transmission_with_ack();
+  //  run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
-    
     // Send the collected pin data over UART
-    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
-    
-    switch (uart_result)
-    {
-        case UART_TRANSMISSION_OK:
-            printf("SUCCESS: Pin data transmitted successfully via UART\n");
-            break;
-        case UART_TRANSMISSION_ERROR_INIT_FAILED:
-            printf("ERROR: UART initialization failed\n");
-            break;
-        case UART_TRANSMISSION_ERROR_SEND_FAILED:
-            printf("ERROR: UART transmission failed\n");
-            break;
-        case UART_TRANSMISSION_ERROR_ACK_FAILED:
-            printf("ERROR: UART acknowledgement failed\n");
-            break;
-        case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
-            printf("ERROR: Memory allocation failed during UART transmission\n");
-            break;
-        case UART_TRANSMISSION_ERROR_NULL_POINTER:
-            printf("ERROR: Null pointer in UART transmission\n");
-            break;
-        default:
-            printf("ERROR: Unknown UART transmission error occurred\n");
-            break;
-    }
-    
+    //UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+
+    // switch (uart_result)
+    // {
+    // case UART_TRANSMISSION_OK:
+    //     printf("SUCCESS: Pin data transmitted successfully via UART\n");
+    //     break;
+    // case UART_TRANSMISSION_ERROR_INIT_FAILED:
+    //     printf("ERROR: UART initialization failed\n");
+    //     break;
+    // case UART_TRANSMISSION_ERROR_SEND_FAILED:
+    //     printf("ERROR: UART transmission failed\n");
+    //     break;
+    // case UART_TRANSMISSION_ERROR_ACK_FAILED:
+    //     printf("ERROR: UART acknowledgement failed\n");
+    //     break;
+    // case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
+    //     printf("ERROR: Memory allocation failed during UART transmission\n");
+    //     break;
+    // case UART_TRANSMISSION_ERROR_NULL_POINTER:
+    //     printf("ERROR: Null pointer in UART transmission\n");
+    //     break;
+    // default:
+    //     printf("ERROR: Unknown UART transmission error occurred\n");
+    //     break;
+    // }
 }

@@ -6,12 +6,13 @@
 
 #if defined(NRF52840_XXAA)
 #include "endian.h"
+static uart_instance_t tx_uart = NULL;
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
+static uart_instance_t *tx_uart = NULL;
 #endif
 
 // Global UART instance for transmission
-static uart_instance_t *tx_uart = NULL;
 
 /**
  * @brief Initialize UART transmitter with platform-specific setup

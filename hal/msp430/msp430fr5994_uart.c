@@ -1,5 +1,7 @@
 #include "msp430fr5994_uart.h"
+#include "msp430fr5994_gpio.h"
 #include <string.h>
+#include "endian.h"
 
 // Predefined UART instance definitions
 uart_instance_t msp430_uart0_instance = {
@@ -59,7 +61,7 @@ uart_instance_t msp430_uart3_instance = {
 };
 
 /**
- * @brief Calculate baud rate values for MSP430
+ * @brief Calculate baud rate values for MSP430 according to TI documentation
  * 
  * @param baud_rate Desired baud rate
  * @param br0 Pointer to store BR0 value
@@ -69,30 +71,54 @@ uart_instance_t msp430_uart3_instance = {
 static void calculate_baud_rate(unsigned long baud_rate, uint16_t *br0, uint16_t *br1, uint16_t *mctlw) {
     // Assuming 16MHz SMCLK from helper initialization
     const uint32_t smclk_freq = 16000000UL;
-    uint32_t divider = smclk_freq / baud_rate;
+    uint32_t n = smclk_freq / baud_rate;
     
-    if (divider >= 16) {
-        // Use oversampling mode
-        *br0 = (divider / 16) & 0xFF;
-        *br1 = ((divider / 16) >> 8) & 0xFF;
+    if (n >= 16) {
+        // Use oversampling mode (UCOS16 = 1)
+        uint16_t br_value = n / 16;
+        *br0 = br_value & 0xFF;
+        *br1 = (br_value >> 8) & 0xFF;
+        
+        // Calculate fractional part for modulation
+        uint32_t fractional = n - (br_value * 16);
+        
+        // Set UCOS16 bit and modulation based on fractional part
         *mctlw = UCOS16;
         
-        // Add modulation for fractional part
-        uint32_t remainder = divider % 16;
-        if (remainder >= 8) *mctlw |= 0x0080;
-        if (remainder >= 4) *mctlw |= 0x0040;
-        if (remainder >= 2) *mctlw |= 0x0020;
-        if (remainder >= 1) *mctlw |= 0x0010;
+        // UCBRFx field (bits 7-4) for fractional modulation in oversampling mode
+        if (fractional >= 1) *mctlw |= (fractional << 4) & 0x00F0;
+        
+        // For common baud rates, use optimized modulation patterns
+        if (baud_rate == 9600 && smclk_freq == 16000000UL) {
+            // N = 104.1667, UCBRx = 104, UCBRFx = 2, UCBRSx = 0xD6
+            *mctlw = UCOS16 | (2 << 4) | 0x00D6;
+        } else if (baud_rate == 115200 && smclk_freq == 16000000UL) {
+            // N = 8.6806, UCBRx = 8, UCBRFx = 10, UCBRSx = 0xF7
+            *br0 = 8;
+            *br1 = 0;
+            *mctlw = UCOS16 | (10 << 4) | 0x00F7;
+        }
     } else {
-        // No oversampling
-        *br0 = divider & 0xFF;
-        *br1 = (divider >> 8) & 0xFF;
-        *mctlw = 0;
+        // Use low-frequency mode (UCOS16 = 0)
+        *br0 = n & 0xFF;
+        *br1 = (n >> 8) & 0xFF;
+        
+        // Calculate modulation for fractional part
+        uint32_t fractional_x256 = ((smclk_freq % baud_rate) * 256) / baud_rate;
+        uint8_t ucbrsx = 0;
+        
+        // Simple modulation pattern based on fractional part
+        if (fractional_x256 >= 128) ucbrsx |= 0x80;
+        if (fractional_x256 >= 64) ucbrsx |= 0x40;
+        if (fractional_x256 >= 32) ucbrsx |= 0x20;
+        if (fractional_x256 >= 16) ucbrsx |= 0x10;
+        
+        *mctlw = ucbrsx;
     }
 }
 
 /**
- * @brief Initialize UART peripheral
+ * @brief Initialize UART peripheral according to TI recommended sequence
  * 
  * @param uart UART instance
  * @param baud_rate Baud rate
@@ -100,23 +126,39 @@ static void calculate_baud_rate(unsigned long baud_rate, uint16_t *br0, uint16_t
  */
 void uart_init(uart_instance_t *uart, const unsigned long baud_rate, const uart_pins_t* pins) {
     if (uart == NULL || pins == NULL) return;
-    uint16_t br0, br1, mctlw;
+    
+    // Step 1: Set UCSWRST (BIT.B #UCSWRST,&UCAxCTL1)
     *(uart->CTLW0) = UCSWRST;
-    *(uart->CTLW0) |= UCSSEL__SMCLK;
-    calculate_baud_rate(baud_rate, &br0, &br1, &mctlw);
-    *(uart->BR0) = br0;
-    *(uart->BR1) = br1;
-    *(uart->MCTLW) = mctlw;
-    // Use unified uart_pins_t struct
+    
+    // Step 2: Initialize all eUSCI_A registers with UCSWRST = 1 (including UCAxCTL1)
+    *(uart->CTLW0) |= UCSSEL__SMCLK;  // Select SMCLK as clock source
+    
+    // Configure ports (Step 3)
     volatile uint8_t *port_sel0 = (volatile uint8_t *)pins->port_sel0;
     volatile uint8_t *port_sel1 = (volatile uint8_t *)pins->port_sel1;
     uint8_t tx_mask = pins->tx_pin_mask;
     uint8_t rx_mask = pins->rx_pin_mask;
     if (port_sel0 && port_sel1) {
-        *port_sel0 &= ~(tx_mask | rx_mask);
-        *port_sel1 |= (tx_mask | rx_mask);
+        // Set pins to UART function (secondary function)
+        *port_sel0 &= ~(tx_mask | rx_mask);  // Clear PxSEL0
+        *port_sel1 |= (tx_mask | rx_mask);   // Set PxSEL1
     }
-    *(uart->CTLW0) &= ~UCSWRST;
+    
+    // Step 4: Clear UCSWRST through software (BIC.B #UCSWRST,&UCAxCTL1)
+    uint16_t br0, br1, mctlw;
+    calculate_baud_rate(baud_rate, &br0, &br1, &mctlw);
+    *(uart->BR0) = br0;
+    *(uart->BR1) = br1;
+    *(uart->MCTLW) = mctlw;
+    
+    // Enable glitch suppression for better receive reliability
+    *(uart->CTLW0) &= ~UCSWRST;  // Release from reset
+    
+    // Step 5: Enable interrupts (optional) through UCRXxIE and/or UCTXxIE
+    // This is done later in uart_set_receive_mode if needed
+    
+    // Clear any pending flags
+    *(uart->IFG) &= ~(uart->rx_flag_bit | uart->tx_flag_bit);
 }
 
 /**
@@ -127,7 +169,22 @@ void uart_init(uart_instance_t *uart, const unsigned long baud_rate, const uart_
  */
 bool uart_data_ready(uart_instance_t *uart) {
     if (uart == NULL) return false;
-    return (*(uart->IFG) & uart->rx_flag_bit) != 0;
+    
+    // Primary check: UCRXIFG flag in interrupt flag register
+    if ((*(uart->IFG) & uart->rx_flag_bit) != 0) {
+        return true;
+    }
+    
+    // Secondary check: Status register (some MSP430 variants)
+    // Note: STATW might not have UCRXIFG, so we check for receive errors that indicate activity
+    if (*(uart->STATW) & (UCFE | UCOE | UCPE)) {
+        // Clear error by reading RXBUF
+        volatile uint16_t dummy = *(uart->RXBUF);
+        (void)dummy;
+        return false; // Error occurred, no valid data
+    }
+    
+    return false;
 }
 
 /**
@@ -142,7 +199,7 @@ bool uart_tx_idle(uart_instance_t *uart) {
 }
 
 /**
- * @brief Read a byte from UART
+ * @brief Read a byte from UART with proper error handling
  * 
  * @param uart UART instance
  * @return received byte
@@ -150,12 +207,35 @@ bool uart_tx_idle(uart_instance_t *uart) {
 char uart_read(uart_instance_t *uart) {
     if (uart == NULL) return 0;
     
-    // Wait for data to be ready
-    while (!uart_data_ready(uart)) {
-        // Wait
+    // Wait for receive interrupt flag to be set
+    while ((*(uart->IFG) & uart->rx_flag_bit) == 0) {
+        // Check for break condition (might indicate line issues)
+        if (*(uart->STATW) & UCBRK) {
+            // Break detected - clear by reading RXBUF
+            volatile uint16_t dummy = *(uart->RXBUF);
+            (void)dummy;
+            // Reset break flag
+            *(uart->STATW) &= ~UCBRK;
+        }
+        
+        // Check for other errors
+        if (*(uart->STATW) & (UCFE | UCOE | UCPE)) {
+            // Clear error flags by reading RXBUF
+            volatile uint16_t dummy = *(uart->RXBUF);
+            (void)dummy;
+            return 0; // Return null character on error
+        }
     }
     
-    // Read and return data (reading RXBUF automatically clears the flag)
+    // Check one more time for errors before reading valid data
+    if (*(uart->STATW) & (UCFE | UCOE | UCPE | UCBRK)) {
+        volatile uint16_t dummy = *(uart->RXBUF);
+        (void)dummy;
+        return 0;
+    }
+    
+    // Read data (this automatically clears UCRXIFG)
+    // The glitch suppression in hardware should have filtered out spurious start bits
     return (char)(*(uart->RXBUF) & 0xFF);
 }
 
@@ -260,13 +340,8 @@ void uart_write_bytes(uart_instance_t *uart, const uint8_t* data, size_t length)
 void uart_write_uint32(uart_instance_t *uart, uint32_t value) {
     if (uart == NULL) return;
     
-    uint8_t bytes[4] = {
-        (value >> 24) & 0xFF,   // High byte first (big-endian)
-        (value >> 16) & 0xFF,
-        (value >> 8) & 0xFF,
-        value & 0xFF            // Low byte last
-    };
-    uart_write_bytes(uart, bytes, 4);
+    uint32_t value_be = htobe32(value);
+    uart_write_bytes(uart, (const uint8_t*)&value_be, sizeof(uint32_t));
 }
 
 /**
@@ -279,20 +354,91 @@ void uart_set_receive_mode(uart_instance_t *uart, bool enable) {
     if (uart == NULL) return;
     
     if (enable) {
-        // Clear any pending receive flags
+        // Make sure UART is not in reset state first
+        *(uart->CTLW0) &= ~UCSWRST;
+        
+        // Clear any pending receive flags and errors
         *(uart->IFG) &= ~uart->rx_flag_bit;
         
-        // Enable receive interrupt
-        *(uart->IE) |= uart->rx_flag_bit;
+        // Clear any error flags by reading RXBUF if needed
+        if (*(uart->STATW) & (UCFE | UCOE | UCPE | UCBRK)) {
+            volatile uint16_t dummy = *(uart->RXBUF);
+            (void)dummy;
+        }
         
-        // Make sure UART is not in reset state
-        *(uart->CTLW0) &= ~UCSWRST;
+        // Enable receive interrupt if desired (optional for polling)
+        // *(uart->IE) |= uart->rx_flag_bit;
     } else {
         // Disable receive interrupt
         *(uart->IE) &= ~uart->rx_flag_bit;
         
         // Clear any pending receive flags
         *(uart->IFG) &= ~uart->rx_flag_bit;
+    }
+}
+
+/**
+ * @brief Non-blocking read function for debugging
+ * 
+ * @param uart UART instance
+ * @param data Pointer to store received byte
+ * @return true if data was read, false if no data available
+ */
+bool uart_read_nonblocking(uart_instance_t *uart, char *data) {
+    if (uart == NULL || data == NULL) return false;
+    
+    // Check if data is available
+    if ((*(uart->IFG) & uart->rx_flag_bit) != 0) {
+        // Check for errors first
+        if (*(uart->STATW) & (UCFE | UCOE | UCPE | UCBRK)) {
+            // Clear error by reading RXBUF
+            volatile uint16_t dummy = *(uart->RXBUF);
+            (void)dummy;
+            *data = 0;
+            return false;
+        }
+        
+        *data = (char)(*(uart->RXBUF) & 0xFF);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * @brief Get UART status for debugging
+ * 
+ * @param uart UART instance
+ * @return Status word value
+ */
+uint16_t uart_get_status(uart_instance_t *uart) {
+    if (uart == NULL) return 0;
+    return *(uart->STATW);
+}
+
+/**
+ * @brief Check for specific UART errors
+ * 
+ * @param uart UART instance
+ * @return Error flags (UCFE | UCOE | UCPE | UCBRK)
+ */
+uint16_t uart_get_errors(uart_instance_t *uart) {
+    if (uart == NULL) return 0;
+    return *(uart->STATW) & (UCFE | UCOE | UCPE | UCBRK);
+}
+
+/**
+ * @brief Clear UART error flags
+ * 
+ * @param uart UART instance
+ */
+void uart_clear_errors(uart_instance_t *uart) {
+    if (uart == NULL) return;
+    
+    // Reading RXBUF clears most error flags
+    if (*(uart->STATW) & (UCFE | UCOE | UCPE | UCBRK)) {
+        volatile uint16_t dummy = *(uart->RXBUF);
+        (void)dummy;
     }
 }
 

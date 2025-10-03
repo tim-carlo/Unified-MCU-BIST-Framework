@@ -23,7 +23,7 @@ void get_initial_pin_state(PinData *pin_data_array, uint64_t *black_list_mask)
 {
     uint64_t all_pins_mask;
     if (NUMBER_OF_GPIO_PINS >= 64) {
-        all_pins_mask = ~0ULL;  // Alle Bits gesetzt wenn >= 64 Pins
+        all_pins_mask = ~0ULL;  // All 64 bits set
     } else {
         all_pins_mask = (1ULL << NUMBER_OF_GPIO_PINS) - 1;
     }

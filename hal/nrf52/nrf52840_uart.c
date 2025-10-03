@@ -3,6 +3,7 @@
 #include "nrf52_bitfields.h"
 #include <string.h>
 #include "nrf52840_gpio.h"
+#include "endian.h"
 
 /**
  * @brief Get the nrf baudrate object
@@ -234,13 +235,8 @@ void uart_write_bytes(uart_instance_t uart, const uint8_t* data, size_t length) 
 void uart_write_uint32(uart_instance_t uart, uint32_t value) {
     if (uart == NULL) return;
     
-    uint8_t bytes[4] = {
-        (value >> 24) & 0xFF,   // High byte first (big-endian)
-        (value >> 16) & 0xFF,
-        (value >> 8) & 0xFF,
-        value & 0xFF            // Low byte last
-    };
-    uart_write_bytes(uart, bytes, 4);
+    uint32_t value_be = htobe32(value);
+    uart_write_bytes(uart, (const uint8_t*)&value_be, sizeof(uint32_t));
 }
 
 /**

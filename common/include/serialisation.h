@@ -29,7 +29,7 @@ extern "C" {
 #include "printf.h"
 #include "cb0r.h"
 #include "crc.h"
-#include "crc.h"
+#include "endian.h"
 
 typedef struct
 {
