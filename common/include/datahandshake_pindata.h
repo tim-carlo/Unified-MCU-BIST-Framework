@@ -18,10 +18,12 @@
 
 typedef enum
 {
+    JOB_LISTEN,
     JOB_SEND_REQUEST,
     JOB_SEND_ANSWER,
     JOB_WAIT_FOR_ANSWER,
-    JOB_LISTEN,
+    JOB_WAIT_FOR_REQUEST,
+    JOB_TRANSMITTING,
 } CurrentJobType;
 typedef struct
 {
@@ -30,11 +32,11 @@ typedef struct
     // bit 3 for received request, bit 4 for received answer, bit 5 for successful handshake, 
     // bit 6 for failed handshake, bit 7 is connected with own device
     uint8_t status;
+    CurrentJobType current_job;
     uint8_t number_of_successful_tries;
     uint16_t receiving_counter;
     uint16_t time_until_next_send;
     uint32_t last_send_counter;
-    CurrentJobType current_job;
     crc last_crc;
 } DataHandshakeData;
 
