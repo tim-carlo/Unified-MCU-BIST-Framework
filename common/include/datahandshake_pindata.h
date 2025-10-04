@@ -36,7 +36,7 @@ typedef struct
     uint8_t number_of_successful_tries;
     uint16_t receiving_counter;
     uint16_t time_until_next_send;
-    uint32_t last_send_counter;
+    uint32_t last_send_job_order;
     crc last_crc;
 } DataHandshakeData;
 

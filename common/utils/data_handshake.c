@@ -23,6 +23,7 @@
 #define INITIAL_LOW_TIME_ANSWER_MS 100
 #define INITIAL_LOW_TIME_ANSWER_MIN_MS (INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY)
 #define INITIAL_LOW_TIME_ANSWER_MAX_MS (INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY)
+#define TIMEOUT_CYCLES 1000
 
 // Global variables
 PinData *global_pindata;
@@ -280,10 +281,42 @@ static void fsm_data_handshake(void)
         else
         {
             bool state = gpio_read(pin);
-            if(!state) // 0 means signal in opendrain
+            if (!state) // 0 means signal in opendrain
             {
+                if (pindata->current_job == JOB_LISTEN)
+                {
+                    pindata->receiving_counter++;
+                }
+                else if (pindata->current_job == JOB_SEND_REQUEST && (counter - pindata->last_send_job_order) >= INITIAL_LOW_TIME_REQUEST_MS)
+                {
+                    send_request_in_background(pin);
+                }
+                else if (pindata->current_job == JOB_SEND_ANSWER && (counter - pindata->last_send_job_order) >= INITIAL_LOW_TIME_ANSWER_MS)
+                {
+                    send_answer_in_background(pin);
+                }
+            }
+            else
+            {
+                if (pindata->receiving_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && pindata->receiving_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
+                {
+                    handle_request(pin);
+                }
+                else if (pindata->receiving_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && pindata->receiving_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+                {
+                    handle_answer(pin);
+                }
+                else
+                {
 
-            } 
+                    if (pindata->current_job == JOB_WAIT_FOR_ANSWER && (counter - pindata->last_send_job_order) > TIMEOUT_CYCLES)
+                    {
+                        // Timeout waiting for request
+                        pindata->current_job = JOB_SEND_REQUEST;
+                        pindata->last_send_job_order = counter;
+                    }
+                }
+            }
         }
     }
     counter++;
