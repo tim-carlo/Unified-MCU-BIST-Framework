@@ -26,13 +26,14 @@
 // Global variables
 PinData *global_pindata;
 static DataHandshakeData *global_datahandshake_pindata = NULL; // Global pointer to DataHandshakeData array
+static RequestDataPacket request_packet;
+static uint8_t *request_buffer;
+static uint8_t *answer_buffer;
 
 static uint64_t internal_blacklist_mask = 0;
 static uint64_t responder_mask = 0;
 static uint64_t initiator_mask = 0;
 static uint64_t uuid = 0;
-static uint32_t listen_until_time = 0;
-static uint32_t counter = 0;
 static volatile bool interrupt_flag = false;
 
 static uint8_t number_of_pins = 0;
@@ -226,6 +227,7 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     return true;
 }
 
+static uint32_t counter = 0;
 static void fsm_data_handshake(void)
 {
     gpio_drive_high(DEBUG_PIN1);
@@ -234,34 +236,133 @@ static void fsm_data_handshake(void)
     {
         DataHandshakeData *data = &global_datahandshake_pindata[i];
         uint8_t pin = data->pin;
-        bool pin_state = gpio_read(pin);
 
-        if (pin_state)
+        // Only send a request if this pin is an initiator
+        if (!get_role(data) && (data->last_send_counter - counter) >= data->time_until_next_send)
         {
-            if (data->receiving_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && data->receiving_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
-            {
-                // Detected valid request signal
+            data->last_send_counter = counter;
+            data->current_job = JOB_SEND_REQUEST;
 
+            // data->time_until_next_send = get_listen_until_time(); // Schedule next send
+        }
+        else if (data->current_job == JOB_SEND_REQUEST && (counter - data->last_send_counter) > INITIAL_LOW_TIME_REQUEST_MS)
+        {
+            // Time to send a request
+            RequestDataPacket request_packet = {
+                .uuid = uuid,
+                .pin = pin};
+            construct_request_data_packet(&request_packet, request_buffer);
 
-                set_received_request(data, true);
-                data->receiving_counter = 0; // Reset counter after valid detection
-            }
-            else if (data->receiving_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && data->receiving_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
-            {
-                // Detected valid answer signal
-                set_received_answer(data, true);
-                LOG("Pin %u: Detected valid ANSWER signal\n", pin);
-                data->receiving_counter = 0; // Reset counter after valid detection
-            } else if (data->receiving_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS) {
-                data->receiving_counter = 0; // Reset counter if signal is too long
-            }
+            manchester_set_tx_pin_od(pin);
+            manchester_transmit_in_background(request_buffer, REQUEST_PACKSIZE);
+
+            data->current_job = JOB_LISTEN;
+            data->current_job = JOB_WAIT_FOR_ANSWER;
         }
         else
         {
-            // Signal is low, increment counter (open-drain low)
-            data->receiving_counter++;
+            bool pin_state = gpio_read(pin);
+
+            if (pin_state)
+            {
+                if (data->receiving_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && data->receiving_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
+                {
+                    // Detected valid request signal
+                    manchester_set_rx_pin_od(pin);
+                    bool request = manchester_receive_array(request_buffer, REQUEST_PACKSIZE);
+                    // A valid request packet was received
+                    if (request)
+                    {
+                        if (deconstruct_request_data_packet(request_buffer, &request_packet))
+                        {
+                            // Validate CRC
+                            uint32_t computed_crc = crcFast(request_buffer, 10);
+
+                            // When CRC matches, prepare and send answer
+                            // Then send the answer on the same pin, but in background so that we can handle other tasks
+                            if (computed_crc == request_packet.crc_value)
+                            {
+                                LOG("Pin %u: Valid REQUEST packet received\n", pin);
+                                log_request_data_packet(&request_packet);
+                                // Prepare and send answer packet
+
+                                AnswerDataPacket answer_packet = {
+                                    .received_uuid = request_packet.uuid,
+                                    .received_pin = request_packet.pin,
+                                    .own_uuid = uuid,
+                                    .sending_pin = pin};
+                                construct_answer_data_packet(&answer_packet, answer_buffer);
+
+                                manchester_set_tx_pin_od(pin);
+                                manchester_transmit_in_background(answer_buffer, ANSWER_PACKSIZE);
+                            }
+                            else
+                            {
+                                LOG("Pin %u: Invalid CRC in REQUEST packet (computed: 0x%08x, received: 0x%08x)\n", pin, computed_crc, request_packet.crc_value);
+                            }
+                        }
+                        else
+                        {
+                            LOG("Pin %u: Failed to deconstruct REQUEST packet\n", pin);
+                        }
+                    }
+                    else
+                    {
+                        LOG("Pin %u: Failed to receive REQUEST packet\n", pin);
+                    }
+                    set_received_request(data, true);
+                    data->receiving_counter = 0; // Reset counter after valid detection
+                }
+                else if (data->receiving_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && data->receiving_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+                {
+                    manchester_set_rx_pin_od(pin);
+                    bool answer = manchester_receive_array(answer_buffer, ANSWER_PACKSIZE);
+
+                    AnswerDataPacket answer_packet;
+                    // When a valid answer packet is received, log it
+                    if (answer)
+                    {
+                        if (deconstruct_answer_data_packet(answer_buffer, &answer_packet))
+                        {
+                            // Validate CRC
+                            uint32_t computed_crc = crcFast(answer_buffer, 19);
+                            if (computed_crc == answer_packet.crc_value)
+                            {
+                                LOG("Pin %u: Valid ANSWER packet received\n", pin);
+                                log_answer_data_packet(&answer_packet);
+                            }
+                            else
+                            {
+                                LOG("Pin %u: Invalid CRC in ANSWER packet (computed: 0x%08x, received: 0x%08x)\n", pin, computed_crc, answer_packet.crc_value);
+                            }
+                        }
+                        else
+                        {
+                            LOG("Pin %u: Failed to deconstruct ANSWER packet\n", pin);
+                        }
+                    }
+                    else
+                    {
+                        // Detected valid answer signal
+                        set_received_answer(data, true);
+                        LOG("Pin %u: Detected valid ANSWER signal\n", pin);
+                        data->receiving_counter = 0; // Reset counter after valid detection
+                    }
+                }
+                else if (data->receiving_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS)
+                {
+                    data->receiving_counter = 0; // Reset counter if signal is too long
+                }
+            }
+            else
+            {
+                // Signal is low, increment counter (open-drain low)
+                data->receiving_counter++;
+            }
         }
     }
+
+    counter++;
     gpio_drive_low(DEBUG_PIN1);
 }
 /**
@@ -291,11 +392,25 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     }
 
     // Allocate or reallocate global DataHandshakeData array
-    free(global_datahandshake_pindata);
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
     if (!global_datahandshake_pindata)
     {
         LOG("Failed to allocate DataHandshakeData array\n");
+        return; // Allocation failed
+    }
+
+    request_buffer = calloc(REQUEST_PACKSIZE, sizeof(uint8_t));
+    answer_buffer = calloc(ANSWER_PACKSIZE, sizeof(uint8_t));
+
+    if (!request_buffer || !answer_buffer)
+    {
+        LOG("Failed to allocate request or answer buffer\n");
+        free(global_datahandshake_pindata);
+        global_datahandshake_pindata = NULL;
+        if (request_buffer)
+            free(request_buffer);
+        if (answer_buffer)
+            free(answer_buffer);
         return; // Allocation failed
     }
 
@@ -311,12 +426,16 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
             .number_of_successful_tries = 0,
             .receiving_counter = 0,
             .last_send_counter = 0,
+            .time_until_next_send = 0,
+            .current_job = JOB_LISTEN,
             .last_crc = 0};
 
         // Set role based on masks
         if (initiator_mask & (1ULL << pin_index))
         {
             set_role(&global_datahandshake_pindata[idx], false); // Initiator
+            // If the pin is initiator, the devie will send requests on this pin
+            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time();
         }
         else if (responder_mask & (1ULL << pin_index))
         {
@@ -327,8 +446,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     }
 
     // set initial listening time
-    listen_until_time = get_listen_until_time();
-    LOG("Initial listen time: %lu ms\n", (unsigned long)listen_until_time);
+    // listen_until_time = get_listen_until_time();
 
     // Start timer
     start_send_data_timer();

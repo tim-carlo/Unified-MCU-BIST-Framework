@@ -14,6 +14,15 @@
 #define STATUS_FAILED_HS (1U << 6)           // Set on failed handshake
 #define STATUS_CONNECTED_OWN (1U << 7)       // Set when connected with own device
 
+
+
+typedef enum
+{
+    JOB_SEND_REQUEST,
+    JOB_SEND_ANSWER,
+    JOB_WAIT_FOR_ANSWER,
+    JOB_LISTEN,
+} CurrentJobType;
 typedef struct
 {
     uint8_t pin;
@@ -23,7 +32,9 @@ typedef struct
     uint8_t status;
     uint8_t number_of_successful_tries;
     uint16_t receiving_counter;
-    uint16_t last_send_counter;
+    uint16_t time_until_next_send;
+    uint32_t last_send_counter;
+    CurrentJobType current_job;
     crc last_crc;
 } DataHandshakeData;
 
