@@ -256,9 +256,18 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
 
 bool manchester_transmit_in_background_complete(void)
 {
-    bool transmission = transmission_complete;
-    transmission_complete = false;
-    return transmission;
+    // When the transmission is complete, reset mode to NONE and return true
+    // and also reset transmission_complete flag
+    if (transmission_complete)
+    {
+      //  mode = MANCHESTER_NONE;
+        transmission_complete = false;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
@@ -298,10 +307,11 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
     while (!transmission_complete)
     {
     }
+
+    mode = MANCHESTER_NONE;
     LOG("Transmission complete\n");
     return true;
 }
-
 
 bool manchester_is_transmitting(void)
 {

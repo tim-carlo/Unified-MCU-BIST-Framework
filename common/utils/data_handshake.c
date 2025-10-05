@@ -227,6 +227,9 @@ static bool handle_request(uint8_t pin, DataHandshakeData *p)
 
     manchester_set_rx_pin(pin);
 
+    // Clear buffer before receiving
+    memset(request_buffer, 0, REQUEST_PACKSIZE);
+
     if (!manchester_receive_array(request_buffer, REQUEST_PACKSIZE))
         return false;
 
@@ -257,7 +260,7 @@ static bool handle_request(uint8_t pin, DataHandshakeData *p)
     dhandshake_set_send_answer(p, true);
     p->current_job = JOB_SEND_ANSWER;
 
-    printf("Responding on pin %u\n", pin);
+    // printf("Responding on pin %u\n", pin);
     gpio_od_hold_low(pin); // Hold the line low to signal we're responding
     return true;
 }
@@ -266,14 +269,24 @@ static bool handle_answer(uint8_t pin, DataHandshakeData *p)
 {
     bool result;
     manchester_set_rx_pin(pin);
+
+    // Clear buffer before receiving
+    memset(answer_buffer, 0, ANSWER_PACKSIZE);
+
     result = manchester_receive_array(answer_buffer, ANSWER_PACKSIZE);
     if (!result)
+    {
+        p->current_job = JOB_LISTEN;
         return false;
+    }
 
     AnswerDataPacket answer_packet;
     result = deconstruct_answer_data_packet((const uint8_t *)answer_buffer, &answer_packet);
     if (!result)
+    {
+        p->current_job = JOB_LISTEN;
         return false;
+    }
     // Verify CRC
     // crc computed_crc = crcFast(answer_buffer, 19); // Calculate CRC over type,
     // if (computed_crc != answer_packet.crc_value)
@@ -293,19 +306,21 @@ static bool handle_answer(uint8_t pin, DataHandshakeData *p)
 
     p->current_job = JOB_LISTEN;
     p->number_of_successful_tries++;
+    // Schedule next send time to avoid immediate resend
+    p->time_until_next_send = get_listen_until_time() + 10000;
 
     printf("Pin connection added: local_pin=%u, remote_pin=%u\n",
            pin, answer_packet.sending_pin);
     return true;
 }
 
-static void send_request_in_background(uint8_t pin, DataHandshakeData *p)
+static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
 
     gpio_drive_high(DEBUG_PIN2);
     // Small delay to ensure line is released before transmitting
-    delay_us(1000);
+    delay_us(5000);
 
     // Mark that we're sending a request
     dhandshake_set_send_request(p, true);
@@ -317,35 +332,46 @@ static void send_request_in_background(uint8_t pin, DataHandshakeData *p)
     p->request_packet = &static_request_packet;
     construct_request_data_packet(&static_request_packet, request_buffer);
 
-    manchester_set_tx_pin_od(pin);
-    manchester_transmit_array_in_background(request_buffer, REQUEST_PACKSIZE);
+    // printf("Requesting on pin %u\n", pin);
 
+    manchester_set_tx_pin_od(pin);
+    bool result = manchester_transmit_array_in_background(request_buffer, REQUEST_PACKSIZE);
+    if (!result)
+    {
+        p->current_job = JOB_LISTEN;
+        return false;
+    }
     p->current_job = JOB_TRANSMITTING_REQUEST;
-    printf("Requesting on pin %u\n", pin);
 }
-static void send_answer_in_background(uint8_t pin, DataHandshakeData *p)
+static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_drive_high(DEBUG_PIN2);
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
-    delay_us(1000);
+    delay_us(5000);
 
     // Check for null pointer to prevent crashes
     if (!p->answer_packet)
     {
         p->current_job = JOB_LISTEN;
-        return;
+        return false;
     }
 
     // Clear buffer and prepare answer packet
     memset(answer_buffer, 0, ANSWER_PACKSIZE);
     construct_answer_data_packet(p->answer_packet, answer_buffer);
 
+    // printf("Answering on pin %u\n", pin);
     manchester_set_tx_pin_od(pin);
-    manchester_transmit_array_in_background(answer_buffer, ANSWER_PACKSIZE);
+    bool result = manchester_transmit_array_in_background(answer_buffer, ANSWER_PACKSIZE);
+    if (!result)
+    {
+        p->current_job = JOB_LISTEN;
+        return false;
+    }
 
     p->current_job = JOB_TRANSMITTING_ANSWER;
-    printf("Answering on pin %u\n", pin);
+
     gpio_drive_low(DEBUG_PIN2);
 }
 
@@ -365,28 +391,12 @@ static void fsm_data_handshake(void)
         // Check if transmission is complete for transmitting jobs
         if (p->current_job == JOB_TRANSMITTING_REQUEST || p->current_job == JOB_TRANSMITTING_ANSWER)
         {
+
             bool is_complete = manchester_transmit_in_background_complete();
 
             if (!is_complete)
             {
-                // This occures if the transmission takes too long and maybe stucks
-                if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
-                {
-                    // Timeout occurred, reset to listening state
-                    p->current_job = JOB_LISTEN;
-                    // Schedule next send time to avoid immediate resend
-                    p->time_until_next_send = counter + get_listen_until_time();
-                }
-                else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
-                {
-                    // Timeout occurred, reset to listening state
-                    // Dont resend answer, just go back to listening and wait for new request
-                    p->current_job = JOB_LISTEN;
-                }
-                else
-                {
-                    continue; // Still transmitting, skip this pin
-                }
+                continue; // Still transmitting, skip this pin
             }
 
             // Transmission completed, update job state
@@ -404,6 +414,7 @@ static void fsm_data_handshake(void)
 
         if (line_low)
         {
+            gpio_drive_high(DEBUG_PIN2);
             // Increment receiving_counter for relevant jobs
             if (p->current_job == JOB_LISTEN ||
                 p->current_job == JOB_WAIT_FOR_ANSWER ||
@@ -428,6 +439,7 @@ static void fsm_data_handshake(void)
                 if (delta >= INITIAL_LOW_TIME_ANSWER_MS)
                     send_answer_in_background(pin, p);
             }
+            gpio_drive_low(DEBUG_PIN2);
         }
         else
         {
@@ -436,7 +448,8 @@ static void fsm_data_handshake(void)
             if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS &&
                 receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
             {
-                p->receiving_counter = 0;
+                // gpio_drive_high(DEBUG_PIN2);
+
                 if (!handle_request(pin, p))
                 {
                     dhandshake_set_failed_handshake(p, true);
@@ -445,29 +458,45 @@ static void fsm_data_handshake(void)
                 {
                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
-                gpio_drive_low(DEBUG_PIN2);
+                p->receiving_counter = 0;
+                p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+
+                // gpio_drive_low(DEBUG_PIN2);
             }
             else if (receive_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS &&
                      receive_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
             {
-                p->receiving_counter = 0;
+
                 if (!handle_answer(pin, p))
                 {
-                    dhandshake_set_failed_handshake(p, true);
+                    dhandshake_set_failed_handshake(p, false);
                 }
-                else
-                {
-                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
-                }
+                p->receiving_counter = 0;
+                p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+            }
+            else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS)
+            {
+                // Signal too long, reset counters
+                p->receiving_counter = 0;
             }
             else
             {
+                // Check if we have to resend request due to timeout
                 if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR &&
                     counter >= p->time_until_next_send && p->current_job == JOB_LISTEN)
                 {
-                    p->current_job = JOB_SEND_REQUEST;
-                    p->last_send_job_order = counter;
-                    gpio_od_hold_low(pin); // Start sending by pulling line low
+                    // Only send if manchester is idle (not transmitting or receiving), since the Manchester lib doesnt works in parallel
+                    if (manchester_is_idle())
+                    {
+                        p->current_job = JOB_SEND_REQUEST;
+                        p->last_send_job_order = counter;
+                        gpio_od_hold_low(pin); // Start sending by pulling line low
+                    }
+                    else
+                    {
+                        // If manchester is busy, try again later
+                        p->time_until_next_send = 10000;
+                    }
                 }
                 // Occures when no answer was received in time, then send request again
                 else if (p->current_job == JOB_WAIT_FOR_ANSWER &&
@@ -558,7 +587,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
 
     // Initialization complete    // Start timer
     start_send_data_timer();
-    manchester_init(BAUD_1200);
+    manchester_init(BAUD_600);
 
     while (true)
     {
