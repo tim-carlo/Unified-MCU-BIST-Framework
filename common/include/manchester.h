@@ -54,5 +54,8 @@ bool manchester_receive_array(uint8_t *data, uint8_t size);
 
 // Helpers
 uint32_t get_sample_interval_us(BaudRate rate);
+bool manchester_is_transmitting(void);
+bool manchester_is_receiving(void);
+bool manchester_is_idle(void);
 
 #endif // MANCHESTER_h

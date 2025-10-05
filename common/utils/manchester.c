@@ -34,7 +34,7 @@ typedef enum
 static volatile ManchesterMode mode = MANCHESTER_NONE;
 static volatile uint8_t tx_pin = 255;
 static volatile uint8_t rx_pin = 255;
-static volatile uint8_t interrupt_flag = 0;
+static volatile bool interrupt_flag = 0;
 
 static uint8_t encoder_buffer[ENCODER_BUFFER_SIZE];
 static uint8_t decoder_buffer[DECODER_BUFFER_SIZE];
@@ -70,9 +70,7 @@ static bool read_Rx()
 
 static void manchester_timer_isr(void)
 {
-#if DEBUG == 1
-    gpio_toggle(DEBUG_PIN_ABS);
-#endif
+
     switch (mode)
     {
     case MANCHESTER_SEND:
@@ -101,7 +99,7 @@ static void manchester_timer_isr(void)
     }
     case MANCHESTER_RECEIVE:
     {
-        interrupt_flag = 1;
+        interrupt_flag = true;
         break;
     }
     default:
@@ -215,7 +213,7 @@ void manchester_deinit()
 
 bool manchester_receive_array(uint8_t *data, uint8_t size)
 {
-    if (rx_pin == 255 || !decoder_initialized)
+    if (rx_pin == 255 || !decoder_initialized || mode != MANCHESTER_NONE) // if not idle and not initialized
     {
         return false;
     }
@@ -223,7 +221,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
     mode = MANCHESTER_RECEIVE;
     receive_buffer = data;
     uint32_t timeout_counter = 0;
-    const uint32_t max_timeout = 1000000;
+    const uint32_t max_timeout = 10000;
 
     bool decoder_succesfull = false;
 
@@ -232,7 +230,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         while (!interrupt_flag)
         {
         }
-        interrupt_flag = 0;
+        interrupt_flag = false;
         bool rx_state = read_Rx();
         enum spooky_decoder_step_res step_result = spooky_decoder_step(&dec, rx_state);
 
@@ -248,6 +246,9 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
             return false;
         }
         timeout_counter++;
+#if DEBUG == 1
+        gpio_toggle(DEBUG_PIN_ABS);
+#endif
     }
 
     return decoder_succesfull;
@@ -262,7 +263,8 @@ bool manchester_transmit_in_background_complete(void)
 
 bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
 {
-    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
+    // Check if we are already transmitting/receiving or not initialized
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE || mode != MANCHESTER_NONE)
     {
         return false;
     }
@@ -279,7 +281,7 @@ bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
 
 bool manchester_transmit_array(uint8_t *data, uint8_t size)
 {
-    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE || mode != MANCHESTER_NONE)
     {
         return false;
     }
@@ -298,4 +300,18 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
     }
     LOG("Transmission complete\n");
     return true;
+}
+
+
+bool manchester_is_transmitting(void)
+{
+    return mode == MANCHESTER_SEND;
+}
+bool manchester_is_receiving(void)
+{
+    return mode == MANCHESTER_RECEIVE;
+}
+bool manchester_is_idle(void)
+{
+    return mode == MANCHESTER_NONE;
 }
