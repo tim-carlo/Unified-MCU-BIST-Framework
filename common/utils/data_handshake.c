@@ -20,6 +20,8 @@
 #define INITIAL_LOW_TIME_ANSWER_MIN_MS (INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY)
 #define INITIAL_LOW_TIME_ANSWER_MAX_MS (INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY)
 #define TIMEOUT_CYCLES 10000
+#define TIMEOUT_CYCLES_SENDING_REQUEST 1000
+#define TIMEOUT_CYCLES_SENDING_ANSWER 2000
 
 // Global variables
 PinData *global_pindata;
@@ -292,7 +294,8 @@ static bool handle_answer(uint8_t pin, DataHandshakeData *p)
     p->current_job = JOB_LISTEN;
     p->number_of_successful_tries++;
 
-    printf("Successful handshake on pin %u with device 0x%016llx\n", pin, (unsigned long long)other_device_id);
+    printf("Pin connection added: local_pin=%u, remote_pin=%u\n",
+           pin, answer_packet.sending_pin);
     return true;
 }
 
@@ -346,7 +349,7 @@ static void send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     gpio_drive_low(DEBUG_PIN2);
 }
 
-static uint64_t counter = 0;
+static uint32_t counter = 0;
 
 static void fsm_data_handshake(void)
 {
@@ -357,6 +360,7 @@ static void fsm_data_handshake(void)
     {
         DataHandshakeData *p = &global_datahandshake_pindata[i];
         uint8_t pin = p->pin;
+        uint32_t delta = counter - p->last_send_job_order;
 
         // Check if transmission is complete for transmitting jobs
         if (p->current_job == JOB_TRANSMITTING_REQUEST || p->current_job == JOB_TRANSMITTING_ANSWER)
@@ -365,7 +369,24 @@ static void fsm_data_handshake(void)
 
             if (!is_complete)
             {
-                continue; // Still transmitting, skip this pin
+                // This occures if the transmission takes too long and maybe stucks
+                if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
+                {
+                    // Timeout occurred, reset to listening state
+                    p->current_job = JOB_LISTEN;
+                    // Schedule next send time to avoid immediate resend
+                    p->time_until_next_send = counter + get_listen_until_time();
+                }
+                else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+                {
+                    // Timeout occurred, reset to listening state
+                    // Dont resend answer, just go back to listening and wait for new request
+                    p->current_job = JOB_LISTEN;
+                }
+                else
+                {
+                    continue; // Still transmitting, skip this pin
+                }
             }
 
             // Transmission completed, update job state
@@ -380,7 +401,6 @@ static void fsm_data_handshake(void)
         }
 
         bool line_low = !gpio_read(pin); // Line low stands for a signal in open-drain configuration
-        uint32_t delta = counter - p->last_send_job_order;
 
         if (line_low)
         {
@@ -449,6 +469,7 @@ static void fsm_data_handshake(void)
                     p->last_send_job_order = counter;
                     gpio_od_hold_low(pin); // Start sending by pulling line low
                 }
+                // Occures when no answer was received in time, then send request again
                 else if (p->current_job == JOB_WAIT_FOR_ANSWER &&
                          delta > TIMEOUT_CYCLES)
                 {
