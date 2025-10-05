@@ -20,7 +20,7 @@
 #include "nrf52840_time.h"
 #include "nrf52840_gpio.h"
 #include "nrf52840_utils.h"
-#define DATA_TIMER NRF_TIMER3
+#define DATA_TIMER NRF_TIMER2
 #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
@@ -44,24 +44,6 @@
 #include "crc.h"
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
-
-// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC32]
-typedef struct
-{
-    uint64_t uuid;
-    uint8_t pin;
-    crc crc_value;
-} RequestDataPacket;
-
-// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC32]
-typedef struct
-{
-    uint64_t received_uuid;
-    uint8_t received_pin;
-    uint64_t own_uuid;
-    uint8_t sending_pin;
-    crc crc_value;
-} AnswerDataPacket;
 
 #define REQUEST_PACKSIZE 14
 #define ANSWER_PACKSIZE 23

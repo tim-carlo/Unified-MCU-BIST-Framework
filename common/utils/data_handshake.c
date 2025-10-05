@@ -1,5 +1,4 @@
 #include "data_handshake.h"
-#include "nrf52840_gpio.h"
 
 #if defined(NRF52840_XXAA)
 #include "endian.h"
@@ -8,12 +7,9 @@
 #endif
 #include <string.h>
 
-#define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
-#if DEBUG == 1
+// Define LOG macro for logging (can be disabled by commenting out)
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-#else
-#define LOG(fmt, ...)
-#endif
+// #define LOG(fmt, ...) // Uncomment this line to disable logging
 
 #define SEND_INACCURACY 20 // Acceptable inaccuracy in ms for timing checks
 #define INITIAL_LOW_TIME_REQUEST_MS 50
@@ -23,25 +19,26 @@
 #define INITIAL_LOW_TIME_ANSWER_MS 100
 #define INITIAL_LOW_TIME_ANSWER_MIN_MS (INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY)
 #define INITIAL_LOW_TIME_ANSWER_MAX_MS (INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY)
-#define TIMEOUT_CYCLES 1000
+#define TIMEOUT_CYCLES 10000
 
 // Global variables
 PinData *global_pindata;
 static DataHandshakeData *global_datahandshake_pindata = NULL; // Global pointer to DataHandshakeData array
-static RequestDataPacket request_packet;
-static uint8_t *request_buffer;
-static uint8_t *answer_buffer;
+
+static uint8_t request_buffer[REQUEST_PACKSIZE];
+static uint8_t answer_buffer[ANSWER_PACKSIZE];
+static RequestDataPacket static_request_packet;
+static AnswerDataPacket static_answer_packet;
 
 static uint64_t internal_blacklist_mask = 0;
 static uint64_t responder_mask = 0;
 static uint64_t initiator_mask = 0;
 static uint64_t uuid = 0;
-static volatile bool interrupt_flag = false;
+static volatile bool interrupt_cont = false;
 
 static uint8_t number_of_pins = 0;
-static uint8_t selected_pin = 0;
 
-static const uint64_t all_pins_mask = (1ULL << NUMBER_OF_GPIO_PINS) - 1;
+// all_pins_mask will be calculated at runtime
 
 /**
  * @brief This function is used to build the initiator and responder masks based on pindata events
@@ -54,6 +51,9 @@ static void analyze_pindata_events(PinData *pindata)
     // Reset masks
     initiator_mask = 0;
     responder_mask = 0;
+
+    // Calculate all pins mask at runtime - use 64 as safe maximum
+    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
 
     // Iterate through all pins that are not blacklisted
     BitmapIterator it = bitmap_iterator_create(~internal_blacklist_mask & all_pins_mask);
@@ -95,6 +95,11 @@ static uint32_t get_listen_until_time()
     return 200 + (random32() % 10000); // 200-10000ms
 }
 
+static void send_data_isr(void)
+{
+    interrupt_cont = true;
+}
+
 static void start_send_data_timer(void)
 {
 #if defined(NRF52840_XXAA)
@@ -127,23 +132,7 @@ static void stop_send_data_timer(void)
 #endif
 }
 
-static void log_request_data_packet(const RequestDataPacket *packet)
-{
-    LOG("RequestDataPacket: uuid=0x%016llx, pin=%u, hash=0x%08x\n",
-        (unsigned long long)packet->uuid,
-        packet->pin,
-        packet->crc_value);
-}
-
-static void log_answer_data_packet(const AnswerDataPacket *packet)
-{
-    LOG("AnswerDataPacket: received_uuid=0x%016llx, received_pin=%u, own_uuid=0x%016llx, sending_pin=%u, hash=0x%08x\n",
-        (unsigned long long)packet->received_uuid,
-        packet->received_pin,
-        (unsigned long long)packet->own_uuid,
-        packet->sending_pin,
-        packet->crc_value);
-}
+// Logging functions removed to save memory
 
 static void write_u64_le(uint8_t *dst, uint64_t val)
 {
@@ -229,97 +218,247 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     return true;
 }
 
-static bool handle_request(uint8_t pin)
+static bool handle_request(uint8_t pin, DataHandshakeData *p)
 {
+    gpio_drive_high(DEBUG_PIN2);
+    RequestDataPacket request_packet;
+
+    manchester_set_rx_pin(pin);
+
+    if (!manchester_receive_array(request_buffer, REQUEST_PACKSIZE))
+        return false;
+
+    if (!deconstruct_request_data_packet(request_buffer, &request_packet))
+        return false;
+
+    // Verify CRC
+    // Compute CRC over the first 10 bytes (type, uuid, pin)
+    // crc computed_crc = crcFast(request_buffer, 10);
+    // if (computed_crc != request_packet.crc_value)
+    // {
+    //     return false; // CRC mismatch
+    // }
+
+    // Mark that we received a request
+    dhandshake_set_received_request(p, true);
+
+    // Prepare answer packet using static structure to avoid memory leaks
+    static_answer_packet.received_uuid = request_packet.uuid;
+    static_answer_packet.received_pin = request_packet.pin;
+    static_answer_packet.own_uuid = uuid;
+    static_answer_packet.sending_pin = pin;
+    static_answer_packet.crc_value = 0; // Will be calculated later
+
+    p->answer_packet = &static_answer_packet;
+
+    // Mark that we're going to send an answer
+    dhandshake_set_send_answer(p, true);
+    p->current_job = JOB_SEND_ANSWER;
+
+    printf("Responding on pin %u\n", pin);
+    gpio_od_hold_low(pin); // Hold the line low to signal we're responding
     return true;
 }
 
-static bool handle_answer(uint8_t pin)
+static bool handle_answer(uint8_t pin, DataHandshakeData *p)
 {
+    bool result;
+    manchester_set_rx_pin(pin);
+    result = manchester_receive_array(answer_buffer, ANSWER_PACKSIZE);
+    if (!result)
+        return false;
+
+    AnswerDataPacket answer_packet;
+    result = deconstruct_answer_data_packet((const uint8_t *)answer_buffer, &answer_packet);
+    if (!result)
+        return false;
+    // Verify CRC
+    // crc computed_crc = crcFast(answer_buffer, 19); // Calculate CRC over type,
+    // if (computed_crc != answer_packet.crc_value)
+    // {
+    //     return false; // CRC mismatch
+    // }
+    // Mark successful handshake
+    dhandshake_set_received_answer(p, true);
+    dhandshake_set_successful_handshake(p, true);
+
+    // Add pin connection to pindata events
+
+    PinData *pindata = &global_pindata[pin];
+
+    uint64_t other_device_id = answer_packet.own_uuid;
+    add_pin_connection(pindata, pin, answer_packet.received_pin, other_device_id);
+
+    p->current_job = JOB_LISTEN;
+    p->number_of_successful_tries++;
+
+    printf("Successful handshake on pin %u with device 0x%016llx\n", pin, (unsigned long long)other_device_id);
     return true;
 }
 
-static void send_request_in_background(uint8_t pin)
+static void send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    // Prepare request packet
-    RequestDataPacket request_packet = {
-        .uuid = uuid,
-        .pin = pin};
-    construct_request_data_packet(&request_packet, request_buffer);
+    gpio_od_release(pin);
+
+    gpio_drive_high(DEBUG_PIN2);
+    // Small delay to ensure line is released before transmitting
+    delay_us(1000);
+
+    // Mark that we're sending a request
+    dhandshake_set_send_request(p, true);
+
+    static_request_packet.uuid = uuid;
+    static_request_packet.pin = pin;
+    static_request_packet.crc_value = 0; // Will be calculated in construct function
+
+    p->request_packet = &static_request_packet;
+    construct_request_data_packet(&static_request_packet, request_buffer);
 
     manchester_set_tx_pin_od(pin);
-    manchester_transmit_in_background(request_buffer, REQUEST_PACKSIZE);
+    manchester_transmit_array_in_background(request_buffer, REQUEST_PACKSIZE);
+
+    p->current_job = JOB_TRANSMITTING_REQUEST;
+    printf("Requesting on pin %u\n", pin);
 }
-static void send_answer_in_background(uint8_t pin)
+static void send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    // Prepare answer packet
-    AnswerDataPacket answer_packet = {
-        .received_uuid = request_packet.uuid,
-        .received_pin = request_packet.pin,
-        .own_uuid = uuid,
-        .sending_pin = pin};
-    construct_answer_data_packet(&answer_packet, answer_buffer);
+    gpio_drive_high(DEBUG_PIN2);
+    gpio_od_release(pin);
+    // Small delay to ensure line is released before transmitting
+    delay_us(1000);
+
+    // Check for null pointer to prevent crashes
+    if (!p->answer_packet)
+    {
+        p->current_job = JOB_LISTEN;
+        return;
+    }
+
+    // Clear buffer and prepare answer packet
+    memset(answer_buffer, 0, ANSWER_PACKSIZE);
+    construct_answer_data_packet(p->answer_packet, answer_buffer);
 
     manchester_set_tx_pin_od(pin);
-    manchester_transmit_in_background(answer_buffer, ANSWER_PACKSIZE);
+    manchester_transmit_array_in_background(answer_buffer, ANSWER_PACKSIZE);
+
+    p->current_job = JOB_TRANSMITTING_ANSWER;
+    printf("Answering on pin %u\n", pin);
+    gpio_drive_low(DEBUG_PIN2);
 }
 
-static uint32_t counter = 0;
+static uint64_t counter = 0;
+
 static void fsm_data_handshake(void)
 {
     gpio_drive_high(DEBUG_PIN1);
+    counter++;
 
     for (uint8_t i = 0; i < number_of_pins; i++)
     {
-        DataHandshakeData *pindata = &global_datahandshake_pindata[i];
-        uint8_t pin = pindata->pin;
+        DataHandshakeData *p = &global_datahandshake_pindata[i];
+        uint8_t pin = p->pin;
 
-        if ((pindata->current_job == JOB_TRANSMITTING) && !manchester_transmit_in_background_complete())
+        // Check if transmission is complete for transmitting jobs
+        if (p->current_job == JOB_TRANSMITTING_REQUEST || p->current_job == JOB_TRANSMITTING_ANSWER)
         {
-            // Skip
+            bool is_complete = manchester_transmit_in_background_complete();
+
+            if (!is_complete)
+            {
+                continue; // Still transmitting, skip this pin
+            }
+
+            // Transmission completed, update job state
+            if (p->current_job == JOB_TRANSMITTING_REQUEST)
+            {
+                p->current_job = JOB_WAIT_FOR_ANSWER;
+            }
+            else if (p->current_job == JOB_TRANSMITTING_ANSWER)
+            {
+                p->current_job = JOB_LISTEN;
+            }
+        }
+
+        bool line_low = !gpio_read(pin); // Line low stands for a signal in open-drain configuration
+        uint32_t delta = counter - p->last_send_job_order;
+
+        if (line_low)
+        {
+            // Increment receiving_counter for relevant jobs
+            if (p->current_job == JOB_LISTEN ||
+                p->current_job == JOB_WAIT_FOR_ANSWER ||
+                p->current_job == JOB_WAIT_FOR_REQUEST)
+            {
+                p->receiving_counter++;
+            }
+
+            // Handle sending request if in correct job and enough time has passed
+            else if (p->current_job == JOB_SEND_REQUEST)
+            {
+                if (delta >= INITIAL_LOW_TIME_REQUEST_MS)
+                {
+                    send_request_in_background(pin, p);
+                    gpio_drive_low(DEBUG_PIN2);
+                }
+            }
+
+            // Handle sending answer if in correct job and enough time has passed
+            else if (p->current_job == JOB_SEND_ANSWER)
+            {
+                if (delta >= INITIAL_LOW_TIME_ANSWER_MS)
+                    send_answer_in_background(pin, p);
+            }
         }
         else
         {
-            bool state = gpio_read(pin);
-            if (!state) // 0 means signal in opendrain
+            uint16_t receive_counter = p->receiving_counter;
+
+            if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS &&
+                receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
             {
-                if (pindata->current_job == JOB_LISTEN)
+                p->receiving_counter = 0;
+                if (!handle_request(pin, p))
                 {
-                    pindata->receiving_counter++;
+                    dhandshake_set_failed_handshake(p, true);
                 }
-                else if (pindata->current_job == JOB_SEND_REQUEST && (counter - pindata->last_send_job_order) >= INITIAL_LOW_TIME_REQUEST_MS)
+                else
                 {
-                    send_request_in_background(pin);
+                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
-                else if (pindata->current_job == JOB_SEND_ANSWER && (counter - pindata->last_send_job_order) >= INITIAL_LOW_TIME_ANSWER_MS)
+                gpio_drive_low(DEBUG_PIN2);
+            }
+            else if (receive_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS &&
+                     receive_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+            {
+                p->receiving_counter = 0;
+                if (!handle_answer(pin, p))
                 {
-                    send_answer_in_background(pin);
+                    dhandshake_set_failed_handshake(p, true);
+                }
+                else
+                {
+                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
             }
             else
             {
-                if (pindata->receiving_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && pindata->receiving_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
+                if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR &&
+                    counter >= p->time_until_next_send && p->current_job == JOB_LISTEN)
                 {
-                    handle_request(pin);
+                    p->current_job = JOB_SEND_REQUEST;
+                    p->last_send_job_order = counter;
+                    gpio_od_hold_low(pin); // Start sending by pulling line low
                 }
-                else if (pindata->receiving_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && pindata->receiving_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+                else if (p->current_job == JOB_WAIT_FOR_ANSWER &&
+                         delta > TIMEOUT_CYCLES)
                 {
-                    handle_answer(pin);
-                }
-                else
-                {
-
-                    if (pindata->current_job == JOB_WAIT_FOR_ANSWER && (counter - pindata->last_send_job_order) > TIMEOUT_CYCLES)
-                    {
-                        // Timeout waiting for request
-                        pindata->current_job = JOB_SEND_REQUEST;
-                        pindata->last_send_job_order = counter;
-                    }
+                    p->current_job = JOB_SEND_REQUEST;
+                    p->last_send_job_order = counter;
+                    gpio_od_hold_low(pin); // Start sending by pulling line low
                 }
             }
         }
     }
-    counter++;
     gpio_drive_low(DEBUG_PIN1);
 }
 /**
@@ -332,44 +471,32 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     internal_blacklist_mask = blacklist_mask;
     global_pindata = pindata;
 
-    // Calculate valid pins mask
+    // Calculate valid pins mask - use 64 as safe maximum
+    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
     uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
-    printf("Valid pins mask: 0x%016llX\n", valid_pins_mask);
 
     analyze_pindata_events(pindata);
 
     number_of_pins = __builtin_popcountll(valid_pins_mask);
-    printf("Number of active pins: %u\n", number_of_pins);
     uuid = get_unique_id();
 
     if (number_of_pins == 0)
     {
-        LOG("No valid pins available for data handshake\n");
-        return;
+        return; // No valid pins
     }
 
-    // Allocate or reallocate global DataHandshakeData array
+    // Allocate global DataHandshakeData array
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
     if (!global_datahandshake_pindata)
     {
-        LOG("Failed to allocate DataHandshakeData array\n");
         return; // Allocation failed
     }
 
-    request_buffer = calloc(REQUEST_PACKSIZE, sizeof(uint8_t));
-    answer_buffer = calloc(ANSWER_PACKSIZE, sizeof(uint8_t));
-
-    if (!request_buffer || !answer_buffer)
-    {
-        LOG("Failed to allocate request or answer buffer\n");
-        free(global_datahandshake_pindata);
-        global_datahandshake_pindata = NULL;
-        if (request_buffer)
-            free(request_buffer);
-        if (answer_buffer)
-            free(answer_buffer);
-        return; // Allocation failed
-    }
+    // Clear static buffers and packet structures to ensure clean state
+    memset(request_buffer, 0, REQUEST_PACKSIZE);
+    memset(answer_buffer, 0, ANSWER_PACKSIZE);
+    memset(&static_request_packet, 0, sizeof(RequestDataPacket));
+    memset(&static_answer_packet, 0, sizeof(AnswerDataPacket));
 
     // Initialize DataHandshakeData for each valid pin
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
@@ -380,46 +507,65 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
         global_datahandshake_pindata[idx] = (DataHandshakeData){
             .pin = physical_pin,
             .status = 0,
+            .current_job = JOB_LISTEN,
             .number_of_successful_tries = 0,
             .receiving_counter = 0,
-            .last_send_counter = 0,
             .time_until_next_send = 0,
-            .current_job = JOB_LISTEN,
+            .last_send_job_order = 0,
+            .request_packet = NULL,
+            .answer_packet = NULL,
             .last_crc = 0};
+
+        // Initialize packet pointers to static structures to prevent memory leaks
+        global_datahandshake_pindata[idx].request_packet = &static_request_packet;
+        global_datahandshake_pindata[idx].answer_packet = &static_answer_packet;
 
         // Set role based on masks
         if (initiator_mask & (1ULL << pin_index))
         {
-            set_role(&global_datahandshake_pindata[idx], false); // Initiator
-            // If the pin is initiator, the devie will send requests on this pin
+            dhandshake_set_role(&global_datahandshake_pindata[idx], false); // Initiator
+            // If the pin is initiator, the device will send requests on this pin
             global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time();
         }
         else if (responder_mask & (1ULL << pin_index))
         {
-            set_role(&global_datahandshake_pindata[idx], true); // Responder
+            dhandshake_set_role(&global_datahandshake_pindata[idx], true); // Responder
         }
 
         idx++;
     }
 
-    // set initial listening time
-    // listen_until_time = get_listen_until_time();
-
-    // Start timer
+    // Initialization complete    // Start timer
     start_send_data_timer();
     manchester_init(BAUD_1200);
 
     while (true)
     {
-        while (!interrupt_flag)
-            ;
-        interrupt_flag = false;
+        while (!interrupt_cont)
+        {
+        }
+        interrupt_cont = false;
         fsm_data_handshake();
     }
-
     stop_send_data_timer();
 
     // Cleanup
-    free(global_datahandshake_pindata);
-    global_datahandshake_pindata = NULL;
+    if (global_datahandshake_pindata)
+    {
+        // Clear packet pointers before freeing to prevent dangling pointers
+        for (uint8_t i = 0; i < number_of_pins; i++)
+        {
+            global_datahandshake_pindata[i].request_packet = NULL;
+            global_datahandshake_pindata[i].answer_packet = NULL;
+        }
+
+        free(global_datahandshake_pindata);
+        global_datahandshake_pindata = NULL;
+    }
+
+    // Clear static buffers and packet structures
+    memset(request_buffer, 0, REQUEST_PACKSIZE);
+    memset(answer_buffer, 0, ANSWER_PACKSIZE);
+    memset(&static_request_packet, 0, sizeof(RequestDataPacket));
+    memset(&static_answer_packet, 0, sizeof(AnswerDataPacket));
 }

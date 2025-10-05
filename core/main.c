@@ -5,6 +5,7 @@
 #include "msp430fr5994_utils.h"
 #include "msp430fr5994_uart.h"
 #include "printf.h"
+#include "crc.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -132,6 +133,8 @@ int main(void)
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
+    
+
     // LOG("Running on %s\n", get_chip_family_name());
     // LOG("Chip UID: %s\n", get_unique_id_str());
 
@@ -160,10 +163,10 @@ int main(void)
     perform_data_handshake(pin_data, initial_state_mask);
     // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
     // example_cbor_header_transmission_with_ack();
-  //  run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+    //  run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     // Send the collected pin data over UART
-    //UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+    // UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
 
     // switch (uart_result)
     // {

@@ -70,10 +70,11 @@ typedef unsigned long  crc;
 
 #endif
 
-
-void  crcInit(void);
-crc   crcSlow(unsigned char const message[], int nBytes);
 crc   crcFast(unsigned char const message[], int nBytes);
 
+#ifdef __MSP430FR5994__
+#include <stdint.h>
+uint32_t msp430_crc32_hw(const uint8_t *data, uint32_t len);
+#endif
 
 #endif /* _crc_h */

@@ -146,14 +146,9 @@ static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
 {
     if (data_size < 2)
         return;
-    free(receive_buffer);
-    receive_buffer = malloc(data_size);
     if (receive_buffer != NULL)
     {
         memcpy(receive_buffer, data, data_size);
-        LOG("Received data length: %u\n", data_size);
-
-        LOG("Data copied to receive_buffer\n");
     }
 }
 
@@ -228,7 +223,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
     mode = MANCHESTER_RECEIVE;
     receive_buffer = data;
     uint32_t timeout_counter = 0;
-    const uint32_t max_timeout = 10000000;
+    const uint32_t max_timeout = 1000000;
 
     bool decoder_succesfull = false;
 
@@ -236,10 +231,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
     {
         while (!interrupt_flag)
         {
-            timeout_counter++;
         }
-
-
         interrupt_flag = 0;
         bool rx_state = read_Rx();
         enum spooky_decoder_step_res step_result = spooky_decoder_step(&dec, rx_state);
@@ -247,15 +239,17 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         if (step_result == SPOOKY_DECODER_STEP_DONE)
         {
             decoder_succesfull = true;
-            break;
+            mode = MANCHESTER_NONE;
+            return true;
         }
-        else if (step_result < 0)
+        else if (step_result == SPOOKY_DECODER_STEP_ERROR_NULL)
         {
+            mode = MANCHESTER_NONE;
             return false;
         }
+        timeout_counter++;
     }
 
-    mode = MANCHESTER_NONE;
     return decoder_succesfull;
 }
 
@@ -263,9 +257,8 @@ bool manchester_transmit_in_background_complete(void)
 {
     bool transmission = transmission_complete;
     transmission_complete = false;
-    return transmission_complete;
+    return transmission;
 }
-
 
 bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
 {
@@ -299,7 +292,6 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
     {
         return false;
     }
-
 
     while (!transmission_complete)
     {
