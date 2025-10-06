@@ -40,6 +40,32 @@ static volatile bool interrupt_cont = false;
 
 static uint8_t number_of_pins = 0;
 
+// Job name mapping for logging
+static const char* job_names[] = {
+    "JOB_LISTEN",
+    "JOB_SEND_REQUEST", 
+    "JOB_SEND_ANSWER",
+    "JOB_WAIT_FOR_ANSWER",
+    "JOB_TRANSMITTING_ANSWER",
+    "JOB_TRANSMITTING_REQUEST"
+};
+
+/**
+ * @brief Log job transitions for debugging
+ * @param pin Pin number for context
+ * @param old_job Previous job
+ * @param new_job New job
+ */
+static void log_job_transition(uint8_t pin, CurrentJobType old_job, CurrentJobType new_job)
+{
+    if (old_job != new_job) {
+        LOG("Pin %u: %s(%d) -> %s(%d)\n", 
+            pin, 
+            job_names[old_job], old_job,
+            job_names[new_job], new_job);
+    }
+}
+
 // all_pins_mask will be calculated at runtime
 
 /**
@@ -335,7 +361,6 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     bool result = manchester_transmit_array_in_background(request_buffer, REQUEST_PACKSIZE);
     if (!result)
     {
-        p->current_job = JOB_LISTEN;
         return false;
     }
     return true;
@@ -350,7 +375,6 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     // Check for null pointer to prevent crashes
     if (!p->answer_packet)
     {
-        p->current_job = JOB_LISTEN;
         return false;
     }
 
@@ -363,7 +387,6 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     bool result = manchester_transmit_array_in_background(answer_buffer, ANSWER_PACKSIZE);
     if (!result)
     {
-        p->current_job = JOB_LISTEN;
         return false;
     }
 
@@ -371,12 +394,12 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     return true;
 }
 
-
 static void reschedule_request(DataHandshakeData *p)
 {
     // Schedule next send time to avoid immediate resend
     p->time_until_next_send = get_listen_until_time();
     p->last_send_job_order = 0; // Reset to allow immediate sending when time is up
+    log_job_transition(p->pin, p->current_job, JOB_LISTEN);
     p->current_job = JOB_LISTEN;
 }
 
@@ -416,6 +439,7 @@ static void fsm_data_handshake(void)
                     else
                     {
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+                        log_job_transition(pin, p->current_job, JOB_SEND_ANSWER);
                         p->current_job = JOB_SEND_ANSWER;
                     }
                     p->receiving_counter = 0;
@@ -431,6 +455,7 @@ static void fsm_data_handshake(void)
                 if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR &&
                     counter >= p->time_until_next_send && manchester_is_idle())
                 {
+                    log_job_transition(pin, p->current_job, JOB_SEND_REQUEST);
                     p->current_job = JOB_SEND_REQUEST;
                     p->last_send_job_order = counter;
                     gpio_od_hold_low(pin); // Start sending by pulling line low
@@ -449,6 +474,7 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
+                    log_job_transition(pin, p->current_job, JOB_TRANSMITTING_REQUEST);
                     p->current_job = JOB_TRANSMITTING_REQUEST;
                 }
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
@@ -462,10 +488,12 @@ static void fsm_data_handshake(void)
                 if (!send_answer_in_background(pin, p))
                 {
                     dhandshake_set_failed_handshake(p, true);
+                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
                 else
                 {
+                    log_job_transition(pin, p->current_job, JOB_TRANSMITTING_ANSWER);
                     p->current_job = JOB_TRANSMITTING_ANSWER;
                 }
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
@@ -481,19 +509,28 @@ static void fsm_data_handshake(void)
                 // Transmission completed, update job state
                 if (p->current_job == JOB_TRANSMITTING_REQUEST)
                 {
+                    log_job_transition(pin, p->current_job, JOB_WAIT_FOR_ANSWER);
                     p->current_job = JOB_WAIT_FOR_ANSWER;
                 }
                 else
                 {
+                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN;
                 }
             }
             // Timeout for transmission if complete signal not received
-            else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST || p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+            else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
             {
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
                 reschedule_request(p);
+            }
+            else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+            {
+                // Timeout occurred during transmission
+                dhandshake_set_failed_handshake(p, true);
+                log_job_transition(pin, p->current_job, JOB_LISTEN);
+                p->current_job = JOB_LISTEN; // Go back to listening on timeout
             }
             break;
         }
@@ -514,16 +551,13 @@ static void fsm_data_handshake(void)
                     {
                         dhandshake_set_failed_handshake(p, false);
                     }
-                    p->current_job = JOB_LISTEN;
-                    p->receiving_counter = 0;
-                    // p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+                    reschedule_request(p);
                 }
                 else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
                 {
                     reschedule_request(p);
                     dhandshake_set_failed_handshake(p, true);
                 }
-
 
                 // Timeout if no answer received in time
                 if (delta > TIMEOUT_CYCLES)
