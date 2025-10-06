@@ -94,7 +94,7 @@ static void analyze_pindata_events(PinData *pindata)
 
 static uint32_t get_listen_until_time()
 {
-    return 200 + (random32() % 10000); // 200-10000ms
+    return 1000 + (random32() % 10000); // 1000-10000ms
 }
 
 static void send_data_isr(void)
@@ -338,6 +338,7 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
         p->current_job = JOB_LISTEN;
         return false;
     }
+    return true;
 }
 static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
@@ -367,6 +368,16 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     }
 
     gpio_drive_low(DEBUG_PIN2);
+    return true;
+}
+
+
+static void reschedule_request(DataHandshakeData *p)
+{
+    // Schedule next send time to avoid immediate resend
+    p->time_until_next_send = get_listen_until_time();
+    p->last_send_job_order = 0; // Reset to allow immediate sending when time is up
+    p->current_job = JOB_LISTEN;
 }
 
 static uint32_t counter = 0;
@@ -434,7 +445,7 @@ static void fsm_data_handshake(void)
                 if (!send_request_in_background(pin, p))
                 {
                     dhandshake_set_failed_handshake(p, true);
-                    p->current_job = JOB_LISTEN; // Go back to listening on failure
+                    reschedule_request(p);
                 }
                 else
                 {
@@ -482,7 +493,7 @@ static void fsm_data_handshake(void)
             {
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
-                p->current_job = JOB_LISTEN; // Go back to listening on timeout
+                reschedule_request(p);
             }
             break;
         }
@@ -509,9 +520,7 @@ static void fsm_data_handshake(void)
                 }
                 else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
                 {
-                    // Signal too long, reset counters
-                    p->receiving_counter = 0;
-                    p->current_job = JOB_LISTEN;
+                    reschedule_request(p);
                     dhandshake_set_failed_handshake(p, true);
                 }
 
@@ -519,9 +528,7 @@ static void fsm_data_handshake(void)
                 // Timeout if no answer received in time
                 if (delta > TIMEOUT_CYCLES)
                 {
-                    p->current_job = JOB_LISTEN;
-                    p->last_send_job_order = counter; // Reset timeout counter to schedule next send
-                    p->time_until_next_send = get_listen_until_time(); // Schedule next send time
+                    reschedule_request(p);
                     dhandshake_set_failed_handshake(p, true);
                 }
             }
