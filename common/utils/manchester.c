@@ -44,6 +44,7 @@ static struct spooky_decoder dec;
 static bool encoder_initialized = false;
 static bool decoder_initialized = false;
 static volatile bool transmission_complete = false;
+static volatile bool transmission_canceled = false;
 
 #if defined(NRF52840_XXAA)
 #define MANCHESTER_TIMER NRF_TIMER4
@@ -213,7 +214,7 @@ void manchester_deinit()
 
 bool manchester_receive_array(uint8_t *data, uint8_t size)
 {
-    if (rx_pin == 255 || !decoder_initialized || mode != MANCHESTER_NONE) // if not idle and not initialized
+    if (rx_pin == 255 || !decoder_initialized) 
     {
         return false;
     }
@@ -269,11 +270,29 @@ bool manchester_transmit_in_background_complete(void)
         return false;
     }
 }
+bool manchester_transmit_in_background_cancelled(void)
+{
+    // When the transmission is canceled, reset mode to NONE and return true
+    // and also reset transmission_canceled flag
+    if (transmission_canceled)
+    {
+        // Reset all flags
+        mode = MANCHESTER_NONE;
+
+        transmission_canceled = false;
+        transmission_complete = false;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
 {
     // Check if we are already transmitting/receiving or not initialized
-    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE || mode != MANCHESTER_NONE)
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
     {
         return false;
     }
@@ -290,7 +309,7 @@ bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size)
 
 bool manchester_transmit_array(uint8_t *data, uint8_t size)
 {
-    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE || mode != MANCHESTER_NONE)
+    if (tx_pin == 255 || !encoder_initialized || data == NULL || size == 0 || size > ENCODER_BUFFER_SIZE)
     {
         return false;
     }
@@ -311,6 +330,15 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
     mode = MANCHESTER_NONE;
     LOG("Transmission complete\n");
     return true;
+}
+
+void manchester_cancel_transmission(void)
+{
+    if (mode == MANCHESTER_SEND && !transmission_complete)
+    {
+        transmission_canceled = true;
+        set_TX(true); // release the line
+    }
 }
 
 bool manchester_is_transmitting(void)

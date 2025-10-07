@@ -48,12 +48,17 @@ void manchester_set_rx_pin_od(uint8_t pin);
 void manchester_set_tx_pin_od(uint8_t pin);
 
 bool manchester_transmit_in_background_complete(void);
+bool manchester_transmit_in_background_cancelled(void);
+
 bool manchester_transmit_array_in_background(uint8_t *data, uint8_t size);
 bool manchester_transmit_array(uint8_t *data, uint8_t size);
 bool manchester_receive_array(uint8_t *data, uint8_t size);
 
 // Helpers
 uint32_t get_sample_interval_us(BaudRate rate);
+
+void manchester_cancel_transmission(void);
+
 bool manchester_is_transmitting(void);
 bool manchester_is_receiving(void);
 bool manchester_is_idle(void);
