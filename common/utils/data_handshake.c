@@ -41,14 +41,13 @@ static volatile bool interrupt_cont = false;
 static uint8_t number_of_pins = 0;
 
 // Job name mapping for logging
-static const char* job_names[] = {
+static const char *job_names[] = {
     "JOB_LISTEN",
-    "JOB_SEND_REQUEST", 
+    "JOB_SEND_REQUEST",
     "JOB_SEND_ANSWER",
     "JOB_WAIT_FOR_ANSWER",
     "JOB_TRANSMITTING_ANSWER",
-    "JOB_TRANSMITTING_REQUEST"
-};
+    "JOB_TRANSMITTING_REQUEST"};
 
 /**
  * @brief Log job transitions for debugging
@@ -58,12 +57,12 @@ static const char* job_names[] = {
  */
 static void log_job_transition(uint8_t pin, CurrentJobType old_job, CurrentJobType new_job)
 {
-    if (old_job != new_job) {
-        LOG("Pin %u: %s(%d) -> %s(%d)\n", 
-            pin, 
-            job_names[old_job], old_job,
-            job_names[new_job], new_job);
-    }
+    // if (old_job != new_job) {
+    //     LOG("Pin %u: %s(%d) -> %s(%d)\n",
+    //         pin,
+    //         job_names[old_job], old_job,
+    //         job_names[new_job], new_job);
+    // }
 }
 
 // all_pins_mask will be calculated at runtime
@@ -248,6 +247,15 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     return true;
 }
 
+typedef enum
+{
+    NONE,
+    SENDING_REQUEST,
+    DISCARDING_REQUEST,
+    SENDING_ANSWER,
+} DataHandshakeGlobalLock;
+static volatile DataHandshakeGlobalLock global_lock = NONE;
+
 static bool handle_request(uint8_t pin, DataHandshakeData *p)
 {
     gpio_drive_high(DEBUG_PIN2);
@@ -272,6 +280,7 @@ static bool handle_request(uint8_t pin, DataHandshakeData *p)
     //     return false; // CRC mismatch
     // }
 
+    global_lock = SENDING_ANSWER;
     // Mark that we received a request
     dhandshake_set_received_request(p, true);
 
@@ -341,8 +350,8 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
 
-    gpio_drive_high(DEBUG_PIN2);
-    // Small delay to ensure line is released before transmitting
+    // gpio_drive_high(DEBUG_PIN2);
+    //  Small delay to ensure line is released before transmitting
     delay_us(5000);
 
     // Mark that we're sending a request
@@ -356,7 +365,6 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     construct_request_data_packet(&static_request_packet, request_buffer);
 
     // printf("Requesting on pin %u\n", pin);
-
     manchester_set_tx_pin_od(pin);
     bool result = manchester_transmit_array_in_background(request_buffer, REQUEST_PACKSIZE);
     if (!result)
@@ -367,7 +375,7 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 }
 static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    gpio_drive_high(DEBUG_PIN2);
+    // gpio_drive_high(DEBUG_PIN2);
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
     delay_us(5000);
@@ -390,7 +398,7 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
         return false;
     }
 
-    gpio_drive_low(DEBUG_PIN2);
+    //   gpio_drive_low(DEBUG_PIN2);
     return true;
 }
 
@@ -421,6 +429,9 @@ static void fsm_data_handshake(void)
         case JOB_LISTEN:
         {
             const bool is_low = !gpio_read(pin);
+
+            if (pin == 12)
+                gpio_drive_high(DEBUG_PIN2);
             if (is_low)
             {
                 // Line is low, start counting
@@ -431,6 +442,8 @@ static void fsm_data_handshake(void)
                 const uint16_t receive_counter = p->receiving_counter;
                 if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
                 {
+                    manchester_cancel_transmission(); // Cancel any ongoing transmission, since receiving signals is always priority
+
                     // gpio_drive_high(DEBUG_PIN2);
                     if (!handle_request(pin, p))
                     {
@@ -438,10 +451,12 @@ static void fsm_data_handshake(void)
                     }
                     else
                     {
-                        p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                         log_job_transition(pin, p->current_job, JOB_SEND_ANSWER);
                         p->current_job = JOB_SEND_ANSWER;
+                        p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
+                   // printf("Request received on pin %u\n", pin);
+
                     p->receiving_counter = 0;
                     // gpio_drive_low(DEBUG_PIN2);
                 }
@@ -452,15 +467,16 @@ static void fsm_data_handshake(void)
                 }
 
                 // Schedule the next send if we're the initiator
-                if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR &&
-                    counter >= p->time_until_next_send && manchester_is_idle())
+                if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR && counter >= p->time_until_next_send && global_lock == NONE)
                 {
+                    global_lock = SENDING_REQUEST;
                     log_job_transition(pin, p->current_job, JOB_SEND_REQUEST);
                     p->current_job = JOB_SEND_REQUEST;
                     p->last_send_job_order = counter;
                     gpio_od_hold_low(pin); // Start sending by pulling line low
                 }
             }
+            gpio_drive_low(DEBUG_PIN2);
             break;
         }
         case JOB_SEND_REQUEST:
@@ -477,6 +493,7 @@ static void fsm_data_handshake(void)
                     log_job_transition(pin, p->current_job, JOB_TRANSMITTING_REQUEST);
                     p->current_job = JOB_TRANSMITTING_REQUEST;
                 }
+                global_lock = NONE;
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
             }
             break;
@@ -490,6 +507,7 @@ static void fsm_data_handshake(void)
                     dhandshake_set_failed_handshake(p, true);
                     log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
+                    global_lock = NONE;
                 }
                 else
                 {
@@ -503,8 +521,9 @@ static void fsm_data_handshake(void)
         case JOB_TRANSMITTING_REQUEST | JOB_TRANSMITTING_ANSWER:
         {
             bool is_complete = manchester_transmit_in_background_complete();
+            bool is_canceled = manchester_transmit_in_background_cancelled();
 
-            if (is_complete)
+            if (is_complete && !is_canceled)
             {
                 // Transmission completed, update job state
                 if (p->current_job == JOB_TRANSMITTING_REQUEST)
@@ -517,20 +536,26 @@ static void fsm_data_handshake(void)
                     log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN;
                 }
+                gpio_od_release(pin); // Release the line after transmission
+                global_lock = NONE;
             }
             // Timeout for transmission if complete signal not received
-            else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
+            else if (p->current_job == JOB_TRANSMITTING_REQUEST && (delta > TIMEOUT_CYCLES_SENDING_REQUEST || is_canceled))
             {
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
                 reschedule_request(p);
+                global_lock = NONE;
+                gpio_od_release(pin); // Release the line after transmission
             }
-            else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+            else if (p->current_job == JOB_TRANSMITTING_ANSWER && (delta > TIMEOUT_CYCLES_SENDING_ANSWER || is_canceled))
             {
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
                 log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening on timeout
+                global_lock = NONE;
+                gpio_od_release(pin); // Release the line after transmission
             }
             break;
         }
@@ -574,6 +599,9 @@ static void fsm_data_handshake(void)
     }
     gpio_drive_low(DEBUG_PIN1);
 }
+
+volatile bool manchester_busy_flag = false;
+volatile bool manchester_transmitting_request = false;
 /**
  * @brief Main data handshake function
  * @param pindata Pointer to PinData array
@@ -650,7 +678,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
 
     // Initialization complete    // Start timer
     start_send_data_timer();
-    manchester_init(BAUD_600);
+    manchester_init(BAUD_1200);
 
     while (true)
     {
