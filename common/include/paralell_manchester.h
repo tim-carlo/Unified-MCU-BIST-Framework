@@ -1,0 +1,93 @@
+#ifndef PARALLEL_MANCHESTER_H
+#define PARALLEL_MANCHESTER_H
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include "printf.h"
+
+#include "spooky_decoder.h"
+#include "spooky_encoder.h"
+
+#if defined(NRF52840_XXAA)
+#include "nrf52840.h"
+#include "nrf52840_helper.h"
+#include "nrf52840_gpio.h"
+#include "nrf52840_time.h"
+#include "nrf52840_utils.h"
+
+#elif defined(__MSP430FR5994__)
+#include "msp430fr5994_helper.h"
+#include "msp430fr5994_gpio.h"
+#include "msp430fr5994_time.h"
+#include "msp430fr5994_utils.h"
+#include <msp430.h>
+#endif
+
+#define PMAN_TX_RATE 8 // Number of samples per bit (must match encoder/decoder settings)
+
+typedef enum {
+    PMAN_BAUD_300 = 300,
+    PMAN_BAUD_600 = 600,
+    PMAN_BAUD_1200 = 1200,
+    PMAN_BAUD_2400 = 2400,
+    PMAN_BAUD_4800 = 4800,
+    PMAN_BAUD_9600 = 9600,
+    PMAN_BAUD_19200 = 19200,
+    PMAN_BAUD_38400 = 38400
+} ParallelManchesterBaudRate;
+
+typedef enum
+{
+    PMAN_NOT_INITIALIZED,
+    PMAN_IDLE,
+    PMAN_SEND,
+    PMAN_RECEIVE
+} ParallelManchesterMode;
+
+#define PMAN_ENCODER_BUFFER_SIZE 32
+#define PMAN_DECODER_BUFFER_SIZE 32
+
+typedef struct {
+    uint8_t pin;
+    struct spooky_encoder enc;
+    struct spooky_decoder dec;
+    ParallelManchesterMode mode;
+    uint8_t encoder_buffer[PMAN_ENCODER_BUFFER_SIZE];
+    uint8_t decoder_buffer[PMAN_DECODER_BUFFER_SIZE];
+    volatile bool transmission_complete;
+    volatile bool receive_complete;
+    volatile bool receive_error;
+    uint8_t *receive_buffer;
+    uint8_t receive_size;
+} ParallelManchesterInstance;
+
+extern uint8_t pman_instance_count;
+extern ParallelManchesterInstance *pman_instances;
+
+// The baudrate must be set equally for all, since the ISR is shared
+void parallel_manchester_init(ParallelManchesterBaudRate tx_rate);
+void parallel_manchester_deinit();
+
+// Instance management
+uint8_t parallel_manchester_add_instance(uint8_t pin);
+bool parallel_manchester_remove_instance(uint8_t index);
+
+// Non-blocking transmission and receive functions
+bool parallel_manchester_transmit_background(uint8_t index, uint8_t *data, uint8_t size);
+bool parallel_manchester_transmit_complete(uint8_t index);
+bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_t size);
+bool parallel_manchester_receive_complete(uint8_t index);
+bool parallel_manchester_receive_error(uint8_t index);
+
+// Status functions
+bool parallel_manchester_is_idle(uint8_t index);
+bool parallel_manchester_is_transmitting(uint8_t index);
+bool parallel_manchester_is_receiving(uint8_t index);
+
+// Helpers
+uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
+
+
+#endif // PARALLEL_MANCHESTER_H
