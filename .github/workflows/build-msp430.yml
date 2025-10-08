@@ -13,23 +13,38 @@ jobs:
       MSP_GNU_LINK: https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-LlCjWuAbzH/9.3.1.2/msp430-gcc-full-linux-x64-installer-9.3.1.2.7z
       MSP_GNU_FILE: msp430-gcc-full-linux-x64-installer-9.3.1.2.run
       MSP_GNU_ROOT: "${{ github.workspace }}/msp430-gcc"
-      # updates: https://www.ti.com/tool/MSP430-GCC-OPENSOURCE#downloads
 
     steps:
     - name: Checkout 🛎️
       uses: actions/checkout@v5
 
     - name: Install dependencies 🔧
-      run: sudo apt update && sudo apt install -y p7zip build-essential wget
+      run: sudo apt update && sudo apt install -y p7zip-full wget build-essential
+
+    # Cache the toolchain to avoid re-downloads
+    - name: Cache MSP430 toolchain 🧱
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.MSP_GNU_ROOT }}
+        key: msp430-gcc-${{ env.MSP_GNU_FILE }}
 
     - name: Download TI's MSP gcc toolchain 🔽
-      run: "wget -q --tries 3 ${{ env.MSP_GNU_LINK }} --output-document=gcc-msp.7z"
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: wget -q --tries 3 ${{ env.MSP_GNU_LINK }} --output-document=gcc-msp.7z
 
     - name: Unpack TI's MSP gcc toolchain with 7zip 📦
+      if: steps.cache.outputs.cache-hit != 'true'
       run: 7zr x gcc-msp.7z
 
     - name: Run the installer 🏃
+      if: steps.cache.outputs.cache-hit != 'true'
       run: sudo ./${{ env.MSP_GNU_FILE }} --mode unattended --prefix ${{ env.MSP_GNU_ROOT }}
+
+    - name: Link toolchain to /opt 📎
+      run: |
+        sudo mkdir -p /opt
+        sudo ln -s ${{ env.MSP_GNU_ROOT }} /opt/msp430-gcc
+        ls -l /opt/msp430-gcc/bin
 
     - name: Build MSP430 main target 🧱
       run: make
@@ -38,8 +53,8 @@ jobs:
     - name: Collect build artifacts 📦
       run: |
         mkdir -p content/main/
-        cp ${{ github.workspace }}/targets/msp430/build/main.elf content/main/ || true
-        cp ${{ github.workspace }}/targets/msp430/build/main.hex content/main/ || true
+        cp ${{ github.workspace }}/targets/msp430/build/build.elf content/main/ || true
+        cp ${{ github.workspace }}/targets/msp430/build/build.hex content/main/ || true
 
     - name: Upload artifacts to GitHub 🔼
       uses: actions/upload-artifact@v4
