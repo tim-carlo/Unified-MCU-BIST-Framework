@@ -30,7 +30,8 @@
 
 #endif
 
-#include "manchester.h"
+//#include "manchester.h"
+#include "paralell_manchester.h"
 #include "printf.h"
 #include <stdint.h>
 #include <stdbool.h>

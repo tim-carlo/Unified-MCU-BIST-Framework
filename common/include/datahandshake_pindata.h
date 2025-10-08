@@ -40,6 +40,8 @@ typedef enum
     JOB_WAIT_FOR_ANSWER = 3,
     JOB_TRANSMITTING_ANSWER = 4,
     JOB_TRANSMITTING_REQUEST = 5,
+    JOB_RECEIVING_ANSWER = 6,
+    JOB_RECEIVING_REQUEST = 7,
 } CurrentJobType;
 typedef struct
 {
@@ -55,7 +57,8 @@ typedef struct
     uint32_t last_send_job_order;
     RequestDataPacket *request_packet;
     AnswerDataPacket *answer_packet;
-    uint32_t last_crc; // Changed from crc to uint32_t to avoid type conflicts
+    uint8_t *receiving_buffer;
+    uint8_t manchester_instance_index; // Index of the Manchester parallel instance for this pin
 } DataHandshakeData;
 
 typedef enum
