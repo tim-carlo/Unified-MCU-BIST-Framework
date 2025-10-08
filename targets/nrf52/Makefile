@@ -5,7 +5,7 @@ MKDIR    := mkdir -p
 
 NRF_DEV_NUM     := 52840
 LINKER_SCRIPT   := nrf52840_xxaa.ld
-OUTPUT_DIR      := build/nrf52
+OUTPUT_DIR      := build
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 
 
