@@ -616,6 +616,7 @@ static void fsm_data_handshake(void)
 
                 log_job_transition(pin, p->current_job, JOB_SEND_ANSWER);
                 p->current_job = JOB_SEND_ANSWER;
+                printf("Request received on pin %u\n", pin);
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 
             } 
@@ -623,6 +624,7 @@ static void fsm_data_handshake(void)
             {   
                 dhandshake_set_failed_handshake(p, true);
                 log_job_transition(pin, p->current_job, JOB_LISTEN);
+                printf("Failed to receive request on pin %u\n", pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             gpio_drive_low(DEBUG_PIN2);
