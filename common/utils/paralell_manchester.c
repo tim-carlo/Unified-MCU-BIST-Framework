@@ -66,7 +66,7 @@ static void pman_timer_isr(void)
             case SPOOKY_ENCODER_STEP_OK:
                 break;
             default:
-                // Error case - reset to idle
+                // Error case
                 pman_set_TX(true, instance->pin); // release the line
                 instance->mode = PMAN_IDLE;
                 break;
@@ -159,7 +159,7 @@ void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
 {
     uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(tx_rate);
 
-    gpio_init_output(DEBUG_PIN_ABS);
+    gpio_output_init(DEBUG_PIN_ABS);
     pman_setup_and_start_timer(sample_interval_us);
 }
 
