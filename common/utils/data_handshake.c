@@ -344,7 +344,7 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     gpio_od_release(pin);
 
     // gpio_drive_high(DEBUG_PIN2);
-    //  Small delay to ensure line is released before transmitting
+    // Small delay to ensure line is released before transmitting
     delay_us(5000);
 
     // Mark that we're sending a request
