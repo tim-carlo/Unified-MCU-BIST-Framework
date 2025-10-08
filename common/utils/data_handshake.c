@@ -352,8 +352,7 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     // Schedule next send time to avoid immediate resend
     p->time_until_next_send = get_listen_until_time() + 10000;
 
-    printf("Pin connection added: local_pin=%u, remote_pin=%u\n",
-           pin, answer_packet.sending_pin);
+    printf("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, answer_packet.sending_pin);
     return true;
 }
 
@@ -645,8 +644,6 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     // Clear static buffers and packet structures to ensure clean state
     memset(request_buffer, 0, REQUEST_PACKSIZE);
     memset(answer_buffer, 0, ANSWER_PACKSIZE);
-    memset(&static_request_packet, 0, sizeof(RequestDataPacket));
-    memset(&static_answer_packet, 0, sizeof(AnswerDataPacket));
 
     // Initialize DataHandshakeData for each valid pin
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
@@ -664,11 +661,8 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
             .last_send_job_order = 0,
             .request_packet = NULL,
             .answer_packet = NULL,
-            .last_crc = 0};
-
-        // Initialize packet pointers to static structures to prevent memory leaks
-        global_datahandshake_pindata[idx].request_packet = &static_request_packet;
-        global_datahandshake_pindata[idx].answer_packet = &static_answer_packet;
+            .manchester_instance_index = 255, // Initialize as invalid
+        };
 
         // Set role based on masks
         if (initiator_mask & (1ULL << pin_index))
@@ -688,8 +682,9 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     // Initialize parallel Manchester system
     parallel_manchester_init(PMAN_BAUD_300);
 
-    // Create a Manchester instance for each valid pin and store index in PinData
+    // Create a Manchester instance for each valid pin and store index in DataHandshakeData
     it = bitmap_iterator_create(valid_pins_mask);
+    idx = 0; // Reset index for mapping to global_datahandshake_pindata
     while (bitmap_iterator_next(&it, &pin_index))
     {
         uint8_t physical_pin = pindata[pin_index].pin;
@@ -698,13 +693,14 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
         if (manchester_idx == 255)
         {
             LOG("Failed to create Manchester instance for pin %u\n", physical_pin);
-            pindata[pin_index].manchester_instance_index = 255; // Mark as invalid
+            global_datahandshake_pindata[idx].manchester_instance_index = 255; // Mark as invalid
         }
         else
         {
-            pindata[pin_index].manchester_instance_index = manchester_idx;
+            global_datahandshake_pindata[idx].manchester_instance_index = manchester_idx;
             LOG("Created Manchester instance %u for pin %u\n", manchester_idx, physical_pin);
         }
+        idx++;
     }
 
     // Initialization complete - Start timer
@@ -735,22 +731,19 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     }
 
     // Cleanup Manchester instances
-    it = bitmap_iterator_create(valid_pins_mask);
-    while (bitmap_iterator_next(&it, &pin_index))
+    for (uint8_t i = 0; i < number_of_pins; i++)
     {
-        if (pindata[pin_index].manchester_instance_index != 255)
+        if (global_datahandshake_pindata[i].manchester_instance_index != 255)
         {
-            parallel_manchester_remove_instance(pindata[pin_index].manchester_instance_index);
-            pindata[pin_index].manchester_instance_index = 255; // Reset to invalid
+            parallel_manchester_remove_instance(global_datahandshake_pindata[i].manchester_instance_index);
+            global_datahandshake_pindata[i].manchester_instance_index = 255; // Reset to invalid
         }
     }
 
     // Deinitialize parallel Manchester system
     parallel_manchester_deinit();
 
-    // Clear static buffers and packet structures
+    // Clear static buffers
     memset(request_buffer, 0, REQUEST_PACKSIZE);
     memset(answer_buffer, 0, ANSWER_PACKSIZE);
-    memset(&static_request_packet, 0, sizeof(RequestDataPacket));
-    memset(&static_answer_packet, 0, sizeof(AnswerDataPacket));
 }
