@@ -9,7 +9,7 @@
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 #if defined(NRF52840_XXAA)
-#define PMAN_TIMER NRF_TIMER3
+#define PMAN_TIMER NRF_TIMER4
 #define DEBUG_PIN_ABS 38 // Pin 1.6
 #elif defined(__MSP430FR5994__)
 #define PMAN_TIMER TIMER_A2
@@ -38,7 +38,7 @@ static void pman_set_TX(bool state, uint8_t pin)
 
 static void pman_timer_isr(void)
 {
-    gpio_drive_high(DEBUG_PIN_ABS);
+    
     // Process each instance in round-robin fashion
     for (uint8_t i = 0; i < pman_instance_count; i++)
     {
@@ -75,6 +75,7 @@ static void pman_timer_isr(void)
         }
         case PMAN_RECEIVE:
         {
+            gpio_drive_high(DEBUG_PIN_ABS);
             bool rx_state = gpio_read(instance->pin);
             enum spooky_decoder_step_res step_result = spooky_decoder_step(&instance->dec, rx_state);
             
@@ -88,6 +89,7 @@ static void pman_timer_isr(void)
                 instance->receive_error = true;
                 instance->mode = PMAN_IDLE;
             }
+            gpio_drive_low(DEBUG_PIN_ABS);
             break;
         }
         case PMAN_IDLE:
@@ -145,6 +147,7 @@ static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
     ParallelManchesterInstance *instance = (ParallelManchesterInstance *)udata;
     if (instance && instance->receive_buffer && data_size > 0)
     {
+        LOG("First received byte: 0x%02X\n", data[0]);
         // Copy received data to the instance's receive buffer
         uint8_t copy_size = (data_size < instance->receive_size) ? data_size : instance->receive_size;
         memcpy(instance->receive_buffer, data, copy_size);
@@ -227,15 +230,13 @@ uint8_t parallel_manchester_add_instance(uint8_t pin)
 
 bool parallel_manchester_remove_instance(uint8_t index)
 {
-    // Validate index
-    if (index >= pman_instance_count)
+    // Ensure there are instances and index is valid
+    if (pman_instance_count == 0 || index >= pman_instance_count)
     {
         return false;
     }
-    
-    uint8_t instance_index = index;
-    
-    // If this is the last instance, just free and set to NULL
+
+    // Handle single instance case
     if (pman_instance_count == 1)
     {
         free(pman_instances);
@@ -243,25 +244,26 @@ bool parallel_manchester_remove_instance(uint8_t index)
         pman_instance_count = 0;
         return true;
     }
-    
-    // Shift all instances after the removed one back by one position
-    for (uint8_t i = instance_index; i < pman_instance_count - 1; i++)
+
+    // Shift remaining instances left
+    for (uint8_t i = index; i < pman_instance_count - 1; i++)
     {
         pman_instances[i] = pman_instances[i + 1];
     }
-    
-    // Decrease the count
+
+    // Decrease count
     pman_instance_count--;
-    
-    // Reallocate memory to shrink the array
+
+    // Try to shrink the allocated memory
     ParallelManchesterInstance *new_instances = realloc(pman_instances, pman_instance_count * sizeof(ParallelManchesterInstance));
-    if (new_instances == NULL && pman_instance_count > 0)
+    if (new_instances == NULL)
     {
-        // Memory reallocation failed, but data is still valid (just using more memory than needed)
-        // This is not a critical error for removal operation
-        return true;
+        // realloc failed, but old memory is still valid
+        // So we don't overwrite pman_instances
+        return true; 
     }
-    
+
+    // Update pointer if realloc succeeded
     pman_instances = new_instances;
     return true;
 }
