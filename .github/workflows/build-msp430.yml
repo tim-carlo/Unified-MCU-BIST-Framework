@@ -8,18 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        subproject:
-          - msp430_deep_sleep
-          - msp430_spi_fram
-          - msp430_testable
 
     env:
       MSP_GNU_LINK: https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-LlCjWuAbzH/9.3.1.2/msp430-gcc-full-linux-x64-installer-9.3.1.2.7z
       MSP_GNU_FILE: msp430-gcc-full-linux-x64-installer-9.3.1.2.run
       MSP_GNU_ROOT: "${{ github.workspace }}/msp430-gcc"
-      SUBPROJECT: "${{ matrix.subproject }}"
       # updates: https://www.ti.com/tool/MSP430-GCC-OPENSOURCE#downloads
 
     steps:
@@ -38,16 +31,18 @@ jobs:
     - name: Run the installer 🏃
       run: sudo ./${{ env.MSP_GNU_FILE }} --mode unattended --prefix ${{ env.MSP_GNU_ROOT }}
 
-    - name: Build subproject "${{ matrix.subproject }}" 🧱
-      run: make SUBPROJECT=${{ matrix.subproject }}
+    - name: Build MSP430 main target 🧱
+      run: make
       working-directory: "${{ github.workspace }}/targets/msp430/"
 
-    - run: "mkdir -p content/${{ matrix.subproject }}/"
-    - run: "cp ${{ github.workspace }}/targets/msp430/build/${{ matrix.subproject }}.elf content/${{ matrix.subproject }}/ || true"
-    - run: "cp ${{ github.workspace }}/targets/msp430/build/${{ matrix.subproject }}.hex content/${{ matrix.subproject }}/ || true"
+    - name: Collect build artifacts 📦
+      run: |
+        mkdir -p content/main/
+        cp ${{ github.workspace }}/targets/msp430/build/main.elf content/main/ || true
+        cp ${{ github.workspace }}/targets/msp430/build/main.hex content/main/ || true
 
-    - name: Upload artifacts to github 🔼
+    - name: Upload artifacts to GitHub 🔼
       uses: actions/upload-artifact@v4
       with:
-        name: "${{ matrix.subproject }}"
-        path: "content/${{ matrix.subproject }}/"
+        name: "msp430-main"
+        path: "content/main/"
