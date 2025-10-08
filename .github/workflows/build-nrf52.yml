@@ -10,37 +10,38 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GNU_INSTALL_LINK: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
-      GNU_INSTALL_ROOT: "${{ github.workspace }}/gcc-arm-none-eabi-10.3-2021.10"
-      SDK_LINK: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/sdks/nrf5/binaries/nrf5_sdk_17.1.0_ddde560.zip
-      SDK_ROOT: "${{ github.workspace }}/nRF5_SDK_17.1.0_ddde560"
+      ARM_GNU_LINK: https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+      ARM_GNU_ROOT: "${{ github.workspace }}/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi"
 
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v5
 
       - name: Install dependencies 🔧
-        run: sudo apt update && sudo apt install -y build-essential wget unzip
+        run: sudo apt update && sudo apt install -y build-essential wget xz-utils
 
-      - name: Download GNU ARM Embedded Toolchain 🔽
-        run: wget -q --tries 3 ${{ env.GNU_INSTALL_LINK }} -O gcc-arm.tar.bz2
+      - name: Cache ARM GNU Toolchain 💾
+        id: cache-arm-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ARM_GNU_ROOT }}
+          key: arm-gcc-${{ runner.os }}-14.2.rel1
+
+      - name: Download ARM GNU Toolchain 🔽
+        if: steps.cache-arm-toolchain.outputs.cache-hit != 'true'
+        run: |
+          wget -q --tries 3 ${{ env.ARM_GNU_LINK }} -O arm-toolchain.tar.xz
+          tar -xf arm-toolchain.tar.xz
         working-directory: "${{ github.workspace }}"
 
-      - name: Extract GCC ARM cross-compiler ⚔
-        run: tar -xf gcc-arm.tar.bz2
-        working-directory: "${{ github.workspace }}"
-
-      - name: Download nRF5 SDK 🔽
-        run: wget -q --tries 3 ${{ env.SDK_LINK }} -O sdk_nrf.zip
-        working-directory: "${{ github.workspace }}"
-
-      - name: Extract nRF5 SDK 📦
-        run: unzip -q sdk_nrf.zip
-        working-directory: "${{ github.workspace }}"
+      - name: Verify toolchain version 🧩
+        run: |
+          export PATH=${{ env.ARM_GNU_ROOT }}/bin:$PATH
+          arm-none-eabi-ld --version
 
       - name: Build nRF52 project 🧱
         run: |
-          export PATH=${{ env.GNU_INSTALL_ROOT }}/bin:$PATH
+          export PATH=${{ env.ARM_GNU_ROOT }}/bin:$PATH
           make
         working-directory: "${{ github.workspace }}/targets/nrf52/"
 
