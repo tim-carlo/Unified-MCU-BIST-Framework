@@ -10,8 +10,10 @@
 
 #if defined(NRF52840_XXAA)
 #define PMAN_TIMER NRF_TIMER3
+#define DEBUG_PIN_ABS 38 // Pin 1.6
 #elif defined(__MSP430FR5994__)
 #define PMAN_TIMER TIMER_A2
+#define DEBUG_PIN_ABS ABS_PIN(3, 0)
 #endif
 
 static uint8_t pman_baud_rate = 0;
@@ -36,6 +38,7 @@ static void pman_set_TX(bool state, uint8_t pin)
 
 static void pman_timer_isr(void)
 {
+    gpio_drive_high(DEBUG_PIN_ABS);
     // Process each instance in round-robin fashion
     for (uint8_t i = 0; i < pman_instance_count; i++)
     {
@@ -94,6 +97,7 @@ static void pman_timer_isr(void)
             break;
         }
     }
+    gpio_drive_low(DEBUG_PIN_ABS);
 }
 
 
@@ -155,6 +159,7 @@ void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
 {
     uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(tx_rate);
 
+    gpio_init_output(DEBUG_PIN_ABS);
     pman_setup_and_start_timer(sample_interval_us);
 }
 

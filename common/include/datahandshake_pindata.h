@@ -58,6 +58,8 @@ typedef struct
     RequestDataPacket *request_packet;
     AnswerDataPacket *answer_packet;
     uint8_t *receiving_buffer;
+    uint8_t *request_buffer;     // Dynamic buffer for Manchester request transmission/reception
+    uint8_t *answer_buffer;      // Dynamic buffer for Manchester answer transmission/reception
     uint8_t manchester_instance_index; // Index of the Manchester parallel instance for this pin
 } DataHandshakeData;
 
