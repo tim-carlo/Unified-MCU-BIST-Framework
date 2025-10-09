@@ -49,6 +49,12 @@ typedef enum
 #define PMAN_ENCODER_BUFFER_SIZE 32
 #define PMAN_DECODER_BUFFER_SIZE 32
 
+// Status bit definitions for ParallelManchesterInstance.status
+#define PMAN_STATUS_TRANSMISSION_COMPLETE   (1 << 0)
+#define PMAN_STATUS_RECEIVE_COMPLETE        (1 << 1)  
+#define PMAN_STATUS_RECEIVE_ERROR           (1 << 2)
+#define PMAN_STATUS_DATA_RECEIVED           (1 << 3)
+
 typedef struct {
     uint8_t pin;
     struct spooky_encoder enc;
@@ -56,9 +62,9 @@ typedef struct {
     ParallelManchesterMode mode;
     uint8_t encoder_buffer[PMAN_ENCODER_BUFFER_SIZE];
     uint8_t decoder_buffer[PMAN_DECODER_BUFFER_SIZE];
-    volatile bool transmission_complete;
-    volatile bool receive_complete;
-    volatile bool receive_error;
+    // Status bits: bit 0 = transmission_complete, bit 1 = receive_complete, 
+    // bit 2 = receive_error, bit 3 = data_received
+    volatile uint8_t status;
     uint8_t *receive_buffer;
     uint8_t receive_size;
 } ParallelManchesterInstance;
@@ -85,6 +91,7 @@ bool parallel_manchester_receive_error(uint8_t index);
 bool parallel_manchester_is_idle(uint8_t index);
 bool parallel_manchester_is_transmitting(uint8_t index);
 bool parallel_manchester_is_receiving(uint8_t index);
+bool parallel_manchester_data_received(uint8_t index);
 
 // Helpers
 uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
