@@ -587,7 +587,7 @@ static void fsm_data_handshake(void)
         case JOB_RECEIVING_ANSWER:
         {
             const uint8_t manchester_idx = p->manchester_instance_index;
-            if (parallel_manchester_receive_complete(manchester_idx) && parallel_manchester_data_received(manchester_idx))
+            if (parallel_manchester_receive_complete(manchester_idx))
             {
                 if (!handle_answer_complete(pin, p))
                 {
@@ -608,7 +608,7 @@ static void fsm_data_handshake(void)
         {
             gpio_drive_high(DEBUG_PIN2);
             const uint8_t manchester_idx = p->manchester_instance_index;
-            if (parallel_manchester_receive_complete(manchester_idx) && parallel_manchester_data_received(manchester_idx))
+            if (parallel_manchester_receive_complete(manchester_idx))
             {
                
                 if (!handle_request_receive_complete(pin, p))

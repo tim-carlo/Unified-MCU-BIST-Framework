@@ -65,6 +65,7 @@ typedef struct {
     volatile uint8_t status;
     uint8_t *data_buffer;  // Pointer to external data buffer (for send/receive)
     uint8_t data_size;     // Size of data being sent/received
+    uint8_t last_decoder_mode; // Track last decoder mode for state transition monitoring
 } ParallelManchesterInstance;
 
 extern uint8_t pman_instance_count;

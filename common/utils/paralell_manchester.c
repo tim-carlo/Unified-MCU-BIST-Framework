@@ -73,9 +73,9 @@ static void pman_set_TX(bool state, uint8_t pin)
 
 static void pman_timer_isr(void)
 {
+    const uint8_t count = pman_instance_count;
 
-    // Process each instance in round-robin fashion
-    for (uint8_t i = 0; i < pman_instance_count; i++)
+    for (uint8_t i = 0; i < count; i++)
     {
         ParallelManchesterInstance *instance = &pman_instances[i];
 
@@ -83,58 +83,81 @@ static void pman_timer_isr(void)
         {
         case PMAN_SEND:
         {
-            enum spooky_encoder_step_res step_result = spooky_encoder_step(&instance->enc);
+            const enum spooky_encoder_step_res step = spooky_encoder_step(&instance->enc);
 
-            switch (step_result)
+            if (step == SPOOKY_ENCODER_STEP_OK_LOW)
             {
-            case SPOOKY_ENCODER_STEP_OK_DONE:
-                pman_set_TX(true, instance->pin); // release the line
+                pman_set_TX(false, instance->pin);
+            }
+            else if (step == SPOOKY_ENCODER_STEP_OK_HIGH)
+            {
+                pman_set_TX(true, instance->pin);
+            }
+            else if (step == SPOOKY_ENCODER_STEP_OK_DONE)
+            {
+                pman_set_TX(true, instance->pin); // release line
                 instance->status |= PMAN_STATUS_TRANSMISSION_COMPLETE;
                 instance->mode = PMAN_IDLE;
-                break;
-            case SPOOKY_ENCODER_STEP_OK_LOW:
-                pman_set_TX(false, instance->pin);
-                break;
-            case SPOOKY_ENCODER_STEP_OK_HIGH:
+            }
+            else if (step != SPOOKY_ENCODER_STEP_OK)
+            {
+                // Error case or unknown
                 pman_set_TX(true, instance->pin);
-                break;
-            case SPOOKY_ENCODER_STEP_OK:
-                break;
-            default:
-                // Error case
-                pman_set_TX(true, instance->pin); // release the line
                 instance->mode = PMAN_IDLE;
-                break;
             }
             break;
         }
+
         case PMAN_RECEIVE:
         {
+#if defined(DEBUG_PIN_ABS)
             gpio_drive_high(DEBUG_PIN_ABS);
-            const bool rx_state = gpio_read(instance->pin);
-            enum spooky_decoder_step_res step_result = spooky_decoder_step(&instance->dec, rx_state);
+#endif
+            const bool rx = gpio_read(instance->pin);
+            const enum spooky_decoder_step_res step = spooky_decoder_step(&instance->dec, rx);
 
-            if (step_result == SPOOKY_DECODER_STEP_DONE)
+            // Monitor decoder state transitions
+            const uint8_t current_mode = instance->dec.mode;
+            const uint8_t last_mode = instance->last_decoder_mode;
+            
+            if (current_mode != last_mode) 
+            {
+                // State transition detected
+                if (current_mode < last_mode && last_mode != 3) 
+                {
+                    // Unexpected backward transition (error condition)
+                    instance->status |= PMAN_STATUS_RECEIVE_ERROR;
+                    printf("Decoder error: unexpected state transition from %u to %u\n", last_mode, current_mode);
+                }
+            }
+            instance->last_decoder_mode = current_mode;
+
+            if (step == SPOOKY_DECODER_STEP_DONE)
             {
                 instance->status |= PMAN_STATUS_RECEIVE_COMPLETE;
                 instance->mode = PMAN_IDLE;
             }
-            else if (step_result == SPOOKY_DECODER_STEP_ERROR_NULL)
+            else if (step == SPOOKY_DECODER_STEP_ERROR_NULL)
             {
                 instance->status |= PMAN_STATUS_RECEIVE_ERROR;
                 instance->mode = PMAN_IDLE;
             }
+
+#if defined(DEBUG_PIN_ABS)
             gpio_drive_low(DEBUG_PIN_ABS);
+#endif
             break;
         }
-        case PMAN_IDLE:
-        case PMAN_NOT_INITIALIZED:
+
         default:
-            // Do nothing for idle or uninitialized instances
+            // No action for IDLE or NOT_INITIALIZED
             break;
         }
     }
+
+#if defined(DEBUG_PIN_ABS)
     gpio_drive_low(DEBUG_PIN_ABS);
+#endif
 }
 
 static void pman_setup_and_start_timer(uint16_t sample_interval_us)
@@ -228,6 +251,7 @@ uint8_t parallel_manchester_add_instance(uint8_t pin)
     new_instance->status = 0;
     new_instance->data_buffer = NULL;
     new_instance->data_size = 0;
+    new_instance->last_decoder_mode = 0; // Initialize decoder mode tracking
 
     // Initialize GPIO for this pin
     gpio_od_init(pin);
@@ -361,7 +385,9 @@ bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_
     instance->data_buffer = data;
     instance->data_size = size;
     instance->mode = PMAN_RECEIVE;
-    pman_clear_receive_status(index);
+    instance->last_decoder_mode = 0; // Reset decoder mode tracking
+    instance->status = 0; // Reset ALL status bits when starting receive
+    
     return true;
 }
 
