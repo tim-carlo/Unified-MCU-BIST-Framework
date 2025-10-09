@@ -59,7 +59,6 @@ static void pman_clear_receive_status(uint8_t index)
     pman_instances[index].status &= ~(PMAN_STATUS_RECEIVE_COMPLETE | PMAN_STATUS_RECEIVE_ERROR);
 }
 
-
 static void pman_set_TX(bool state, uint8_t pin)
 {
     if (state)
@@ -179,18 +178,19 @@ uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate r
 
 static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 {
-    ParallelManchesterInstance *instance = (ParallelManchesterInstance *)udata;
+    const uint8_t index = (uint8_t)(uintptr_t)udata;
+    ParallelManchesterInstance *instance = &pman_instances[index];
+    // Check for invalid data or wrong mode
+    if (!data || !data_size || !instance->data_buffer || instance->mode != PMAN_RECEIVE)
+        return;
 
-    if (instance && instance->receive_buffer && data_size > 0)
-    {
-        // Copy received data to the instance's receive buffer
-        if (data[0] == 0xAA) {
-            printf("r\n");
-        }
-        instance->status |= PMAN_STATUS_DATA_RECEIVED;
-        uint8_t copy_size = (data_size < instance->receive_size) ? data_size : instance->receive_size;
-        memcpy(instance->receive_buffer, data, copy_size);
-    }
+    const uint8_t copy_size = (data_size < instance->data_size) ? data_size : instance->data_size;
+
+    // Manuell copying, reduces memcpy overhead on small MCUs
+    for (uint8_t i = 0; i < copy_size; i++)
+        instance->data_buffer[i] = data[i];
+
+    instance->status |= PMAN_STATUS_DATA_RECEIVED;
 }
 
 void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
@@ -208,57 +208,48 @@ uint8_t parallel_manchester_add_instance(uint8_t pin)
     {
         if (pman_instances[i].pin == pin)
         {
-            // Pin already exists, return 255
-            return 255;
+            return 255; // Pin already exists, return invalid index
         }
     }
 
+    // Reallocate memory for new instance
     ParallelManchesterInstance *new_instances = realloc(pman_instances, (pman_instance_count + 1) * sizeof(ParallelManchesterInstance));
-    if (new_instances == NULL)
+    if (!new_instances)
     {
-        // Handle memory allocation failure
-        return 255;
+        return 255; // Memory allocation failed
     }
-    pman_instances = new_instances;
 
-    // Get reference to the new instance
+    pman_instances = new_instances;
     ParallelManchesterInstance *new_instance = &pman_instances[pman_instance_count];
 
     // Initialize the new instance
     new_instance->pin = pin;
     new_instance->mode = PMAN_IDLE;
-    new_instance->status = 0; // Clear all status bits
-    new_instance->receive_buffer = NULL;
-    new_instance->receive_size = 0;
+    new_instance->status = 0;
+    new_instance->data_buffer = NULL;
+    new_instance->data_size = 0;
 
-    // Initialize encoder
-    enum spooky_encoder_init_res enc_result = spooky_encoder_init(
-        &new_instance->enc,
-        new_instance->encoder_buffer,
-        PMAN_ENCODER_BUFFER_SIZE,
-        PMAN_TX_RATE);
-
-    // Initialize decoder with callback
-    enum spooky_decoder_init_res dec_result = spooky_decoder_init(
-        &new_instance->dec,
-        new_instance->decoder_buffer,
-        PMAN_DECODER_BUFFER_SIZE,
-        pman_rx_callback, // Callback function
-        new_instance      // Pass instance as callback data
-    );
-
-    // Check if initialization was successful
-    if (enc_result != SPOOKY_ENCODER_INIT_OK || dec_result != SPOOKY_DECODER_INIT_OK)
-    {
-        // Initialization failed, don't increment counter
-        return 255;
-    }
-
-    // Initialize GPIO pin for open drain output
+    // Initialize GPIO for this pin
     gpio_od_init(pin);
 
+    // Initialize the spooky encoder and decoder with the single buffer
+    // spooky_encoder_init expects: encoder, buffer, buffer_size, tx_rate
+    if (spooky_encoder_init(&new_instance->enc, new_instance->buffer, PMAN_BUFFER_SIZE, PMAN_TX_RATE) != 0)
+    {
+        // If encoder initialization fails, clean up and return invalid index
+        return 255; // Invalid index
+    }
+
+    uint8_t new_index = pman_instance_count;
+    // spooky_decoder_init expects: decoder, buffer, buffer_size, callback, user_data
+    if (spooky_decoder_init(&new_instance->dec, new_instance->buffer, PMAN_BUFFER_SIZE, pman_rx_callback, (void*)(uintptr_t)new_index) != 0)
+    {
+        // If decoder initialization fails, clean up and return invalid index
+        return 255; // Invalid index
+    }
+
     pman_instance_count++;
-    return pman_instance_count - 1;
+    return new_index; // Return the index of the new instance
 }
 
 bool parallel_manchester_remove_instance(uint8_t index)
@@ -287,7 +278,6 @@ bool parallel_manchester_remove_instance(uint8_t index)
     // Decrease count
     pman_instance_count--;
 
-    // Try to shrink the allocated memory
     ParallelManchesterInstance *new_instances = realloc(pman_instances, pman_instance_count * sizeof(ParallelManchesterInstance));
     if (new_instances == NULL)
     {
@@ -349,6 +339,11 @@ bool parallel_manchester_transmit_complete(uint8_t index)
 // Non-blocking receive function
 bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_t size)
 {
+    if (index >= pman_instance_count)
+    {
+        return false; // Invalid index
+    }
+
     ParallelManchesterInstance *instance = &pman_instances[index];
 
     if (instance->mode != PMAN_IDLE)
@@ -363,17 +358,20 @@ bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_
     }
 
     // Set up receive buffer and start receiving
-    instance->receive_buffer = data;
-    instance->receive_size = size;
+    instance->data_buffer = data;
+    instance->data_size = size;
     instance->mode = PMAN_RECEIVE;
     pman_clear_receive_status(index);
-
     return true;
 }
 
 // Check if receive is complete
 bool parallel_manchester_receive_complete(uint8_t index)
 {
+    if (index >= pman_instance_count)
+    {
+        return false; // Invalid index
+    }
 
     if (pman_is_receive_complete(index))
     {
