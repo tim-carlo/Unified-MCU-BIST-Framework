@@ -202,6 +202,7 @@ uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate r
 static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 {
     const uint8_t index = (uint8_t)(uintptr_t)udata;
+    printf("r");
     ParallelManchesterInstance *instance = &pman_instances[index];
     // Check for invalid data or wrong mode
     if (!data || !data_size || !instance->data_buffer || instance->mode != PMAN_RECEIVE)
