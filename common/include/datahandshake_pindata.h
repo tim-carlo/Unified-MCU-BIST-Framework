@@ -14,11 +14,12 @@
 #define STATUS_FAILED_HS (1U << 6)        // Set on failed handshake
 #define STATUS_CONNECTED_OWN (1U << 7)    // Set when connected with own device
 
-// Packet format: [8 bytes UUID][1 byte Pin][4 bytes CRC32]
+// Packet format: [8 bytes UUID][1 byte Pin][1 byte Mutex Request][4 bytes CRC32]
 typedef struct
 {
     uint64_t uuid;
     uint8_t pin;
+    uint8_t mutex_request; // Mutex request field (0x55 = request, 0x00 = no request)
     uint32_t crc_value; // Changed from crc to uint32_t to avoid type conflicts
 } RequestDataPacket;
 
@@ -30,6 +31,7 @@ typedef struct
     uint64_t own_uuid;
     uint8_t sending_pin;
     uint32_t crc_value; // Changed from crc to uint32_t to avoid type conflicts
+    uint8_t mutex_allowed;
 } AnswerDataPacket;
 
 typedef enum
@@ -59,7 +61,7 @@ typedef struct
     // Packet pointers (point to static structures, not allocated)
     RequestDataPacket *request_packet;
     AnswerDataPacket *answer_packet;
-    
+
     uint8_t *data_buffer; 
     uint8_t manchester_instance_index;
 } DataHandshakeData;

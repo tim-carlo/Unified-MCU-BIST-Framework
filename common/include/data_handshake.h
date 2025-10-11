@@ -46,8 +46,12 @@
 
 #define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
 
-#define REQUEST_PACKSIZE 14
-#define ANSWER_PACKSIZE 23
+#define REQUEST_PACKSIZE 15
+#define ANSWER_PACKSIZE 24
+
+#define REQEST_MUTEX_ON_THIS_PIN 0x55
+#define ALLOWING_MUTEX_ON_THIS_PIN 0xAA
+#define NO_MUTEX_ON_THIS_PIN 0x00
 
 typedef enum
 {
