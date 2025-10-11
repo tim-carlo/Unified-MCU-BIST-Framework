@@ -47,8 +47,6 @@ typedef enum
     PMAN_RECEIVE
 } ParallelManchesterMode;
 
-#define PMAN_BUFFER_SIZE 32  // Single buffer size for both encoder and decoder
-
 // Status bit definitions for ParallelManchesterInstance.status
 #define PMAN_STATUS_TRANSMISSION_COMPLETE   (1 << 0)
 #define PMAN_STATUS_RECEIVE_COMPLETE        (1 << 1)  
@@ -60,13 +58,11 @@ typedef struct {
     struct spooky_encoder enc;
     struct spooky_decoder dec;
     ParallelManchesterMode mode;
-    uint8_t buffer[PMAN_BUFFER_SIZE];  // Single buffer for both send and receive
+    uint8_t *buffer;      // Single buffer for encode/decode operations
+    uint8_t buffer_size;  // Size of the buffer
     // Status bits: bit 0 = transmission_complete, bit 1 = receive_complete, 
     // bit 2 = receive_error, bit 3 = data_received
-    // bit 4 last_received_bit
     volatile uint8_t status;
-    uint8_t *data_buffer;  // Pointer to external data buffer for receive
-    uint8_t data_size;     // Size of data being sent/received
     uint8_t last_decoder_mode; // Track last decoder mode for state transition monitoring
     uint16_t cycles_without_transition; // For timeout handling during receive
     bool last_rx;          // Track last RX state for transition detection
@@ -79,8 +75,8 @@ extern ParallelManchesterInstance *pman_instances;
 void parallel_manchester_init(ParallelManchesterBaudRate tx_rate);
 void parallel_manchester_deinit();
 
-// Instance management
-uint8_t parallel_manchester_add_instance(uint8_t pin);
+// Instance management - now accepts buffer per instance
+uint8_t parallel_manchester_add_instance(uint8_t pin, uint8_t *buffer, uint8_t buffer_size);
 bool parallel_manchester_remove_instance(uint8_t index);
 
 // Non-blocking transmission and receive functions
@@ -98,5 +94,9 @@ bool parallel_manchester_data_received(uint8_t index);
 
 // Helpers
 uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
+
+// Add new helper functions
+uint8_t* parallel_manchester_get_received_data(uint8_t index);
+uint8_t parallel_manchester_get_buffer_size(uint8_t index);
 
 #endif // PARALLEL_MANCHESTER_H

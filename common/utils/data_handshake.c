@@ -28,6 +28,7 @@ PinData *global_pindata;
 static DataHandshakeData *global_datahandshake_pindata = NULL; // Global pointer to DataHandshakeData array
 
 static uint64_t internal_blacklist_mask = 0;
+static uint64_t internal_valid_pins = ~0ULL; // Assume 64-bit max
 static uint64_t responder_mask = 0;
 static uint64_t initiator_mask = 0;
 static uint64_t uuid = 0;
@@ -70,12 +71,13 @@ static void log_job_transition(uint8_t pin, CurrentJobType old_job, CurrentJobTy
  */
 static void analyze_pindata_events(PinData *pindata)
 {
-    // Reset masks
+    // Reset masks and counters
     initiator_mask = 0;
     responder_mask = 0;
+    number_of_pins = 0;
 
-    // Calculate all pins mask at runtime - use 64 as safe maximum
-    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
+    // Calculate all pins mask at runtime - assume 64-bit max
+    const uint64_t all_pins_mask = ~0ULL;
 
     // Iterate through all pins that are not blacklisted
     BitmapIterator it = bitmap_iterator_create(~internal_blacklist_mask & all_pins_mask);
@@ -83,7 +85,10 @@ static void analyze_pindata_events(PinData *pindata)
 
     while (bitmap_iterator_next(&it, &pin))
     {
-        // Check events for this pin
+        bool has_initiator = false;
+        bool has_responder = false;
+
+        // Analyze all events for this pin
         for (uint8_t i = 0; i < pindata[pin].event_index && i < EVENT_BUFFER_SIZE; i++)
         {
             PinEventType event = pindata[pin].pin_event[i];
@@ -91,25 +96,49 @@ static void analyze_pindata_events(PinData *pindata)
             switch (event)
             {
             case HANDSHAKE_OK_INITIATOR:
-                // Set bit in initiator mask
-                initiator_mask |= (1ULL << pin);
-                LOG("Pin %u set as INITIATOR (event: %d)\n", pin, event);
+                has_initiator = true;
                 break;
 
             case HANDSHAKE_OK_RESPONDER:
-                // Set bit in responder mask
-                responder_mask |= (1ULL << pin);
-                LOG("Pin %u set as RESPONDER (event: %d)\n", pin, event);
+                has_responder = true;
                 break;
+
             default:
-                // Other events are ignored for role determination
                 break;
             }
         }
+
+        // Apply logic for mask assignment and blacklist update
+        if (has_initiator && !has_responder)
+        {
+            initiator_mask |= (1ULL << pin);
+            LOG("Pin %u set as INITIATOR\n", pin);
+            number_of_pins++;
+        }
+        else if (has_responder && !has_initiator)
+        {
+            responder_mask |= (1ULL << pin);
+            LOG("Pin %u set as RESPONDER\n", pin);
+            number_of_pins++;
+        }
+        else if (!has_initiator && !has_responder)
+        {
+            // No valid role detected → blacklist pin
+            internal_blacklist_mask |= (1ULL << pin);
+            LOG("Pin %u has no valid event → BLACKLISTED\n", pin);
+        }
+        else
+        {
+            // Both roles detected (should not happen) → blacklist pin
+            internal_blacklist_mask |= (1ULL << pin);
+            LOG("Pin %u has conflicting roles (INIT+RESP) → BLACKLISTED\n", pin);
+        }
     }
-    LOG("Blacklist mask: 0x%016llx \n", (unsigned long long)internal_blacklist_mask);
-    LOG("Initiator mask: 0x%016llx \n", (unsigned long long)initiator_mask);
-    LOG("Responder mask: 0x%016llx \n", (unsigned long long)responder_mask);
+
+    LOG("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
+    LOG("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
+    LOG("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
+    LOG("Number of active pins: %u\n", number_of_pins);
 }
 
 static uint16_t get_listen_until_time()
@@ -253,26 +282,20 @@ typedef enum
 
 static bool start_receiving_request(DataHandshakeData *p)
 {
-    // Use the Manchester instance index for this pin
     uint8_t manchester_idx = p->manchester_instance_index;
 
-    // Clear the request buffer to ensure clean state
-    memset(p->request_buffer, 0, REQUEST_PACKSIZE);
-
-    // Start background reception for the request packet using pin's buffer
-    return parallel_manchester_receive_background(manchester_idx, p->request_buffer, REQUEST_PACKSIZE);
+    // Start background reception - data will be written to instance buffer
+    uint8_t *buffer = parallel_manchester_get_received_data(manchester_idx);
+    return parallel_manchester_receive_background(manchester_idx, buffer, REQUEST_PACKSIZE);
 }
 
 static bool start_receiving_answer(DataHandshakeData *p)
 {
-    // Use the Manchester instance index for this pin
     uint8_t manchester_idx = p->manchester_instance_index;
 
-    // Clear the answer buffer to ensure clean state
-    memset(p->answer_buffer, 0, ANSWER_PACKSIZE);
-
-    // Start background reception for the answer packet using pin's buffer
-    return parallel_manchester_receive_background(manchester_idx, p->answer_buffer, ANSWER_PACKSIZE);
+    // Start background reception - data will be written to instance buffer
+    uint8_t *buffer = parallel_manchester_get_received_data(manchester_idx);
+    return parallel_manchester_receive_background(manchester_idx, buffer, ANSWER_PACKSIZE);
 }
 
 static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
@@ -280,12 +303,16 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 
     RequestDataPacket request_packet;
 
-    // Print the first byte of p->request_buffer for debugging
-    if (!deconstruct_request_data_packet(p->request_buffer, &request_packet))
+    // Get received data from Manchester instance buffer
+    uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
+    if (!received_data)
         return false;
-    // Verify CRC
-    // Compute CRC over the first 10 bytes (type, uuid, pin)
-    // crc computed_crc = crcFast(request_buffer, 10);
+
+    if (!deconstruct_request_data_packet(received_data, &request_packet))
+        return false;
+
+    // Verify CRC if needed
+    // crc computed_crc = crcFast(p->data_buffer, 10);
     // if (computed_crc != request_packet.crc_value)
     // {
     //     return false; // CRC mismatch
@@ -293,7 +320,16 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 
     // Mark that we received a request
     dhandshake_set_received_request(p, true);
+
+    // if the uuid is my own, ignore it
+    if (request_packet.uuid == uuid)
+    {
+        return false;
+    }
+    // Add a pin connection to the request packet
+    add_pin_connection(&global_pindata[pin], pin, request_packet.pin, request_packet.uuid);
     AnswerDataPacket answer_packet;
+
     // Prepare answer packet using static structure to avoid memory leaks
     answer_packet.received_uuid = request_packet.uuid;
     answer_packet.received_pin = request_packet.pin;
@@ -306,7 +342,6 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     // Mark that we're going to send an answer
     dhandshake_set_send_answer(p, true);
 
-    // printf("Responding on pin %u\n", pin);
     gpio_od_hold_low(pin); // Hold the line low to signal we're responding
     return true;
 }
@@ -314,22 +349,21 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 {
     AnswerDataPacket answer_packet;
-    if (!deconstruct_answer_data_packet(p->answer_buffer, &answer_packet))
+
+    // Get received data from Manchester instance buffer
+    uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
+    if (!received_data)
         return false;
-    // Verify CRC
-    // crc computed_crc = crcFast(answer_buffer, 19); // Calculate CRC over type,
-    // if (computed_crc != answer_packet.crc_value)
-    // {
-    //     return false; // CRC mismatch
-    // }
+
+    if (!deconstruct_answer_data_packet(received_data, &answer_packet))
+        return false;
+
     // Mark successful handshake
     dhandshake_set_received_answer(p, true);
     dhandshake_set_successful_handshake(p, true);
 
     // Add pin connection to pindata events
-
     PinData *pindata = &global_pindata[pin];
-
     uint64_t other_device_id = answer_packet.own_uuid;
     add_pin_connection(pindata, pin, answer_packet.received_pin, other_device_id);
     p->number_of_successful_tries++;
@@ -341,7 +375,6 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
 
-    // gpio_drive_high(DEBUG_PIN2);
     // Small delay to ensure line is released before transmitting
     delay_us(5000);
 
@@ -353,17 +386,21 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     request_packet.crc_value = 0; // Will be calculated in construct function
 
     p->request_packet = &request_packet;
-    construct_request_data_packet(&request_packet, p->request_buffer);
 
-    // printf("Requesting on pin %u\n", pin);
-    uint8_t manchester_idx = p->manchester_instance_index;
-    bool result = parallel_manchester_transmit_background(manchester_idx, p->request_buffer, REQUEST_PACKSIZE);
+    uint8_t request_buffer[REQUEST_PACKSIZE];
+
+    construct_request_data_packet(&request_packet, request_buffer);
+
+    const uint8_t manchester_idx = p->manchester_instance_index;
+    bool result = parallel_manchester_transmit_background(manchester_idx, request_buffer, REQUEST_PACKSIZE);
     if (!result)
     {
         return false;
     }
     return true;
 }
+
+// Update send_answer_in_background to use the single buffer:
 static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
@@ -376,13 +413,12 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
         return false;
     }
 
-    // Clear buffer and prepare answer packet
-    memset(p->answer_buffer, 0, ANSWER_PACKSIZE);
-    construct_answer_data_packet(p->answer_packet, p->answer_buffer);
+    uint8_t answer_buffer[ANSWER_PACKSIZE];
 
-    // printf("Answering on pin %u\n", pin);
+    construct_answer_data_packet(p->answer_packet, answer_buffer);
+
     uint8_t manchester_idx = p->manchester_instance_index;
-    bool result = parallel_manchester_transmit_background(manchester_idx, p->answer_buffer, ANSWER_PACKSIZE);
+    bool result = parallel_manchester_transmit_background(manchester_idx, answer_buffer, ANSWER_PACKSIZE);
     if (!result)
     {
         return false;
@@ -399,14 +435,18 @@ static void reschedule_request(DataHandshakeData *p, uint32_t counter)
 
 static uint32_t counter = 0;
 
-static void fsm_data_handshake(void)
+static inline void fsm_data_handshake(void)
 {
     gpio_drive_high(DEBUG_PIN1);
     counter++;
 
-    for (uint8_t i = 0; i < number_of_pins; i++)
+    BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
+    uint8_t pin_index;
+
+    while (bitmap_iterator_next(&it, &pin_index))
     {
-        DataHandshakeData *p = &global_datahandshake_pindata[i];
+
+        DataHandshakeData *p = &global_datahandshake_pindata[pin_index];
         uint8_t pin = p->pin;
         uint32_t delta = counter - p->last_send_job_order;
 
@@ -575,7 +615,7 @@ static void fsm_data_handshake(void)
                 }
                 if (is_failed)
                 {
-                   // printf("Failed to receive answer on pin %u\n", pin);
+                    // printf("Failed to receive answer on pin %u\n", pin);
                     reschedule_request(p, counter);
                     dhandshake_set_failed_handshake(p, true);
                     log_job_transition(p->pin, p->current_job, JOB_LISTEN);
@@ -584,13 +624,13 @@ static void fsm_data_handshake(void)
             }
             break;
         }
-         case JOB_RECEIVING_REQUEST:
+        case JOB_RECEIVING_REQUEST:
         {
             gpio_drive_high(DEBUG_PIN2);
             const uint8_t manchester_idx = p->manchester_instance_index;
             if (parallel_manchester_receive_complete(manchester_idx))
             {
-               
+
                 if (!handle_request_receive_complete(pin, p))
                 {
                     // Failed to handle request properly
@@ -601,12 +641,11 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
-                     printf("Request received on pin %u\n", pin);
+                    printf("Request received on pin %u\n", pin);
                     // Successfully received request and prepared to send answer
                     log_job_transition(pin, p->current_job, JOB_SEND_ANSWER);
                     p->current_job = JOB_SEND_ANSWER;
 
-                    
                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
             }
@@ -628,6 +667,12 @@ static void fsm_data_handshake(void)
                 if (!handle_answer_complete(pin, p))
                 {
                     dhandshake_set_failed_handshake(p, false);
+                }
+                else
+                {
+                    // Successfully received answer
+                    // blacklist this pin for further requests to avoid flooding
+                    internal_valid_pins &= ~(1ULL << pin_index);
                 }
                 log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening after handling answer
@@ -661,14 +706,12 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     internal_blacklist_mask = blacklist_mask;
     global_pindata = pindata;
 
-    // Calculate valid pins mask - use 64 as safe maximum
-    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
-    uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
-
     analyze_pindata_events(pindata);
 
-    number_of_pins = __builtin_popcountll(valid_pins_mask);
-    uuid = get_unique_id();
+    // Calculate valid pins mask - use 64 as safe maximum
+    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
+    // Shift the mask until the first 1 is at the least significant bit
+    uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
 
     if (number_of_pins == 0)
     {
@@ -685,32 +728,30 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     // Initialize DataHandshakeData for each valid pin
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0;
+
+    // Initialize parallel Manchester system
+    parallel_manchester_init(PMAN_BAUD_100);
+
+    // Gerate a valid pin mask for the fsm to now which pins where successfully initialized
+    uint64_t valid_pins_for_fsm_mask = 0;
+
     while (bitmap_iterator_next(&it, &pin_index))
     {
         uint8_t physical_pin = pindata[pin_index].pin;
 
-        // Allocate buffers for this pin
-        uint8_t *pin_request_buffer = calloc(REQUEST_PACKSIZE, sizeof(uint8_t));
-        uint8_t *pin_answer_buffer = calloc(ANSWER_PACKSIZE, sizeof(uint8_t));
+        // Allocate single buffer for this pin (used for both request and answer)
+        // Use the larger of the two packet sizes to ensure sufficient space
+        uint8_t max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
+        uint8_t *pin_data_buffer = calloc(max_packet_size, sizeof(uint8_t));
 
-        if (!pin_request_buffer || !pin_answer_buffer)
+        if (!pin_data_buffer)
         {
-            // Cleanup any successful allocations
-            if (pin_request_buffer)
-                free(pin_request_buffer);
-            if (pin_answer_buffer)
-                free(pin_answer_buffer);
-
             // Cleanup previously allocated buffers
             for (uint8_t cleanup_idx = 0; cleanup_idx < idx; cleanup_idx++)
             {
-                if (global_datahandshake_pindata[cleanup_idx].request_buffer)
+                if (global_datahandshake_pindata[cleanup_idx].data_buffer)
                 {
-                    free(global_datahandshake_pindata[cleanup_idx].request_buffer);
-                }
-                if (global_datahandshake_pindata[cleanup_idx].answer_buffer)
-                {
-                    free(global_datahandshake_pindata[cleanup_idx].answer_buffer);
+                    free(global_datahandshake_pindata[cleanup_idx].data_buffer);
                 }
             }
             free(global_datahandshake_pindata);
@@ -728,9 +769,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
             .last_send_job_order = 0,
             .request_packet = NULL,
             .answer_packet = NULL,
-            .receiving_buffer = NULL,
-            .request_buffer = pin_request_buffer,
-            .answer_buffer = pin_answer_buffer,
+            .data_buffer = pin_data_buffer,   // Single buffer for both request and answer
             .manchester_instance_index = 255, // Initialize as invalid
         };
 
@@ -746,19 +785,8 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
             dhandshake_set_role(&global_datahandshake_pindata[idx], true); // Responder
         }
 
-        idx++;
-    }
-
-    // Initialize parallel Manchester system
-    parallel_manchester_init(PMAN_BAUD_100);
-
-    // Create a Manchester instance for each valid pin and store index in DataHandshakeData
-    it = bitmap_iterator_create(valid_pins_mask);
-    idx = 0; // Reset index for mapping to global_datahandshake_pindata
-    while (bitmap_iterator_next(&it, &pin_index))
-    {
-        uint8_t physical_pin = pindata[pin_index].pin;
-        uint8_t manchester_idx = parallel_manchester_add_instance(physical_pin);
+        uint8_t *const buffer = global_datahandshake_pindata[idx].data_buffer;
+        uint8_t manchester_idx = parallel_manchester_add_instance(physical_pin, buffer, max_packet_size);
 
         if (manchester_idx == 255)
         {
@@ -769,9 +797,15 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
         {
             global_datahandshake_pindata[idx].manchester_instance_index = manchester_idx;
             LOG("Created Manchester instance %u for pin %u\n", manchester_idx, physical_pin);
+            valid_pins_for_fsm_mask |= (1ULL << idx); // Mark this pin as valid for FSM
         }
+
         idx++;
     }
+
+    printf("Data handshake initialized \n");
+
+    internal_valid_pins = valid_pins_for_fsm_mask;
 
     // Initialization complete - Start timer
     start_send_data_timer();
@@ -797,16 +831,11 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
                 parallel_manchester_remove_instance(global_datahandshake_pindata[i].manchester_instance_index);
             }
 
-            // Free allocated buffers
-            if (global_datahandshake_pindata[i].request_buffer)
+            // Free the single allocated buffer
+            if (global_datahandshake_pindata[i].data_buffer)
             {
-                free(global_datahandshake_pindata[i].request_buffer);
-                global_datahandshake_pindata[i].request_buffer = NULL;
-            }
-            if (global_datahandshake_pindata[i].answer_buffer)
-            {
-                free(global_datahandshake_pindata[i].answer_buffer);
-                global_datahandshake_pindata[i].answer_buffer = NULL;
+                free(global_datahandshake_pindata[i].data_buffer);
+                global_datahandshake_pindata[i].data_buffer = NULL;
             }
 
             // Clear packet pointers

@@ -55,12 +55,13 @@ typedef struct
     uint16_t receiving_counter;
     uint16_t time_until_next_send;
     uint32_t last_send_job_order;
+    
+    // Packet pointers (point to static structures, not allocated)
     RequestDataPacket *request_packet;
     AnswerDataPacket *answer_packet;
-    uint8_t *receiving_buffer;
-    uint8_t *request_buffer;     // Dynamic buffer for Manchester request transmission/reception
-    uint8_t *answer_buffer;      // Dynamic buffer for Manchester answer transmission/reception
-    uint8_t manchester_instance_index; // Index of the Manchester parallel instance for this pin
+    
+    uint8_t *data_buffer; 
+    uint8_t manchester_instance_index;
 } DataHandshakeData;
 
 typedef enum
