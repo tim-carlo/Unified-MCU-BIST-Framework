@@ -147,8 +147,9 @@ bool gpio_read(uint8_t abs_pin)
     uint8_t mask = 1 << abs_to_pinidx(abs_pin);
     return (*(volatile uint8_t *)((uintptr_t)(base + PORT_IN_OFFSET)) & mask) != 0;
 }
+ 
 
-uint64_t gpio_read_all_pins_state()
+uint64_t gpio_read_all_ports()
 {
     uint64_t state = 0;
     state |= (uint64_t)(*(volatile uint8_t *)&P1IN) << 0;

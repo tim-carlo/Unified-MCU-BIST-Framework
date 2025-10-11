@@ -43,7 +43,7 @@ extern "C"
     void gpio_toggle(uint8_t abs_pin);
     bool gpio_read(uint8_t abs_pin);
     void gpio_reset(uint8_t abs_pin);
-    uint64_t gpio_read_all_pins_state(void);
+    uint64_t gpio_read_all_ports(void);
 
     // Interrupt handling
     void gpio_listen_on_all_pins_interrupt(

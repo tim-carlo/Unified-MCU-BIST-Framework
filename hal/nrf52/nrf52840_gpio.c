@@ -118,6 +118,19 @@ bool gpio_read(uint8_t abs_pin)
     uint32_t idx = ABS_TO_PINIDX(abs_pin);
     return pin_level(port_ptr(port), idx) ? true : false;
 }
+
+/**
+ * @brief Read both GPIO ports with explicit bit positioning
+ * 
+ * @return uint64_t Combined value where:
+ *         - Bits [31:0]  = Port 0 pins
+ *         - Bits [63:32] = Port 1 pins
+ */
+uint64_t gpio_read_all_ports(void)
+{
+    return ((uint64_t)NRF_P1->IN << 32) | (uint64_t)NRF_P0->IN;
+}
+
 /**
  * @brief Configure pin sense for interrupts using absolute pin number
  *
@@ -335,3 +348,4 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
         }
     }
 }
+

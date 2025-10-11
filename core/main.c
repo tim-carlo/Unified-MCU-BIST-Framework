@@ -113,6 +113,12 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
+    *mask &= ~(1ULL << ABS_PIN(4, 1));
+    *mask &= ~(1ULL << ABS_PIN(4, 2));
+    *mask &= ~(1ULL << ABS_PIN(4, 3));
+    *mask &= ~(1ULL << ABS_PIN(4, 7));
+    *mask &= ~(1ULL << ABS_PIN(7, 1));
+    *mask &= ~(1ULL << ABS_PIN(7, 0));
 #endif
 }
 
@@ -125,6 +131,12 @@ void set_role_debug()
 #elif defined(__MSP430FR5994__)
     add_pin_event(pin_data, ABS_PIN(3, 6), HANDSHAKE_OK_RESPONDER);
     add_pin_event(pin_data, ABS_PIN(3, 7), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(4, 1), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(4, 2), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(4, 3), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(4, 7), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(7, 1), HANDSHAKE_OK_INITIATOR);
+    add_pin_event(pin_data, ABS_PIN(7, 0), HANDSHAKE_OK_INITIATOR);
 #endif
 }
 

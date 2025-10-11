@@ -28,6 +28,7 @@
 #define PMAN_TX_RATE 8 // Number of samples per bit (must match encoder/decoder settings)
 
 typedef enum {
+    PMAN_BAUD_100 = 100,
     PMAN_BAUD_300 = 300,
     PMAN_BAUD_600 = 600,
     PMAN_BAUD_1200 = 1200,
@@ -62,10 +63,13 @@ typedef struct {
     uint8_t buffer[PMAN_BUFFER_SIZE];  // Single buffer for both send and receive
     // Status bits: bit 0 = transmission_complete, bit 1 = receive_complete, 
     // bit 2 = receive_error, bit 3 = data_received
+    // bit 4 last_received_bit
     volatile uint8_t status;
-    uint8_t *data_buffer;  // Pointer to external data buffer (for send/receive)
+    uint8_t *data_buffer;  // Pointer to external data buffer for receive
     uint8_t data_size;     // Size of data being sent/received
     uint8_t last_decoder_mode; // Track last decoder mode for state transition monitoring
+    uint16_t cycles_without_transition; // For timeout handling during receive
+    bool last_rx;          // Track last RX state for transition detection
 } ParallelManchesterInstance;
 
 extern uint8_t pman_instance_count;
