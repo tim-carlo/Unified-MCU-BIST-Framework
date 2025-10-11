@@ -36,33 +36,6 @@ static volatile bool interrupt_cont = false;
 
 static uint8_t number_of_pins = 0;
 
-// Job name mapping for logging
-static const char *job_names[] = {
-    "JOB_LISTEN",
-    "JOB_SEND_REQUEST",
-    "JOB_SEND_ANSWER",
-    "JOB_WAIT_FOR_ANSWER",
-    "JOB_TRANSMITTING_ANSWER",
-    "JOB_TRANSMITTING_REQUEST"};
-
-/**
- * @brief Log job transitions for debugging
- * @param pin Pin number for context
- * @param old_job Previous job
- * @param new_job New job
- */
-static void log_job_transition(uint8_t pin, CurrentJobType old_job, CurrentJobType new_job)
-{
-    // if (old_job != new_job) {
-    //     LOG("Pin %u: %s(%d) -> %s(%d)\n",
-    //         pin,
-    //         job_names[old_job], old_job,
-    //         job_names[new_job], new_job);
-    // }
-}
-
-// all_pins_mask will be calculated at runtime
-
 /**
  * @brief This function is used to build the initiator and responder masks based on pindata events
  * The Idea in this handshake to improve its perfomance is to only listen on pins where the MCU was the responder.
@@ -112,26 +85,22 @@ static void analyze_pindata_events(PinData *pindata)
         if (has_initiator && !has_responder)
         {
             initiator_mask |= (1ULL << pin);
-            LOG("Pin %u set as INITIATOR\n", pin);
             number_of_pins++;
         }
         else if (has_responder && !has_initiator)
         {
             responder_mask |= (1ULL << pin);
-            LOG("Pin %u set as RESPONDER\n", pin);
             number_of_pins++;
         }
         else if (!has_initiator && !has_responder)
         {
             // No valid role detected → blacklist pin
             internal_blacklist_mask |= (1ULL << pin);
-            LOG("Pin %u has no valid event → BLACKLISTED\n", pin);
         }
         else
         {
             // Both roles detected (should not happen) → blacklist pin
             internal_blacklist_mask |= (1ULL << pin);
-            LOG("Pin %u has conflicting roles (INIT+RESP) → BLACKLISTED\n", pin);
         }
     }
 
