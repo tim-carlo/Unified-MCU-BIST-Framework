@@ -445,16 +445,14 @@ static inline void fsm_data_handshake(void)
 
     while (bitmap_iterator_next(&it, &pin_index))
     {
-
         DataHandshakeData *p = &global_datahandshake_pindata[pin_index];
-        uint8_t pin = p->pin;
         uint32_t delta = counter - p->last_send_job_order;
 
         switch (p->current_job)
         {
         case JOB_LISTEN:
         {
-            const bool is_low = !gpio_read(pin);
+            const bool is_low = !gpio_read(p->pin);
             if (is_low)
             {
                 // Line is low, start counting
@@ -470,11 +468,10 @@ static inline void fsm_data_handshake(void)
                     if (!start_receiving_request(p))
                     {
                         dhandshake_set_failed_handshake(p, true);
-                        printf("Failed to start receiving request on pin %u\n", pin);
+                        printf("Failed to start receiving request on pin %u\n", p->pin);
                     }
                     else
                     {
-                        log_job_transition(pin, p->current_job, JOB_RECEIVING_REQUEST);
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
@@ -493,10 +490,9 @@ static inline void fsm_data_handshake(void)
                 if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR && delta >= p->time_until_next_send)
                 {
 
-                    log_job_transition(pin, p->current_job, JOB_SEND_REQUEST);
                     p->current_job = JOB_SEND_REQUEST;
                     p->last_send_job_order = counter;
-                    gpio_od_hold_low(pin); // Start sending by pulling line low
+                    gpio_od_hold_low(p->pin); // Start sending by pulling line low
                 }
             }
             break;
@@ -505,16 +501,14 @@ static inline void fsm_data_handshake(void)
         {
             if (delta > INITIAL_LOW_TIME_REQUEST_MS)
             {
-                if (!send_request_in_background(pin, p))
+                if (!send_request_in_background(p->pin, p))
                 {
                     dhandshake_set_failed_handshake(p, true);
                     reschedule_request(p, counter); // reschedule in any case to avoid immediate resend
-                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
                 else
                 {
-                    log_job_transition(pin, p->current_job, JOB_TRANSMITTING_REQUEST);
                     p->current_job = JOB_TRANSMITTING_REQUEST;
                 }
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
@@ -525,15 +519,13 @@ static inline void fsm_data_handshake(void)
         {
             if (delta > INITIAL_LOW_TIME_ANSWER_MS)
             {
-                if (!send_answer_in_background(pin, p))
+                if (!send_answer_in_background(p->pin, p))
                 {
                     dhandshake_set_failed_handshake(p, true);
-                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
                 else
                 {
-                    log_job_transition(pin, p->current_job, JOB_TRANSMITTING_ANSWER);
                     p->current_job = JOB_TRANSMITTING_ANSWER;
                 }
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
@@ -543,20 +535,17 @@ static inline void fsm_data_handshake(void)
         case JOB_TRANSMITTING_REQUEST:
         case JOB_TRANSMITTING_ANSWER:
         {
-            const uint8_t manchester_idx = p->manchester_instance_index;
-            bool is_complete = parallel_manchester_transmit_complete(manchester_idx);
+            bool is_complete = parallel_manchester_transmit_complete(p->manchester_instance_index);
 
             if (is_complete)
             {
                 // Transmission completed, update job state
                 if (p->current_job == JOB_TRANSMITTING_REQUEST)
                 {
-                    log_job_transition(pin, p->current_job, JOB_WAIT_FOR_ANSWER);
                     p->current_job = JOB_WAIT_FOR_ANSWER;
                 }
                 else
                 {
-                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN;
                 }
             }
@@ -566,21 +555,19 @@ static inline void fsm_data_handshake(void)
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
                 reschedule_request(p, counter);
-                log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening on timeout
             }
             else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
             {
                 // Timeout occurred during transmission
                 dhandshake_set_failed_handshake(p, true);
-                log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening on timeout
             }
             break;
         }
         case JOB_WAIT_FOR_ANSWER:
         {
-            const bool is_low = !gpio_read(pin);
+            const bool is_low = !gpio_read(p->pin);
             if (is_low)
             {
                 // Line is low, start counting
@@ -598,11 +585,10 @@ static inline void fsm_data_handshake(void)
                     {
                         dhandshake_set_failed_handshake(p, false);
                         is_failed = true;
-                        printf("Failed to start receiving answer on pin %u\n", pin);
+                        printf("Failed to start receiving answer on pin %u\n", p->pin);
                     }
                     else
                     {
-                        log_job_transition(pin, p->current_job, JOB_RECEIVING_ANSWER);
                         p->current_job = JOB_RECEIVING_ANSWER;
                         p->last_send_job_order = counter; // Reset timeout counter on successful answer handling
                     }
@@ -618,7 +604,6 @@ static inline void fsm_data_handshake(void)
                     // printf("Failed to receive answer on pin %u\n", pin);
                     reschedule_request(p, counter);
                     dhandshake_set_failed_handshake(p, true);
-                    log_job_transition(p->pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN;
                 }
             }
@@ -627,33 +612,28 @@ static inline void fsm_data_handshake(void)
         case JOB_RECEIVING_REQUEST:
         {
             gpio_drive_high(DEBUG_PIN2);
-            const uint8_t manchester_idx = p->manchester_instance_index;
-            if (parallel_manchester_receive_complete(manchester_idx))
+            if (parallel_manchester_receive_complete(p->manchester_instance_index))
             {
 
-                if (!handle_request_receive_complete(pin, p))
+                if (!handle_request_receive_complete(p->pin, p))
                 {
                     // Failed to handle request properly
                     dhandshake_set_failed_handshake(p, true);
-                    log_job_transition(pin, p->current_job, JOB_LISTEN);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
-                    printf("Failed to handle request on pin %u\n", pin);
+                    printf("Failed to handle request on pin %u\n", p->pin);
                 }
                 else
                 {
-                    printf("Request received on pin %u\n", pin);
+                    printf("Request received on pin %u\n", p->pin);
                     // Successfully received request and prepared to send answer
-                    log_job_transition(pin, p->current_job, JOB_SEND_ANSWER);
                     p->current_job = JOB_SEND_ANSWER;
-
                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
             }
-            else if (parallel_manchester_receive_error(manchester_idx))
+            else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, true);
-                log_job_transition(pin, p->current_job, JOB_LISTEN);
-                printf("Failed to receive request on pin %u\n", pin);
+                printf("Failed to receive request on pin %u\n", p->pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             gpio_drive_low(DEBUG_PIN2);
@@ -661,10 +641,9 @@ static inline void fsm_data_handshake(void)
         }
         case JOB_RECEIVING_ANSWER:
         {
-            const uint8_t manchester_idx = p->manchester_instance_index;
-            if (parallel_manchester_receive_complete(manchester_idx))
+            if (parallel_manchester_receive_complete(p->manchester_instance_index))
             {
-                if (!handle_answer_complete(pin, p))
+                if (!handle_answer_complete(p->pin, p))
                 {
                     dhandshake_set_failed_handshake(p, false);
                 }
@@ -674,15 +653,13 @@ static inline void fsm_data_handshake(void)
                     // blacklist this pin for further requests to avoid flooding
                     internal_valid_pins &= ~(1ULL << pin_index);
                 }
-                log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening after handling answer
             }
-            else if (parallel_manchester_receive_error(manchester_idx))
+            else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, false);
-                printf("Failed to receive answer on pin %u\n", pin);
+                printf("Failed to receive answer on pin %u\n", p->pin);
                 reschedule_request(p, counter);
-                log_job_transition(pin, p->current_job, JOB_LISTEN);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             break;
@@ -708,59 +685,35 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
 
     analyze_pindata_events(pindata);
 
-    // Calculate valid pins mask - use 64 as safe maximum
-    const uint64_t all_pins_mask = ~0ULL; // All 64 bits set
-    // Shift the mask until the first 1 is at the least significant bit
-    uint64_t valid_pins_mask = ~internal_blacklist_mask & all_pins_mask;
+    if (number_of_pins == 0) return; // No valid pins
 
-    if (number_of_pins == 0)
-    {
-        return; // No valid pins
-    }
+    uint64_t valid_pins_mask = ~internal_blacklist_mask & ~0ULL;
 
-    // Allocate global DataHandshakeData array
+    // Allocate and initialize
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
-    if (!global_datahandshake_pindata)
-    {
-        return; // Allocation failed
-    }
+    if (!global_datahandshake_pindata) return;
 
-    // Initialize DataHandshakeData for each valid pin
-    BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
-    uint8_t pin_index, idx = 0;
-
-    // Initialize parallel Manchester system
     parallel_manchester_init(PMAN_BAUD_100);
-
-    // Gerate a valid pin mask for the fsm to now which pins where successfully initialized
+    
+    BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
+    uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
     uint64_t valid_pins_for_fsm_mask = 0;
 
     while (bitmap_iterator_next(&it, &pin_index))
     {
-        uint8_t physical_pin = pindata[pin_index].pin;
-
-        // Allocate single buffer for this pin (used for both request and answer)
-        // Use the larger of the two packet sizes to ensure sufficient space
-        uint8_t max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
         uint8_t *pin_data_buffer = calloc(max_packet_size, sizeof(uint8_t));
-
         if (!pin_data_buffer)
         {
-            // Cleanup previously allocated buffers
-            for (uint8_t cleanup_idx = 0; cleanup_idx < idx; cleanup_idx++)
-            {
-                if (global_datahandshake_pindata[cleanup_idx].data_buffer)
-                {
-                    free(global_datahandshake_pindata[cleanup_idx].data_buffer);
-                }
-            }
+            // Cleanup and exit on allocation failure
+            for (uint8_t i = 0; i < idx; i++) 
+                free(global_datahandshake_pindata[i].data_buffer);
             free(global_datahandshake_pindata);
             global_datahandshake_pindata = NULL;
-            return; // Allocation failed
+            return;
         }
 
         global_datahandshake_pindata[idx] = (DataHandshakeData){
-            .pin = physical_pin,
+            .pin = pindata[pin_index].pin,
             .status = 0,
             .current_job = JOB_LISTEN,
             .number_of_successful_tries = 0,
@@ -785,36 +738,30 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
             dhandshake_set_role(&global_datahandshake_pindata[idx], true); // Responder
         }
 
-        uint8_t *const buffer = global_datahandshake_pindata[idx].data_buffer;
-        uint8_t manchester_idx = parallel_manchester_add_instance(physical_pin, buffer, max_packet_size);
+        uint8_t manchester_idx = parallel_manchester_add_instance(pindata[pin_index].pin, pin_data_buffer, max_packet_size);
 
         if (manchester_idx == 255)
         {
-            LOG("Failed to create Manchester instance for pin %u\n", physical_pin);
-            global_datahandshake_pindata[idx].manchester_instance_index = 255; // Mark as invalid
+            LOG("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
+            global_datahandshake_pindata[idx].manchester_instance_index = 255;
         }
         else
         {
             global_datahandshake_pindata[idx].manchester_instance_index = manchester_idx;
-            LOG("Created Manchester instance %u for pin %u\n", manchester_idx, physical_pin);
-            valid_pins_for_fsm_mask |= (1ULL << idx); // Mark this pin as valid for FSM
+            LOG("Created Manchester instance %u for pin %u\n", manchester_idx, pindata[pin_index].pin);
+            valid_pins_for_fsm_mask |= (1ULL << idx);
         }
 
         idx++;
     }
 
+    internal_valid_pins = valid_pins_for_fsm_mask;
     printf("Data handshake initialized \n");
 
-    internal_valid_pins = valid_pins_for_fsm_mask;
-
-    // Initialization complete - Start timer
     start_send_data_timer();
-
     while (true)
     {
-        while (!interrupt_cont)
-        {
-        }
+        while (!interrupt_cont);
         interrupt_cont = false;
         fsm_data_handshake();
     }
@@ -823,30 +770,14 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     // Cleanup
     if (global_datahandshake_pindata)
     {
-        // Cleanup Manchester instances and free buffers
         for (uint8_t i = 0; i < number_of_pins; i++)
         {
             if (global_datahandshake_pindata[i].manchester_instance_index != 255)
-            {
                 parallel_manchester_remove_instance(global_datahandshake_pindata[i].manchester_instance_index);
-            }
-
-            // Free the single allocated buffer
-            if (global_datahandshake_pindata[i].data_buffer)
-            {
-                free(global_datahandshake_pindata[i].data_buffer);
-                global_datahandshake_pindata[i].data_buffer = NULL;
-            }
-
-            // Clear packet pointers
-            global_datahandshake_pindata[i].request_packet = NULL;
-            global_datahandshake_pindata[i].answer_packet = NULL;
+            free(global_datahandshake_pindata[i].data_buffer);
         }
-
         free(global_datahandshake_pindata);
         global_datahandshake_pindata = NULL;
     }
-
-    // Deinitialize parallel Manchester system
     parallel_manchester_deinit();
 }
