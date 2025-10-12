@@ -5,7 +5,7 @@
 
 #define PMAN_ENCODER_BUFFER_SIZE 32
 #define PMAN_DECODER_BUFFER_SIZE 32
-#define NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION 500
+#define NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION 1000
 
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
@@ -132,8 +132,9 @@ static inline void pman_timer_isr(void)
             {
                 if (current_mode < last_mode && last_mode != 3)
                 {
-                    instance->mode = PMAN_IDLE;
-                    instance->status |= PMAN_STATUS_RECEIVE_ERROR;
+                  //  LOG("Decoder mode regressed on pin %u: %u -> %u\n", pin, last_mode, current_mode);
+                  //  instance->mode = PMAN_IDLE;
+                  //  instance->status |= PMAN_STATUS_RECEIVE_ERROR;
                 }
                 instance->cycles_without_transition = 0;
             }
@@ -148,8 +149,10 @@ static inline void pman_timer_isr(void)
 
                 if (instance->cycles_without_transition > NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION)
                 {
+                    LOG("Timeout waiting for signal transition on pin %u\n", pin);
                     instance->mode = PMAN_IDLE;
                     instance->status |= PMAN_STATUS_RECEIVE_ERROR;
+                    instance->cycles_without_transition = 0;
                 }
             }
 
@@ -158,15 +161,17 @@ static inline void pman_timer_isr(void)
             switch (step)
             {
             case SPOOKY_DECODER_STEP_DONE:
+            {
                 instance->status |= PMAN_STATUS_RECEIVE_COMPLETE;
                 instance->mode = PMAN_IDLE;
                 break;
-
+            }
             case SPOOKY_DECODER_STEP_ERROR_NULL:
+            {
                 instance->status |= PMAN_STATUS_RECEIVE_ERROR;
                 instance->mode = PMAN_IDLE;
                 break;
-
+            }
             default:
                 break;
             }
@@ -369,6 +374,8 @@ bool parallel_manchester_transmit_background(uint8_t index, uint8_t *data, uint8
         printf("Error: Data size %u exceeds buffer size %u\n", size, instance->buffer_size);
         return false;
     }
+    // clear instance buffer
+    memset(instance->buffer, 0, instance->buffer_size);
 
     // Copy data to instance buffer first
     for (uint8_t i = 0; i < size; i++)
@@ -427,6 +434,14 @@ bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_
 
     // Clear instance buffer
     memset(instance->buffer, 0, instance->buffer_size);
+
+    // reinitialize decoder to reset internal state
+    if (spooky_decoder_init(&instance->dec, instance->buffer, instance->buffer_size, pman_rx_callback, (void *)(uintptr_t)index) != 0)
+    {
+        printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
+        return false; // Invalid index
+    }
+    
 
     // Start receiving - data will be written directly to instance buffer by spooky decoder
     instance->mode = PMAN_RECEIVE;
