@@ -7,9 +7,9 @@
 #endif
 #include <string.h>
 
-// Define LOG macro for logging (can be disabled by commenting out)
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-// #define LOG(fmt, ...) // Uncomment this line to disable logging
+// Define printf macro for printfging (can be disabled by commenting out)
+//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+// #define printf(fmt, ...) // Uncomment this line to disable printfging
 
 #define SEND_INACCURACY 30 // Acceptable inaccuracy in ms for timing checks
 #define INITIAL_LOW_TIME_REQUEST_MS 50
@@ -83,7 +83,7 @@ static void analyze_pindata_events(PinData *pindata)
             }
         }
 
-        // Apply logic for mask assignment and blacklist update
+        // Apply printfic for mask assignment and blacklist update
         if (has_initiator && !has_responder)
         {
             initiator_mask |= (1ULL << pin);
@@ -106,10 +106,10 @@ static void analyze_pindata_events(PinData *pindata)
         }
     }
 
-    LOG("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
-    LOG("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
-    LOG("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
-    LOG("Number of active pins: %u\n", number_of_pins);
+    printf("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
+    printf("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
+    printf("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
+    printf("Number of active pins: %u\n", number_of_pins);
 }
 
 static uint16_t get_listen_until_time()
@@ -155,7 +155,7 @@ static void stop_send_data_timer(void)
 #endif
 }
 
-// Logging functions removed to save memory
+// printfging functions removed to save memory
 
 static void write_u64_le(uint8_t *dst, uint64_t val)
 {
@@ -193,27 +193,50 @@ static uint32_t read_u32_le(const uint8_t *src)
     return val;
 }
 
+#define REQUEST_PACKET_BUFFER_SIZE REQUEST_PACKSIZE
+#define ANSWER_PACKET_BUFFER_SIZE ANSWER_PACKSIZE
+
+// Buffer for request packet construction
+static uint8_t request_packet_buffer[REQUEST_PACKET_BUFFER_SIZE];
+// Buffer for answer packet construction
+static uint8_t answer_packet_buffer[ANSWER_PACKET_BUFFER_SIZE];
+
 // Packet format: [1 byte type][8 bytes UUID][1 byte Pin][1 byte Mutex Request][4 bytes CRC]
 static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
 {
-    data[0] = 0xAA; // Packet type
-    write_u64_le(&data[1], packet->uuid);
-    data[9] = packet->pin;
-    data[10] = packet->mutex_request;      // Mutex request field
-    packet->crc_value = crcFast(data, 11); // Calculate CRC over type, uuid, pin, and mutex request
-    write_u32_le(&data[11], packet->crc_value);
+    // Use internal buffer for construction
+    uint8_t *buf = request_packet_buffer;
+    buf[0] = 0xAA; // Packet type
+    write_u64_le(&buf[1], packet->uuid);
+    buf[9] = packet->pin;
+    buf[10] = packet->mutex_request;      // Mutex request field
+    packet->crc_value = crcFast(buf, 11); // Calculate CRC over type, uuid, pin, and mutex request
+    write_u32_le(&buf[11], packet->crc_value);
+
+    // Copy to output buffer if different
+    if (data != buf) {
+        memcpy(data, buf, REQUEST_PACKET_BUFFER_SIZE);
+    }
 }
 
-// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC]
+// Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][1 byte mutex_allowed][4 bytes CRC]
 static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
 {
-    data[0] = 0xFF; // Packet type
-    write_u64_le(&data[1], packet->received_uuid);
-    data[9] = packet->received_pin;
-    write_u64_le(&data[10], packet->own_uuid);
-    data[18] = packet->sending_pin;
-    packet->crc_value = crcFast(data, 19); // Calculate CRC over type, received_uuid, received_pin, own_uuid, sending_pin
-    write_u32_le(&data[19], packet->crc_value);
+    // Use internal buffer for construction
+    uint8_t *buf = answer_packet_buffer;
+    buf[0] = 0xFF; // Packet type
+    write_u64_le(&buf[1], packet->received_uuid);
+    buf[9] = packet->received_pin;
+    write_u64_le(&buf[10], packet->own_uuid);
+    buf[18] = packet->sending_pin;
+    buf[19] = packet->mutex_allowed; // Write mutex_allowed field
+    packet->crc_value = crcFast(buf, 20); // Calculate CRC over type, received_uuid, received_pin, own_uuid, sending_pin, mutex_allowed
+    write_u32_le(&buf[20], packet->crc_value);
+
+    // Copy to output buffer if different
+    if (data != buf) {
+        memcpy(data, buf, ANSWER_PACKET_BUFFER_SIZE);
+    }
 }
 
 static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
@@ -241,7 +264,8 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     packet->received_pin = data[9];
     packet->own_uuid = read_u64_le(&data[10]);
     packet->sending_pin = data[18];
-    packet->crc_value = read_u32_le(&data[19]);
+    packet->mutex_allowed = data[19]; // Read mutex_allowed field
+    packet->crc_value = read_u32_le(&data[20]);
     return true;
 }
 
@@ -293,12 +317,6 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 
     // Mark that we received a request
     dhandshake_set_received_request(p, true);
-
-    // if the uuid is my own, ignore it
-    if (request_packet.uuid == uuid)
-    {
-        return false;
-    }
     // Add a pin connection to the request packet
     add_pin_connection(&global_pindata[pin], pin, request_packet.pin, request_packet.uuid);
 
@@ -314,17 +332,17 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     // Handle mutex request
     if (request_packet.mutex_request == REQEST_MUTEX_ON_THIS_PIN)
     {
-        LOG("Mutex requested on pin %u\n", pin);
+        printf("Mutex requested on pin %u\n", pin);
         if (mutex_pin == 255)
         {
             answer_packet.mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN; // Grant mutex
             mutex_pin = pin;
             i_am_mutex_owner = false;
-            LOG("Mutex granted to other device on pin %u\n", pin);
+            printf("Mutex granted to other device on pin %u\n", pin);
         }
         else
         {
-            LOG("Mutex request denied on pin %u, already owned on pin %u\n", pin, mutex_pin);
+            printf("Mutex request denied on pin %u, already owned on pin %u\n", pin, mutex_pin);
         }
     }
 
@@ -332,6 +350,12 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 
     // Mark that we're going to send an answer
     dhandshake_set_send_answer(p, true);
+    printf("Request packet:\n");
+    printf("  uuid: 0x%016llx\n", (unsigned long long)request_packet.uuid);
+    printf("  pin: %u\n", request_packet.pin);
+    printf("  mutex_request: %u\n", request_packet.mutex_request);
+    printf("  crc_value: 0x%08x\n", request_packet.crc_value);
+    printf("Request received on pin %u\n", pin);
 
     gpio_od_hold_low(pin); // Hold the line low to signal we're responding
     return true;
@@ -340,6 +364,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 {
     AnswerDataPacket answer_packet;
+    printf("Answer received on pin %u\n", pin);
 
     // Get received data from Manchester instance buffer
     uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
@@ -348,6 +373,21 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 
     if (!deconstruct_answer_data_packet(received_data, &answer_packet))
         return false;
+
+    // Check if the answer is for us
+    if (answer_packet.received_uuid != uuid || answer_packet.received_pin != pin)
+    {
+        printf("Answer not for us");
+
+        printf("Answer packet:\n");
+        printf("  received_uuid: 0x%016llx\n", (unsigned long long)answer_packet.received_uuid);
+        printf("  received_pin: %u\n", answer_packet.received_pin);
+        printf("  own_uuid: 0x%016llx\n", (unsigned long long)answer_packet.own_uuid);
+        printf("  sending_pin: %u\n", answer_packet.sending_pin);
+        printf("  mutex_allowed: %u\n", answer_packet.mutex_allowed);
+        printf("  crc_value: 0x%08x\n", answer_packet.crc_value);
+        return false;
+    }
 
     // Mark successful handshake
     dhandshake_set_received_answer(p, true);
@@ -362,11 +402,11 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
-        LOG("Mutex granted to this device on pin %u\n", pin);
+        printf("Mutex granted to this device on pin %u\n", pin);
     }
 
     p->number_of_successful_tries++;
-    LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, answer_packet.sending_pin);
+    printf("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, answer_packet.sending_pin);
     return true;
 }
 
@@ -375,7 +415,7 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     gpio_od_release(pin);
 
     // Small delay to ensure line is released before transmitting
-    delay_us(5000);
+    delay_us(1000);
 
     // Mark that we're sending a request
     dhandshake_set_send_request(p, true);
@@ -410,7 +450,7 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
-    delay_us(5000);
+    delay_us(1000);
 
     // Check for null pointer to prevent crashes
     if (!p->answer_packet)
@@ -473,14 +513,14 @@ static inline void fsm_data_handshake(void)
                     if (!start_receiving_request(p))
                     {
                         dhandshake_set_failed_handshake(p, true);
-                        LOG("Failed to start receiving request on pin %u\n", p->pin);
+                        printf("Failed to start receiving request on pin %u\n", p->pin);
                     }
                     else
                     {
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
-                    // LOG("Request received on pin %u\n", pin);
+                    // printf("Request received on pin %u\n", pin);
 
                     p->receiving_counter = 0;
                     gpio_drive_low(DEBUG_PIN2);
@@ -590,7 +630,7 @@ static inline void fsm_data_handshake(void)
                     {
                         dhandshake_set_failed_handshake(p, false);
                         is_failed = true;
-                        LOG("Failed to start receiving answer on pin %u\n", p->pin);
+                        printf("Failed to start receiving answer on pin %u\n", p->pin);
                     }
                     else
                     {
@@ -600,13 +640,13 @@ static inline void fsm_data_handshake(void)
                 }
                 // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
                 // and reschedule the request
-                else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || receive_counter < INITIAL_LOW_TIME_REQUEST_MIN_MS || delta > TIMEOUT_CYCLES)
+                else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
                 {
                     is_failed = true;
                 }
                 if (is_failed)
                 {
-                    // LOG("Failed to receive answer on pin %u\n", pin);
+                    printf("- Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN;
@@ -625,11 +665,10 @@ static inline void fsm_data_handshake(void)
                     // Failed to handle request properly
                     dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
-                    LOG("Failed to handle request on pin %u\n", p->pin);
+                    printf("Failed to handle request on pin %u\n", p->pin);
                 }
                 else
                 {
-                    LOG("Request received on pin %u\n", p->pin);
                     // Successfully received request and prepared to send answer
                     p->current_job = JOB_SEND_ANSWER;
                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
@@ -638,7 +677,7 @@ static inline void fsm_data_handshake(void)
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, true);
-                LOG("Failed to receive request on pin %u\n", p->pin);
+                printf("Failed to receive request on pin %u\n", p->pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             gpio_drive_low(DEBUG_PIN2);
@@ -651,6 +690,7 @@ static inline void fsm_data_handshake(void)
                 if (!handle_answer_complete(p->pin, p))
                 {
                     dhandshake_set_failed_handshake(p, false);
+                    printf("Failed to handle answer on pin %u\n", p->pin);
                 }
                 else
                 {
@@ -663,7 +703,7 @@ static inline void fsm_data_handshake(void)
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, false);
-                LOG("Failed to receive answer on pin %u\n", p->pin);
+                printf("Failed to receive answer on pin %u\n", p->pin);
                 reschedule_request(p, counter);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
@@ -700,7 +740,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     if (!global_datahandshake_pindata)
         return;
 
-    parallel_manchester_init(PMAN_BAUD_100);
+    parallel_manchester_init(PMAN_BAUD_300);
 
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
@@ -749,13 +789,13 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
 
         if (manchester_idx == 255)
         {
-            LOG("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
+            printf("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
             global_datahandshake_pindata[idx].manchester_instance_index = 255;
         }
         else
         {
             global_datahandshake_pindata[idx].manchester_instance_index = manchester_idx;
-            LOG("Created Manchester instance %u for pin %u\n", manchester_idx, pindata[pin_index].pin);
+            printf("Created Manchester instance %u for pin %u\n", manchester_idx, pindata[pin_index].pin);
             valid_pins_for_fsm_mask |= (1ULL << idx);
         }
 
@@ -763,7 +803,7 @@ void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask)
     }
 
     internal_valid_pins = valid_pins_for_fsm_mask;
-    LOG("Data handshake initialized \n");
+    printf("Data handshake initialized \n");
 
     start_send_data_timer();
     while (true)
