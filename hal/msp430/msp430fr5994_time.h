@@ -89,6 +89,7 @@ void start_timer_with_interrupt(timer_type timer);
 void set_timer_compare_callback(const timer_type timer, void (*const callback)(void));
 void set_timer_overflow_callback(const timer_type timer, void (*const callback)(void));
 void clear_timer_event_callback(const timer_type timer);
+uint16_t choose_prescaler_and_ticks(uint32_t sample_interval_us, uint32_t smclk_hz, uint32_t *out_ticks);
 
 
 #ifdef __cplusplus

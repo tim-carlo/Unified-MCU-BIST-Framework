@@ -1,8 +1,8 @@
 #include "msp430fr5994_time.h"
-#include "msp430fr5994_gpio.h" 
-#include "printf.h"            
-#include "stack.h"              
-#include <stdbool.h>       
+#include "msp430fr5994_gpio.h"
+#include "printf.h"
+#include "stack.h"
+#include <stdbool.h>
 
 // Timer callback arrays - separate for overflow and compare interrupts
 static void (*timer_overflow_callback[5])(void) = {NULL, NULL, NULL, NULL, NULL};
@@ -26,34 +26,37 @@ static volatile bool delay_done = false;
 void configure_timer(const timer_type timer, const uint16_t prescaler, const uint16_t mode)
 {
     volatile uint16_t *const ctl = GET_TxxCTL(timer);
-    
+
     // Stop timer first
-    *ctl &= ~MC_3;  // Clear mode control bits
-    *ctl |= TACLR;  // Clear timer
-    
+    *ctl &= ~MC_3; // Clear mode control bits
+    *ctl |= TACLR; // Clear timer
+
     // Set clock source to SMCLK
     *ctl |= TASSEL__SMCLK;
+
     
+
     // Set prescaler
-    *ctl &= ~(ID_3);  // Clear existing prescaler bits
-    switch (prescaler) {
-        case 1:
-            *ctl |= ID__1;
-            break;
-        case 2:
-            *ctl |= ID__2;
-            break;
-        case 4:
-            *ctl |= ID__4;
-            break;
-        case 8:
-            *ctl |= ID__8;
-            break;
-        default:
-            *ctl |= ID__1;  // Default to /1
-            break;
+    *ctl &= ~(ID_3); // Clear existing prescaler bits
+    switch (prescaler)
+    {
+    case 1:
+        *ctl |= ID__1;
+        break;
+    case 2:
+        *ctl |= ID__2;
+        break;
+    case 4:
+        *ctl |= ID__4;
+        break;
+    case 8:
+        *ctl |= ID__8;
+        break;
+    default:
+        *ctl |= ID__1; // Default to /1
+        break;
     }
-    
+
     // Set mode
     *ctl |= mode;
 }
@@ -63,8 +66,9 @@ void configure_timer(const timer_type timer, const uint16_t prescaler, const uin
  */
 void set_timer_compare(timer_type timer, uint32_t channel, uint32_t value)
 {
-    if (channel != 0) return;  // Only CCR0 supported
-    
+    if (channel != 0)
+        return; // Only CCR0 supported
+
     volatile uint16_t *ccr0 = GET_TxxCCR0(timer);
     *ccr0 = (uint16_t)(value & 0xFFFF);
 }
@@ -76,27 +80,28 @@ void reset_timer(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     volatile uint16_t *r = GET_TxxR(timer);
-    
-    *ctl |= TACLR;  // Clear timer
-    *r = 0;         // Ensure register is zero
-    
+
+    *ctl |= TACLR; // Clear timer
+    *r = 0;        // Ensure register is zero
+
     // Reset overflow counter
-    switch (timer) {
-        case TIMER_A0:
-            timer_overflows_a0 = 0;
-            break;
-        case TIMER_A1:
-            timer_overflows_a1 = 0;
-            break;
-        case TIMER_A2:
-            timer_overflows_a2 = 0;
-            break;
-        case TIMER_A4:
-            timer_overflows_a4 = 0;
-            break;
-        case TIMER_B0:
-            timer_overflows_b0 = 0;
-            break;
+    switch (timer)
+    {
+    case TIMER_A0:
+        timer_overflows_a0 = 0;
+        break;
+    case TIMER_A1:
+        timer_overflows_a1 = 0;
+        break;
+    case TIMER_A2:
+        timer_overflows_a2 = 0;
+        break;
+    case TIMER_A4:
+        timer_overflows_a4 = 0;
+        break;
+    case TIMER_B0:
+        timer_overflows_b0 = 0;
+        break;
     }
 }
 
@@ -106,7 +111,7 @@ void reset_timer(const timer_type timer)
 void set_timer_overflow_callback(const timer_type timer, void (*const callback)(void))
 {
     timer_overflow_callback[timer] = callback;
-    
+
     // Enable overflow interrupt
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     *ctl |= TAIE;
@@ -118,10 +123,43 @@ void set_timer_overflow_callback(const timer_type timer, void (*const callback)(
 void set_timer_compare_callback(const timer_type timer, void (*const callback)(void))
 {
     timer_compare_callback[timer] = callback;
-    
+
     // Enable compare interrupt for CCR0
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
-    *cctl0 |= CCIE;
+    *cctl0 |= CCIE; // Enable Compare interrupt
+    *cctl0 &= ~CCIFG; // Clear any pending interrupt flag
+}
+
+/**
+ * @brief Compute timer ticks for given microseconds and prescaler
+ * @param sample_interval_us Interval in microseconds
+ * @param smclk_hz SMCLK frequency in Hz
+ * @param out_ticks Pointer to store computed ticks
+ * @return Chosen prescaler value
+ */
+uint16_t choose_prescaler_and_ticks(uint32_t sample_interval_us, uint32_t smclk_hz, uint32_t *out_ticks)
+{
+    const uint16_t prescalers[] = {1, 2, 4, 8};
+
+    for (size_t i = 0; i < sizeof(prescalers) / sizeof(prescalers[0]); ++i)
+    {
+        uint16_t prescaler = prescalers[i];
+        uint64_t ticks = (uint64_t)sample_interval_us * (uint64_t)smclk_hz;
+        ticks /= 1000000ULL; //  Convert to ticks
+        ticks /= prescaler;  // Divide by prescaler
+
+        if (ticks == 0)
+            ticks = 1;
+
+        if (ticks <= 0xFFFF)
+        {
+            *out_ticks = (uint32_t)ticks;
+            return prescaler;
+        }
+    }
+
+    *out_ticks = 0xFFFF;
+    return 8;
 }
 
 /**
@@ -132,14 +170,14 @@ void clear_timer_event_callback(const timer_type timer)
 {
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
     volatile uint16_t *ctl = GET_TxxCTL(timer);
-    
+
     // Clear callbacks
     timer_overflow_callback[timer] = NULL;
     timer_compare_callback[timer] = NULL;
-    
+
     // Disable interrupts
-    *cctl0 &= ~CCIE;  // Disable compare interrupt
-    *ctl &= ~TAIE;    // Disable overflow interrupt
+    *cctl0 &= ~CCIE; // Disable compare interrupt
+    *ctl &= ~TAIE;   // Disable overflow interrupt
 }
 
 /**
@@ -150,12 +188,16 @@ void start_timer_with_interrupt(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
+
+    // Clear any pending interrupts first
+    *cctl0 &= ~CCIFG; // Clear compare interrupt flag
     
-    // Clear any pending interrupts
-    *cctl0 &= ~CCIFG;
+    // Ensure CCIE is set (should already be set by callback function)
+    *cctl0 |= CCIE; // Enable compare interrupt
     
-    // Start timer (mode already set by configure_timer)
-    *ctl |= MC__UP;
+    // Start timer in UP mode (mode should already be set by configure_timer)
+    *ctl &= ~MC_3; // Clear mode bits first
+    *ctl |= MC__UP; // Set UP mode
 }
 
 /**
@@ -169,38 +211,39 @@ void stop_timer(const timer_type timer)
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
 
     // Disable all interrupts first
-    *ctl &= ~TAIE;     // Disable overflow interrupt
-    *cctl0 &= ~CCIE;   // Disable compare interrupt
-    
+    *ctl &= ~TAIE;   // Disable overflow interrupt
+    *cctl0 &= ~CCIE; // Disable compare interrupt
+
     // Clear any pending interrupt flags
-    *cctl0 &= ~CCIFG;  // Clear compare interrupt flag
-    
+    *cctl0 &= ~CCIFG; // Clear compare interrupt flag
+
     // Stop the timer by clearing mode control bits
     *ctl &= ~(MC_1 | MC_2); // Clear MC bits (MC_3 = MC_1 | MC_2)
-    
+
     // Clear the timer counter
-    *ctl |= TACLR;     // Set clear bit
-    *r = 0;            // Ensure register is zero
-    
+    *ctl |= TACLR; // Set clear bit
+    *r = 0;        // Ensure register is zero
+
     // Reset overflow counter for this timer
-    switch (timer) {
-        case TIMER_A0:
-            timer_overflows_a0 = 0;
-            break;
-        case TIMER_A1:
-            timer_overflows_a1 = 0;
-            break;
-        case TIMER_A2:
-            timer_overflows_a2 = 0;
-            break;
-        case TIMER_A4:
-            timer_overflows_a4 = 0;
-            break;
-        case TIMER_B0:
-            timer_overflows_b0 = 0;
-            break;
+    switch (timer)
+    {
+    case TIMER_A0:
+        timer_overflows_a0 = 0;
+        break;
+    case TIMER_A1:
+        timer_overflows_a1 = 0;
+        break;
+    case TIMER_A2:
+        timer_overflows_a2 = 0;
+        break;
+    case TIMER_A4:
+        timer_overflows_a4 = 0;
+        break;
+    case TIMER_B0:
+        timer_overflows_b0 = 0;
+        break;
     }
-    
+
     // Clear callbacks for this timer
     timer_overflow_callback[timer] = NULL;
     timer_compare_callback[timer] = NULL;
@@ -216,7 +259,7 @@ void start_timer(const timer_type timer)
 
     // Reset overflow counter
     reset_timer(timer);
-    
+
     *ctl &= ~MC_3;          // Stop timer
     *ctl |= TACLR;          // Clear timer
     *ctl |= MC__CONTINUOUS; // Start timer in continuous mode
@@ -228,22 +271,23 @@ void start_timer(const timer_type timer)
  */
 static void default_overflow_counter(const timer_type timer)
 {
-    switch (timer) {
-        case TIMER_A0:
-            timer_overflows_a0++;
-            break;
-        case TIMER_A1:
-            timer_overflows_a1++;
-            break;
-        case TIMER_A2:
-            timer_overflows_a2++;
-            break;
-        case TIMER_A4:
-            timer_overflows_a4++;
-            break;
-        case TIMER_B0:
-            timer_overflows_b0++;
-            break;
+    switch (timer)
+    {
+    case TIMER_A0:
+        timer_overflows_a0++;
+        break;
+    case TIMER_A1:
+        timer_overflows_a1++;
+        break;
+    case TIMER_A2:
+        timer_overflows_a2++;
+        break;
+    case TIMER_A4:
+        timer_overflows_a4++;
+        break;
+    case TIMER_B0:
+        timer_overflows_b0++;
+        break;
     }
 }
 
@@ -252,9 +296,12 @@ static void default_overflow_counter(const timer_type timer)
  */
 static void delay_completion_callback(void)
 {
-    if (overflow_count == 0) {
+    if (overflow_count == 0)
+    {
         delay_done = true;
-    } else {
+    }
+    else
+    {
         // Prepare for next overflow
         set_timer_compare(TIMER_A0, 0, 0xFFFF);
     }
@@ -265,9 +312,11 @@ static void delay_completion_callback(void)
  */
 static void delay_overflow_callback(void)
 {
-    if (overflow_count > 0) {
+    if (overflow_count > 0)
+    {
         overflow_count--;
-        if (overflow_count == 0) {
+        if (overflow_count == 0)
+        {
             // Last overflow, set final count
             set_timer_compare(TIMER_A0, 0, (remaining_ticks - 1) % 0x10000);
         }
@@ -288,38 +337,43 @@ void delay_ticks(uint32_t ticks)
 
     // Configure timer with divider 8 for longer delays
     configure_timer(TIMER_A0, 8, MC__UP);
-    
+
     // Adjust ticks for divider
     remaining_ticks = (ticks + 7) / 8;
 
     // Calculate overflow count
-    if (remaining_ticks <= 0x10000) {
+    if (remaining_ticks <= 0x10000)
+    {
         set_timer_compare(TIMER_A0, 0, remaining_ticks - 1);
         overflow_count = 0;
-    } else {
+    }
+    else
+    {
         overflow_count = (remaining_ticks - 1) / 0x10000;
         set_timer_compare(TIMER_A0, 0, 0xFFFF);
     }
 
     // Set callbacks
     set_timer_compare_callback(TIMER_A0, delay_completion_callback);
-    if (overflow_count > 0) {
+    if (overflow_count > 0)
+    {
         set_timer_overflow_callback(TIMER_A0, delay_overflow_callback);
     }
 
     delay_done = false;
-    
+
     // Start timer
     start_timer_with_interrupt(TIMER_A0);
 
     // Wait for completion
-    while (!delay_done) {
+    while (!delay_done)
+    {
         ;
     }
 
     // Cleanup
     clear_timer_event_callback(TIMER_A0);
-    
+
     // Restore previous timer configuration
     TA0CTL = saved_config;
 }
@@ -333,22 +387,23 @@ uint32_t get_timer_ticks(const timer_type timer)
     uint16_t counter = *timer_r;
     uint16_t overflows = 0;
 
-    switch (timer) {
-        case TIMER_A0:
-            overflows = timer_overflows_a0;
-            break;
-        case TIMER_A1:
-            overflows = timer_overflows_a1;
-            break;
-        case TIMER_A2:
-            overflows = timer_overflows_a2;
-            break;
-        case TIMER_A4:
-            overflows = timer_overflows_a4;
-            break;
-        case TIMER_B0:
-            overflows = timer_overflows_b0;
-            break;
+    switch (timer)
+    {
+    case TIMER_A0:
+        overflows = timer_overflows_a0;
+        break;
+    case TIMER_A1:
+        overflows = timer_overflows_a1;
+        break;
+    case TIMER_A2:
+        overflows = timer_overflows_a2;
+        break;
+    case TIMER_A4:
+        overflows = timer_overflows_a4;
+        break;
+    case TIMER_B0:
+        overflows = timer_overflows_b0;
+        break;
     }
 
     return ((uint32_t)overflows * TICKS_PER_OVERFLOW) + counter;
@@ -361,10 +416,10 @@ void setup_timer_with_overflow_counting(const timer_type timer)
 {
     // Configure timer for continuous mode
     configure_timer(timer, 1, MC__CONTINUOUS);
-    
+
     // Set default overflow callback to count overflows
-    set_timer_overflow_callback(timer, NULL);  // Will use default counter
-    
+    set_timer_overflow_callback(timer, NULL); // Will use default counter
+
     // Start timer
     start_timer_with_interrupt(timer);
 }
@@ -383,13 +438,15 @@ void delay_us(uint32_t us)
 void delay_ms(uint32_t ms)
 {
     const uint32_t ticks_per_ms = SMCLK_HZ / 1000;
-    
-    while (ms >= 1000) {
-        delay_ticks(SMCLK_HZ);  // 1 second
+
+    while (ms >= 1000)
+    {
+        delay_ticks(SMCLK_HZ); // 1 second
         ms -= 1000;
     }
-    
-    if (ms > 0) {
+
+    if (ms > 0)
+    {
         delay_ticks(ms * ticks_per_ms);
     }
 }
@@ -399,15 +456,24 @@ uint32_t get_timer_frequency(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     uint16_t id_bits = (*ctl & ID_3) >> 6;
-    
+
     uint32_t prescaler = 1;
-    switch (id_bits) {
-        case 0: prescaler = 1; break;
-        case 1: prescaler = 2; break;
-        case 2: prescaler = 4; break;
-        case 3: prescaler = 8; break;
+    switch (id_bits)
+    {
+    case 0:
+        prescaler = 1;
+        break;
+    case 1:
+        prescaler = 2;
+        break;
+    case 2:
+        prescaler = 4;
+        break;
+    case 3:
+        prescaler = 8;
+        break;
     }
-    
+
     return SMCLK_HZ / prescaler;
 }
 
@@ -447,23 +513,26 @@ uint32_t timer_diff_us(uint32_t start, uint32_t end)
 __attribute__((interrupt(TIMER0_A0_VECTOR))) void TIMER0_A0_ISR(void)
 {
     // Slot 0: Compare interrupt (CCR0)
-    if (timer_compare_callback[TIMER_A0]) {
+    if (timer_compare_callback[TIMER_A0])
+    {
         timer_compare_callback[TIMER_A0]();
     }
 }
 
 __attribute__((interrupt(TIMER0_A1_VECTOR))) void TIMER0_A1_ISR(void)
 {
-    switch (__even_in_range(TA0IV, TA0IV_TAIFG)) {
-        case TA0IV_TAIFG:
-            // Slot 1: Overflow interrupt
-            default_overflow_counter(TIMER_A0);
-            if (timer_overflow_callback[TIMER_A0]) {
-                timer_overflow_callback[TIMER_A0]();
-            }
-            break;
-        default:
-            break;
+    switch (__even_in_range(TA0IV, TA0IV_TAIFG))
+    {
+    case TA0IV_TAIFG:
+        // Slot 1: Overflow interrupt
+        default_overflow_counter(TIMER_A0);
+        if (timer_overflow_callback[TIMER_A0])
+        {
+            timer_overflow_callback[TIMER_A0]();
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -471,23 +540,26 @@ __attribute__((interrupt(TIMER0_A1_VECTOR))) void TIMER0_A1_ISR(void)
 __attribute__((interrupt(TIMER1_A0_VECTOR))) void TIMER1_A0_ISR(void)
 {
     // Slot 0: Compare interrupt (CCR0)
-    if (timer_compare_callback[TIMER_A1]) {
+    if (timer_compare_callback[TIMER_A1])
+    {
         timer_compare_callback[TIMER_A1]();
     }
 }
 
 __attribute__((interrupt(TIMER1_A1_VECTOR))) void TIMER1_A1_ISR(void)
 {
-    switch (__even_in_range(TA1IV, TA1IV_TAIFG)) {
-        case TA1IV_TAIFG:
-            // Slot 1: Overflow interrupt
-            default_overflow_counter(TIMER_A1);
-            if (timer_overflow_callback[TIMER_A1]) {
-                timer_overflow_callback[TIMER_A1]();
-            }
-            break;
-        default:
-            break;
+    switch (__even_in_range(TA1IV, TA1IV_TAIFG))
+    {
+    case TA1IV_TAIFG:
+        // Slot 1: Overflow interrupt
+        default_overflow_counter(TIMER_A1);
+        if (timer_overflow_callback[TIMER_A1])
+        {
+            timer_overflow_callback[TIMER_A1]();
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -495,23 +567,26 @@ __attribute__((interrupt(TIMER1_A1_VECTOR))) void TIMER1_A1_ISR(void)
 __attribute__((interrupt(TIMER2_A0_VECTOR))) void TIMER2_A0_ISR(void)
 {
     // Slot 0: Compare interrupt (CCR0)
-    if (timer_compare_callback[TIMER_A2]) {
+    if (timer_compare_callback[TIMER_A2])
+    {
         timer_compare_callback[TIMER_A2]();
     }
 }
 
 __attribute__((interrupt(TIMER2_A1_VECTOR))) void TIMER2_A1_ISR(void)
 {
-    switch (__even_in_range(TA2IV, TA2IV_TAIFG)) {
-        case TA2IV_TAIFG:
-            // Slot 1: Overflow interrupt
-            default_overflow_counter(TIMER_A2);
-            if (timer_overflow_callback[TIMER_A2]) {
-                timer_overflow_callback[TIMER_A2]();
-            }
-            break;
-        default:
-            break;
+    switch (__even_in_range(TA2IV, TA2IV_TAIFG))
+    {
+    case TA2IV_TAIFG:
+        // Slot 1: Overflow interrupt
+        default_overflow_counter(TIMER_A2);
+        if (timer_overflow_callback[TIMER_A2])
+        {
+            timer_overflow_callback[TIMER_A2]();
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -519,23 +594,26 @@ __attribute__((interrupt(TIMER2_A1_VECTOR))) void TIMER2_A1_ISR(void)
 __attribute__((interrupt(TIMER4_A0_VECTOR))) void TIMER4_A0_ISR(void)
 {
     // Slot 0: Compare interrupt (CCR0)
-    if (timer_compare_callback[TIMER_A4]) {
+    if (timer_compare_callback[TIMER_A4])
+    {
         timer_compare_callback[TIMER_A4]();
     }
 }
 
 __attribute__((interrupt(TIMER4_A1_VECTOR))) void TIMER4_A1_ISR(void)
 {
-    switch (TA4IV) {
-        case TA4IV_TAIFG:
-            // Slot 1: Overflow interrupt
-            default_overflow_counter(TIMER_A4);
-            if (timer_overflow_callback[TIMER_A4]) {
-                timer_overflow_callback[TIMER_A4]();
-            }
-            break;
-        default:
-            break;
+    switch (TA4IV)
+    {
+    case TA4IV_TAIFG:
+        // Slot 1: Overflow interrupt
+        default_overflow_counter(TIMER_A4);
+        if (timer_overflow_callback[TIMER_A4])
+        {
+            timer_overflow_callback[TIMER_A4]();
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -543,22 +621,25 @@ __attribute__((interrupt(TIMER4_A1_VECTOR))) void TIMER4_A1_ISR(void)
 __attribute__((interrupt(TIMER0_B0_VECTOR))) void TIMER0_B0_ISR(void)
 {
     // Slot 0: Compare interrupt (CCR0)
-    if (timer_compare_callback[TIMER_B0]) {
+    if (timer_compare_callback[TIMER_B0])
+    {
         timer_compare_callback[TIMER_B0]();
     }
 }
 
 __attribute__((interrupt(TIMER0_B1_VECTOR))) void TIMER0_B1_ISR(void)
 {
-    switch (TB0IV) {
-        case TB0IV_TBIFG:
-            // Slot 1: Overflow interrupt
-            default_overflow_counter(TIMER_B0);
-            if (timer_overflow_callback[TIMER_B0]) {
-                timer_overflow_callback[TIMER_B0]();
-            }
-            break;
-        default:
-            break;
+    switch (TB0IV)
+    {
+    case TB0IV_TBIFG:
+        // Slot 1: Overflow interrupt
+        default_overflow_counter(TIMER_B0);
+        if (timer_overflow_callback[TIMER_B0])
+        {
+            timer_overflow_callback[TIMER_B0]();
+        }
+        break;
+    default:
+        break;
     }
 }
