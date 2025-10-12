@@ -70,15 +70,28 @@
 #define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
-#define DURATION_OF_HANDSHAKE_MS 60000 // Duration of the handshake process in milliseconds
+#define DURATION_OF_HANDSHAKE_MS 5000 // Duration of the handshake process in milliseconds
 
 
 #define MAXIMUM_NUMBER_OF_TRIES 5      // Maximum number of tries for a successful handshake
+
 typedef struct
 {
     uint16_t cycles;
     void (*on_complete)(TimingPinData *);
 } TimingTaskDef;
+
+typedef struct
+{
+    volatile uint64_t initial_state_mask;    // Mask to store the initial state of pins
+    TimingPinData *global_timing_pindata;    // Global pointer to TimingPinData array
+    volatile uint8_t number_of_active_pins;  // Number of active pins participating in handshake
+    volatile uint32_t handshake_time;        // Current handshake time counter
+} HandshakeState;
+
+// State management functions
+HandshakeState* handshake_state_init(void);
+void handshake_state_deinit(HandshakeState* state);
 
 void perform_handshake(PinData *pin_data, uint64_t initial_blacklist_mask);
 

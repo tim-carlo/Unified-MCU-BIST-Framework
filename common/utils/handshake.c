@@ -1,8 +1,57 @@
 #include "handshake.h"
 
-static volatile uint64_t initial_state_mask = 0;    // Mask to store the initial state of pins
-static TimingPinData *global_timing_pindata = NULL; // Global pointer to TimingPinData array
-static volatile uint8_t number_of_active_pins = 0;    // Number of active pins participating in handshake
+// Static pointer to handshake state
+static HandshakeState *handshake_state = NULL;
+
+/**
+ * @brief Initialize handshake state
+ * @return Pointer to initialized HandshakeState or NULL on failure
+ */
+HandshakeState* handshake_state_init(void)
+{
+    if (handshake_state != NULL) {
+        // Already initialized, return existing state
+        return handshake_state;
+    }
+    
+    handshake_state = calloc(1, sizeof(HandshakeState));
+    if (handshake_state == NULL) {
+        return NULL; // Allocation failed
+    }
+    
+    // Initialize state members to default values
+    handshake_state->initial_state_mask = 0;
+    handshake_state->global_timing_pindata = NULL;
+    handshake_state->number_of_active_pins = 0;
+    handshake_state->handshake_time = 0;
+    
+    return handshake_state;
+}
+
+/**
+ * @brief Deinitialize handshake state
+ * @param state Pointer to HandshakeState to deinitialize
+ */
+void handshake_state_deinit(HandshakeState* state)
+{
+    if (state == NULL) {
+        return;
+    }
+    
+    // Free timing pin data if allocated
+    if (state->global_timing_pindata != NULL) {
+        free(state->global_timing_pindata);
+        state->global_timing_pindata = NULL;
+    }
+    
+    // Free the state structure itself
+    free(state);
+    
+    // Clear the static pointer
+    if (handshake_state == state) {
+        handshake_state = NULL;
+    }
+}
 
 static void on_syn_complete(TimingPinData *data)
 {
@@ -36,19 +85,25 @@ const TimingTaskDef task_lut[] = {
     [TASK_JOB_SYN_ACK] = {SYN_ACK_CYCLES, &on_syn_ack_complete},
     [TASK_JOB_ACK] = {ACK_CYCLES, &on_ack_complete}};
 
+/**
+ * @brief Interrupt Service Routine for reading pin states and managing handshake tasks
+ * 
+ */
 static void reader_isr(void)
 {
+    if (handshake_state == NULL) return; // Safety check
+    
     gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
-    for(uint8_t pin_index = 0; pin_index < number_of_active_pins; pin_index++)
+    for (uint8_t pin_index = 0; pin_index < handshake_state->number_of_active_pins; pin_index++)
     {
-        TimingPinData *data = &global_timing_pindata[pin_index];
+        TimingPinData *data = &handshake_state->global_timing_pindata[pin_index];
         const uint8_t physical_pin = data->pin;
 
         bool something_done = false; // Flag to track if any task was done
 
-        if (data->waiting_counter >= MAXIMUM_WAITING_CYCLES)
+        if (data->waiting_counter >= MAXIMUM_WAITING_CYCLES && data->successful_handshakes == 0)
         {
-            data->status = 0;               // Reset status flags
+            data->status = 0; // Reset status flags
             set_task(data, TASK_JOB_SYN);
             data->waiting_counter = 0; // Reset waiting counter
         }
@@ -136,6 +191,7 @@ static void reader_isr(void)
             data->waiting_counter++; // Increment waiting counter if no task was done
         }
     }
+    handshake_state->handshake_time++;
     gpio_drive_low(DEBUG_PIN1); // Set debug pin low to indicate ISR exit
 }
 
@@ -149,30 +205,36 @@ static void start_handshake_timer(void)
     start_timer(NRF_TIMER4);
 
 #elif defined(__MSP430FR5994__)
-    // Configure Timer A1 for periodic ISR calls
-    configure_timer(TIMER_A1, 8, MC__STOP); // SMCLK/8, continuous mode
-    set_timer_compare(TIMER_A1, 0, READER_TICKS);
+    // Configure Timer A2 for periodic ISR calls
+    configure_timer(TIMER_A2, 8, MC__STOP); // SMCLK/8, continuous mode
+    set_timer_compare(TIMER_A2, 0, READER_TICKS);
 
     // Set callback and start
-    set_timer_compare_callback(TIMER_A1, reader_isr);
-    start_timer_with_interrupt(TIMER_A1);
+    set_timer_compare_callback(TIMER_A2, reader_isr);
+    start_timer_with_interrupt(TIMER_A2);
 #endif
 }
 
 static void stop_handshake_timer(void)
 {
 #if defined(NRF52840_XXAA)
-    clear_timer_event_callback(NRF_TIMER4);
     stop_timer(NRF_TIMER4);
 
 #elif defined(__MSP430FR5994__)
-    clear_timer_event_callback(TIMER_A1);
-    stop_timer(TIMER_A1);
+    stop_timer(TIMER_A2);
 #endif
 }
 
 void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist_mask)
 {
+    // Initialize handshake state
+    if (handshake_state_init() == NULL) {
+        return; // Failed to initialize state
+    }
+    
+    // Store initial blacklist mask
+    handshake_state->initial_state_mask = initial_blacklist_mask;
+    
     // Create bitmap iterator for non-blacklisted pins
     uint64_t all_pins_mask = (NUMBER_OF_GPIO_PINS >= 64)
                                  ? ~0ULL
@@ -183,17 +245,19 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
     uint64_t valid_pins_mask = ~initial_blacklist_mask & all_pins_mask;
     printf("Valid pins mask: 0x%016llX\n", valid_pins_mask);
 
-    number_of_active_pins = __builtin_popcountll(valid_pins_mask);
-    printf("Number of active pins: %u\n", number_of_active_pins);
-    if (number_of_active_pins == 0)
+    handshake_state->number_of_active_pins = __builtin_popcountll(valid_pins_mask);
+    printf("Number of active pins: %u\n", handshake_state->number_of_active_pins);
+    if (handshake_state->number_of_active_pins == 0)
     {
         return; // Nothing to process
     }
 
     // Allocate or reallocate global TimingPinData array
-    free(global_timing_pindata);
-    global_timing_pindata = calloc(number_of_active_pins, sizeof(TimingPinData));
-    if (!global_timing_pindata)
+    if (handshake_state->global_timing_pindata != NULL) {
+        free(handshake_state->global_timing_pindata);
+    }
+    handshake_state->global_timing_pindata = calloc(handshake_state->number_of_active_pins, sizeof(TimingPinData));
+    if (!handshake_state->global_timing_pindata)
     {
         return; // Allocation failed
     }
@@ -204,7 +268,7 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
     while (bitmap_iterator_next(&it, &pin_index))
     {
         uint8_t physical_pin = pin_data_array[pin_index].pin;
-        global_timing_pindata[idx++] = (TimingPinData){
+        handshake_state->global_timing_pindata[idx++] = (TimingPinData){
             .pin = physical_pin,
             .status = 0,
             .current_job = TASK_JOB_SYN,
@@ -214,35 +278,39 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
 
     // Debug: Print global_timing_pindata initialization
     printf("Initialized TimingPinData array:\n");
-    for (uint8_t i = 0; i < number_of_active_pins; ++i)
+    for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
     {
         printf("  [%u] pin=%u, status=0x%02X, current_job=%d, unsuccessful_syns=%u\n",
                i,
-               global_timing_pindata[i].pin,
-               global_timing_pindata[i].status,
-               global_timing_pindata[i].current_job,
-               global_timing_pindata[i].number_of_unsuccessful_syns);
+               handshake_state->global_timing_pindata[i].pin,
+               handshake_state->global_timing_pindata[i].status,
+               handshake_state->global_timing_pindata[i].current_job,
+               handshake_state->global_timing_pindata[i].number_of_unsuccessful_syns);
     }
 
     // start handshake process
     start_handshake_timer();
-    delay_ms(DURATION_OF_HANDSHAKE_MS);
+    handshake_state->handshake_time = 0;
+    while (handshake_state->handshake_time < DURATION_OF_HANDSHAKE_MS)
+    {
+    }
+
+    for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
+    {
+        gpio_od_release(handshake_state->global_timing_pindata[i].pin);
+    }
+
+    printf("Handshake time elapsed: %u ms\n", handshake_state->handshake_time);
     stop_handshake_timer();
 
+    
 
-    // Copy results back to PinData and add events
+
     it = bitmap_iterator_create(valid_pins_mask);
     idx = 0;
     while (bitmap_iterator_next(&it, &pin_index))
     {
-        TimingPinData *timing_data = &global_timing_pindata[idx++];
-
-        // Print binary status of timing_data
-        printf("  timing_data[%u] status (binary): 0b", idx - 1);
-        for (int bit = 7; bit >= 0; --bit) {
-            printf("%d", (timing_data->status >> bit) & 1);
-        }
-        printf("\n");
+        TimingPinData *timing_data = &handshake_state->global_timing_pindata[idx++];
 
         // The physical pin number is also the index in pin_data_array
         uint8_t physical_pin = timing_data->pin;
@@ -254,10 +322,12 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
             {
             case ROLE_INITIATOR:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_OK_INITIATOR);
+                printf("Pin %u: ROLE_INITIATOR\n", physical_pin);
                 break;
 
             case ROLE_RESPONDER:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_OK_RESPONDER);
+                printf("Pin %u: ROLE_RESPONDER\n", physical_pin);
                 break;
 
             case ROLE_UNCLEAR:
@@ -275,7 +345,6 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
         }
     }
 
-    // Cleanup
-    free(global_timing_pindata);
-    global_timing_pindata = NULL;
+    // Cleanup - deinitialize handshake state
+    handshake_state_deinit(handshake_state);
 }
