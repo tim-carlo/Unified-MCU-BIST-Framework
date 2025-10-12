@@ -6,7 +6,7 @@
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_utils.h"
-#define DATA_TIMER TIMER_B0
+#define DATA_TIMER TIMER_A2
 
 #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
@@ -44,7 +44,8 @@
 #include "datahandshake_pindata.h"
 #include "crc.h"
 
-#define DATA_TIMER_INTERVAL_US 1000 // 1ms interval for both platforms
+#define DATA_TIMER_INTERVAL_US 1000 // 10ms interval for both platforms
+#define DATA_TIMER_INTERVAL_MS (DATA_TIMER_INTERVAL_US / 1000)
 
 #define REQUEST_PACKSIZE 15
 #define ANSWER_PACKSIZE 25
@@ -59,6 +60,21 @@ typedef enum
     PACKET_TYPE_ANSWER,
 } PackageType;
 
-void perform_data_handshake(PinData *pindata, uint64_t blacklist_mask);
+
+typedef enum
+{
+    DATA_HANDSHAKE_INITIALIZING_FAILURE,
+    DATA_HANDSHAKE_HANDSHAKE_FAILURE,
+    DATA_HANDSHAKE_SUCCESS
+} DataHandshakeStatus;
+
+typedef struct
+{
+    uint8_t mutex_pin;
+    bool i_am_mutex_owner;
+    DataHandshakeStatus status;
+} DataHandshakeResult;
+
+DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_mask);
 
 #endif // DATA_HANDSHAKE_H

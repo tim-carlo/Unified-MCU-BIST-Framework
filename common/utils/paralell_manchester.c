@@ -13,7 +13,7 @@
 #define PMAN_TIMER NRF_TIMER4
 #define DEBUG_PIN_ABS 38 // Pin 1.6
 #elif defined(__MSP430FR5994__)
-#define PMAN_TIMER TIMER_A2
+#define PMAN_TIMER TIMER_B0 // This has according to the datasheet a higherr resolution and more features and higher priority than TIMER_A2
 #define DEBUG_PIN_ABS ABS_PIN(3, 0)
 #endif
 
@@ -74,15 +74,15 @@ static inline void pman_set_TX(const bool state, const uint8_t pin)
 
 static inline void pman_timer_isr(void)
 {
-#if defined(DEBUG_PIN_ABS)
     gpio_drive_high(DEBUG_PIN_ABS);
-#endif
     const uint8_t count = pman_instance_count;
     const uint64_t all_ports_state = gpio_read_all_ports(); // einmal lesen → viel schneller
 
     for (uint8_t i = 0; i < count; i++)
     {
         ParallelManchesterInstance *instance = &pman_instances[i];
+        if (!instance)
+            continue;
 
         switch (instance->mode)
         {
@@ -120,7 +120,7 @@ static inline void pman_timer_isr(void)
 
         case PMAN_RECEIVE:
         {
-
+            // gpio_drive_high(DEBUG_PIN_ABS);
             const uint8_t pin = instance->pin;
             const bool rx = (all_ports_state >> pin) & 0x1ULL;
 
@@ -130,11 +130,9 @@ static inline void pman_timer_isr(void)
 
             if (current_mode != last_mode)
             {
+
                 if (current_mode < last_mode && last_mode != 3)
                 {
-                  //  LOG("Decoder mode regressed on pin %u: %u -> %u\n", pin, last_mode, current_mode);
-                  //  instance->mode = PMAN_IDLE;
-                  //  instance->status |= PMAN_STATUS_RECEIVE_ERROR;
                 }
                 instance->cycles_without_transition = 0;
             }
@@ -149,7 +147,6 @@ static inline void pman_timer_isr(void)
 
                 if (instance->cycles_without_transition > NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION)
                 {
-                    LOG("Timeout waiting for signal transition on pin %u\n", pin);
                     instance->mode = PMAN_IDLE;
                     instance->status |= PMAN_STATUS_RECEIVE_ERROR;
                     instance->cycles_without_transition = 0;
@@ -175,6 +172,7 @@ static inline void pman_timer_isr(void)
             default:
                 break;
             }
+            // gpio_drive_low(DEBUG_PIN_ABS);
             break;
         }
 
@@ -182,10 +180,7 @@ static inline void pman_timer_isr(void)
             break;
         }
     }
-
-#if defined(DEBUG_PIN_ABS)
     gpio_drive_low(DEBUG_PIN_ABS);
-#endif
 }
 
 static void pman_setup_and_start_timer(uint16_t sample_interval_us)
@@ -201,10 +196,11 @@ static void pman_setup_and_start_timer(uint16_t sample_interval_us)
     start_timer(PMAN_TIMER);
 
 #elif defined(__MSP430FR5994__)
-    uint32_t timer_ticks = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
+    uint32_t ticks;
+    const uint16_t prescaler = choose_prescaler_and_ticks(sample_interval_us, SMCLK_HZ, &ticks);
 
-    configure_timer(PMAN_TIMER, 0, MC__UP); // No prescaler division
-    set_timer_compare(PMAN_TIMER, 0, (uint16_t)timer_ticks);
+    configure_timer(PMAN_TIMER, prescaler, MC__UP);
+    set_timer_compare(PMAN_TIMER, 0, (uint16_t)(ticks - 1));
     set_timer_compare_callback(PMAN_TIMER, pman_timer_isr);
     start_timer_with_interrupt(PMAN_TIMER);
 #endif
@@ -231,9 +227,8 @@ uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate r
 static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 {
     const uint8_t index = (uint8_t)(uintptr_t)udata;
-    printf("r");
     ParallelManchesterInstance *instance = &pman_instances[index];
-    
+
     // Check for invalid data or wrong mode - no need for data_buffer check anymore
     if (!data || !data_size || instance->mode != PMAN_RECEIVE)
         return;
@@ -249,7 +244,7 @@ void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
 
     gpio_output_init(DEBUG_PIN_ABS);
     pman_setup_and_start_timer(sample_interval_us);
-    
+
     LOG("Manchester initialized\n");
 }
 
@@ -288,14 +283,14 @@ uint8_t parallel_manchester_add_instance(uint8_t pin, uint8_t *buffer, uint8_t b
     new_instance->status = 0;
     new_instance->buffer = buffer;           // Use provided buffer
     new_instance->buffer_size = buffer_size; // Store buffer size
-    new_instance->last_decoder_mode = 0; // Initialize decoder mode tracking
+    new_instance->last_decoder_mode = 0;     // Initialize decoder mode tracking
     new_instance->cycles_without_transition = 0;
     new_instance->last_rx = false;
 
     // Initialize GPIO for this pin
     gpio_od_init(pin);
-    printf("Added instance on pin %u at index %u with buffer %p (size %u)\n", 
-           pin, pman_instance_count, (void*)buffer, buffer_size);
+    printf("Added instance on pin %u at index %u with buffer %p (size %u)\n",
+           pin, pman_instance_count, (void *)buffer, buffer_size);
 
     // Initialize the spooky encoder and decoder with the provided buffer
     if (spooky_encoder_init(&new_instance->enc, new_instance->buffer, new_instance->buffer_size, PMAN_TX_RATE) != 0)
@@ -441,7 +436,6 @@ bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_
         printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
         return false; // Invalid index
     }
-    
 
     // Start receiving - data will be written directly to instance buffer by spooky decoder
     instance->mode = PMAN_RECEIVE;
@@ -510,7 +504,7 @@ bool parallel_manchester_is_receiving(uint8_t index)
 }
 
 // Helper function to get buffer pointer
-uint8_t* parallel_manchester_get_received_data(uint8_t index)
+uint8_t *parallel_manchester_get_received_data(uint8_t index)
 {
     if (index >= pman_instance_count)
         return NULL;
@@ -522,7 +516,7 @@ void parallel_manchester_deinit()
 {
     // Stop timer
     pman_stop_timer();
-    
+
     // Clean up instances (buffers are owned by caller, don't free them)
     if (pman_instances)
     {
@@ -530,6 +524,6 @@ void parallel_manchester_deinit()
         pman_instances = NULL;
     }
     pman_instance_count = 0;
-    
+
     LOG("Manchester deinitialized\n");
 }

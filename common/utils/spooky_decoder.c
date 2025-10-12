@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "spooky_decoder.h"
+#include "printf.h"
 
 typedef enum {
     RX_HEADER,                  /* 0xFF55 header for clock discovery */

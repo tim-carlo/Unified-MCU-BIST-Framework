@@ -53,6 +53,8 @@ typedef enum
 #define PMAN_STATUS_RECEIVE_ERROR           (1 << 2)
 #define PMAN_STATUS_DATA_RECEIVED           (1 << 3)
 
+#define TIMER_PRESCALER 8U 
+
 typedef struct {
     uint8_t pin;
     struct spooky_encoder enc;

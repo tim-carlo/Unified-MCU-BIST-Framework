@@ -206,7 +206,7 @@ static void start_handshake_timer(void)
 
 #elif defined(__MSP430FR5994__)
     // Configure Timer A2 for periodic ISR calls
-    configure_timer(TIMER_A2, 8, MC__STOP); // SMCLK/8, continuous mode
+    configure_timer(TIMER_A2, 8, MC__UP); 
     set_timer_compare(TIMER_A2, 0, READER_TICKS);
 
     // Set callback and start
