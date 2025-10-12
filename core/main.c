@@ -113,12 +113,6 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
-  /*   *mask &= ~(1ULL << ABS_PIN(4, 1));
-    *mask &= ~(1ULL << ABS_PIN(4, 2));
-    *mask &= ~(1ULL << ABS_PIN(4, 3));
-    *mask &= ~(1ULL << ABS_PIN(4, 7));
-    *mask &= ~(1ULL << ABS_PIN(7, 1));
-    *mask &= ~(1ULL << ABS_PIN(7, 0)); */
 #endif
 }
 
@@ -145,8 +139,6 @@ int main(void)
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-    
-
     // LOG("Running on %s\n", get_chip_family_name());
     // LOG("Chip UID: %s\n", get_unique_id_str());
 
@@ -170,12 +162,11 @@ int main(void)
 
     // print_active_pins_from_mask(initial_state_mask);
 
-    set_role_debug();
-    // perform_handshake(pin_data, initial_state_mask);
+    // set_role_debug();
+    perform_handshake(pin_data, initial_state_mask);
     perform_data_handshake(pin_data, initial_state_mask);
-    // print_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    // example_cbor_header_transmission_with_ack();
-    //  run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+
+    //   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     // Send the collected pin data over UART
     // UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
