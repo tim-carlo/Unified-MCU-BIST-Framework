@@ -166,10 +166,44 @@ void stop_timer(const timer_type timer)
 {
     volatile uint16_t *ctl = GET_TxxCTL(timer);
     volatile uint16_t *r = GET_TxxR(timer);
+    volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
 
-    *ctl &= ~MC_3; // Clear MC bits → stop mode
-    *ctl |= TACLR; // Clear timer
-    *r = 0;        // Reset timer register
+    // Disable all interrupts first
+    *ctl &= ~TAIE;     // Disable overflow interrupt
+    *cctl0 &= ~CCIE;   // Disable compare interrupt
+    
+    // Clear any pending interrupt flags
+    *cctl0 &= ~CCIFG;  // Clear compare interrupt flag
+    
+    // Stop the timer by clearing mode control bits
+    *ctl &= ~(MC_1 | MC_2); // Clear MC bits (MC_3 = MC_1 | MC_2)
+    
+    // Clear the timer counter
+    *ctl |= TACLR;     // Set clear bit
+    *r = 0;            // Ensure register is zero
+    
+    // Reset overflow counter for this timer
+    switch (timer) {
+        case TIMER_A0:
+            timer_overflows_a0 = 0;
+            break;
+        case TIMER_A1:
+            timer_overflows_a1 = 0;
+            break;
+        case TIMER_A2:
+            timer_overflows_a2 = 0;
+            break;
+        case TIMER_A4:
+            timer_overflows_a4 = 0;
+            break;
+        case TIMER_B0:
+            timer_overflows_b0 = 0;
+            break;
+    }
+    
+    // Clear callbacks for this timer
+    timer_overflow_callback[timer] = NULL;
+    timer_compare_callback[timer] = NULL;
 }
 
 /**
