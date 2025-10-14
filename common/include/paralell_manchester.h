@@ -25,7 +25,7 @@
 #include <msp430.h>
 #endif
 
-#define PMAN_TX_RATE 8 // Number of samples per bit (must match encoder/decoder settings)
+#define PMAN_TXRX_RATE 4 // Number of samples per bit (must match encoder/decoder settings)
 
 typedef enum {
     PMAN_BAUD_100 = 100,
@@ -53,7 +53,9 @@ typedef enum
 #define PMAN_STATUS_RECEIVE_ERROR           (1 << 2)
 #define PMAN_STATUS_DATA_RECEIVED           (1 << 3)
 
-#define TIMER_PRESCALER 8U 
+// Definitions
+static const uint8_t PMAN_SAMPLE_RATE = 4;
+static const uint16_t NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION = 1000;
 
 typedef struct {
     uint8_t pin;
@@ -73,8 +75,10 @@ typedef struct {
 extern uint8_t pman_instance_count;
 extern ParallelManchesterInstance *pman_instances;
 
+void pman_timer_isr(void);
 // The baudrate must be set equally for all, since the ISR is shared
 void parallel_manchester_init(ParallelManchesterBaudRate tx_rate);
+uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
 void parallel_manchester_deinit();
 
 // Instance management - now accepts buffer per instance
