@@ -7,22 +7,23 @@
 #endif
 #include <string.h>
 
-// Define printf macro for printfging (can be disabled by commenting out)
-// #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-// #define printf(fmt, ...) // Uncomment this line to disable printfging
+// Define LOG macro for LOGging (can be disabled by commenting out)
+//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) // Uncomment this line to disable LOGging
 
-#define SEND_INACCURACY (30 / DATA_TIMER_INTERVAL_MS)
-#define INITIAL_LOW_TIME_REQUEST_MS (50 / DATA_TIMER_INTERVAL_MS)
-#define INITIAL_LOW_TIME_REQUEST_MIN_MS ((INITIAL_LOW_TIME_REQUEST_MS - SEND_INACCURACY) / DATA_TIMER_INTERVAL_MS)
-#define INITIAL_LOW_TIME_REQUEST_MAX_MS ((INITIAL_LOW_TIME_REQUEST_MS + SEND_INACCURACY) / DATA_TIMER_INTERVAL_MS)
 
-#define INITIAL_LOW_TIME_ANSWER_MS (100 / DATA_TIMER_INTERVAL_MS)
-#define INITIAL_LOW_TIME_ANSWER_MIN_MS ((INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY) / DATA_TIMER_INTERVAL_MS)
-#define INITIAL_LOW_TIME_ANSWER_MAX_MS ((INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY) / DATA_TIMER_INTERVAL_MS)
-#define TIMEOUT_CYCLES (10000 / DATA_TIMER_INTERVAL_MS) 
-#define TIMEOUT_CYCLES_SENDING_REQUEST (10000 / DATA_TIMER_INTERVAL_MS)
-#define TIMEOUT_CYCLES_SENDING_ANSWER (20000 / DATA_TIMER_INTERVAL_MS)
-#define MAXIMUM_IDLE_TIME_MS (30000 / DATA_TIMER_INTERVAL_MS) 
+static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MIN_MS = ((50 - 30) / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MAX_MS = ((50 + 30) / DATA_TIMER_INTERVAL_MS);
+
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = (100 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = ((100 - 30) / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = ((100 + 30) / DATA_TIMER_INTERVAL_MS);
+static const uint16_t TIMEOUT_CYCLES = (10000 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t TIMEOUT_CYCLES_SENDING_REQUEST = (10000 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = (20000 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t MAXIMUM_IDLE_TIME = 300;
 
 // Global variables
 PinData *global_pindata;
@@ -85,7 +86,7 @@ static void analyze_pindata_events(PinData *pindata)
             }
         }
 
-        // Apply printfic for mask assignment and blacklist update
+        // Apply LOGic for mask assignment and blacklist update
         if (has_initiator && !has_responder)
         {
             initiator_mask |= (1ULL << pin);
@@ -108,10 +109,10 @@ static void analyze_pindata_events(PinData *pindata)
         }
     }
 
-    printf("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
-    printf("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
-    printf("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
-    printf("Number of active pins: %u\n", number_of_pins);
+    LOG("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
+    LOG("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
+    LOG("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
+    LOG("Number of active pins: %u\n", number_of_pins);
 }
 
 static uint16_t get_listen_until_time()
@@ -119,44 +120,6 @@ static uint16_t get_listen_until_time()
     uint16_t random_offset = (uint16_t)(random32() % 400); // Random offset between 1000 and 10000 ms
     return random_offset;
 }
-
-static void send_data_isr(void)
-{
-    interrupt_cont = true;
-}
-
-static void start_send_data_timer(void)
-{
-#if defined(NRF52840_XXAA)
-    // Configure timer for 1MHz (1µs per tick), 1ms intervals
-    configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
-    set_timer_compare(DATA_TIMER, 0, DATA_TIMER_INTERVAL_US, true, true);
-    set_timer_event_callback(DATA_TIMER, send_data_isr);
-    start_timer(DATA_TIMER);
-
-#elif defined(__MSP430FR5994__)
-    // At 16MHz SMCLK with /8 prescaler = 2MHz, need 2000 ticks for 1ms
-    configure_timer(DATA_TIMER, 8, MC__STOP);
-    set_timer_compare(DATA_TIMER, 0, DATA_TIMER_INTERVAL_US * 2);
-    set_timer_compare_callback(DATA_TIMER, send_data_isr);
-    start_timer_with_interrupt(DATA_TIMER);
-#endif
-}
-
-static void stop_send_data_timer(void)
-{
-#if defined(NRF52840_XXAA)
-    clear_timer_event_callback(DATA_TIMER); // NRF52-spezifisch
-    stop_timer(DATA_TIMER);
-
-#elif defined(__MSP430FR5994__)
-    // MSP430-spezifische Timer-Cleanup
-    stop_timer(DATA_TIMER);
-    clear_timer_event_callback(DATA_TIMER);
-#endif
-}
-
-// printfging functions removed to save memory
 
 static void write_u64_le(uint8_t *dst, uint64_t val)
 {
@@ -314,7 +277,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     dhandshake_set_received_request(p, true);
     // Add a pin connection to the request packet
     add_pin_connection(&global_pindata[pin], pin, request_packet.pin, request_packet.uuid);
-    printf("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, request_packet.pin);
+    LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, request_packet.pin);
 
     AnswerDataPacket answer_packet;
 
@@ -334,11 +297,11 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
             answer_packet.mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN; // Grant mutex
             mutex_pin = pin;
             i_am_mutex_owner = false;
-            printf("Mutex granted to other device on pin %u\n", pin);
+            LOG("Mutex granted to other device on pin %u\n", pin);
         }
         else
         {
-            printf("Mutex request denied on pin %u, already owned on pin %u\n", pin, mutex_pin);
+            LOG("Mutex request denied on pin %u, already owned on pin %u\n", pin, mutex_pin);
         }
     }
 
@@ -365,7 +328,7 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     // Check if the answer is for us
     if (answer_packet.received_uuid != uuid || answer_packet.received_pin != pin)
     {
-        printf("Answer not for us");
+        LOG("Answer not for us");
         return false;
     }
 
@@ -382,11 +345,11 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
-        printf("Mutex granted to this device on pin %u\n", pin);
+        LOG("Mutex granted to this device on pin %u\n", pin);
     }
 
     p->number_of_successful_tries++;
-    printf("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, answer_packet.sending_pin);
+    LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, answer_packet.sending_pin);
     return true;
 }
 
@@ -460,7 +423,7 @@ static void reschedule_request(DataHandshakeData *p, uint32_t counter)
 
 static uint32_t counter = 0;
 
-static inline void fsm_data_handshake(void)
+static void fsm_data_handshake(void)
 {
     gpio_drive_high(DEBUG_PIN1);
     counter++;
@@ -495,14 +458,14 @@ static inline void fsm_data_handshake(void)
                     if (!start_receiving_request(p))
                     {
                         dhandshake_set_failed_handshake(p, true);
-                        printf("Failed to start receiving request on pin %u\n", p->pin);
+                        LOG("Failed to start receiving request on pin %u\n", p->pin);
                     }
                     else
                     {
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
-                    // printf("Request received on pin %u\n", pin);
+                    // LOG("Request received on pin %u\n", pin);
 
                     p->receiving_counter = 0;
                     gpio_drive_low(DEBUG_PIN2);
@@ -615,7 +578,7 @@ static inline void fsm_data_handshake(void)
                     {
                         dhandshake_set_failed_handshake(p, false);
                         is_failed = true;
-                        printf("Failed to start receiving answer on pin %u\n", p->pin);
+                        LOG("Failed to start receiving answer on pin %u\n", p->pin);
                     }
                     else
                     {
@@ -631,7 +594,7 @@ static inline void fsm_data_handshake(void)
                 }
                 if (is_failed)
                 {
-                    printf("- Failed to receive answer on pin %u\n", p->pin);
+                    LOG("- Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN;
@@ -651,7 +614,7 @@ static inline void fsm_data_handshake(void)
                     // Failed to handle request properly
                     dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
-                    printf("Failed to handle request on pin %u\n", p->pin);
+                    LOG("Failed to handle request on pin %u\n", p->pin);
                 }
                 else
                 {
@@ -663,7 +626,7 @@ static inline void fsm_data_handshake(void)
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, true);
-                printf("Failed to receive request on pin %u\n", p->pin);
+                LOG("Failed to receive request on pin %u\n", p->pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             something_happened = true;
@@ -677,7 +640,7 @@ static inline void fsm_data_handshake(void)
                 if (!handle_answer_complete(p->pin, p))
                 {
                     dhandshake_set_failed_handshake(p, false);
-                    printf("Failed to handle answer on pin %u\n", p->pin);
+                    LOG("Failed to handle answer on pin %u\n", p->pin);
                 }
                 else
                 {
@@ -690,7 +653,7 @@ static inline void fsm_data_handshake(void)
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
                 dhandshake_set_failed_handshake(p, false);
-                printf("Failed to receive answer on pin %u\n", p->pin);
+                LOG("Failed to receive answer on pin %u\n", p->pin);
                 reschedule_request(p, counter);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
@@ -712,6 +675,48 @@ static inline void fsm_data_handshake(void)
         global_last_worker = 0;
     }
 }
+static uint8_t isr_counter = 0;
+static void send_data_isr(void)
+{
+    // gpio_toggle(DEBUG_PIN1);
+    // fsm_data_handshake();
+    interrupt_cont = true;
+
+    // isr_counter++;
+}
+
+static void start_send_data_timer(void)
+{
+    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_300);
+#if defined(NRF52840_XXAA)
+    // Configure timer for 1MHz (1µs per tick), 1ms intervals
+    configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
+    set_timer_compare(DATA_TIMER, 0, sample_interval_us, true, true);
+    set_timer_event_callback(DATA_TIMER, send_data_isr);
+    start_timer(DATA_TIMER);
+
+#elif defined(__MSP430FR5994__)
+    // At 16MHz SMCLK with /8 prescaler = 2MHz, need 2000 ticks for 1ms
+    configure_timer(DATA_TIMER, 8, MC__STOP);
+    set_timer_compare(DATA_TIMER, 0, sample_interval_us * 2);
+    set_timer_compare_callback(DATA_TIMER, send_data_isr);
+    start_timer_with_interrupt(DATA_TIMER);
+#endif
+}
+
+static void stop_send_data_timer(void)
+{
+#if defined(NRF52840_XXAA)
+    clear_timer_event_callback(DATA_TIMER); // NRF52-spezifisch
+    stop_timer(DATA_TIMER);
+
+#elif defined(__MSP430FR5994__)
+    // MSP430-spezifische Timer-Cleanup
+    stop_timer(DATA_TIMER);
+    clear_timer_event_callback(DATA_TIMER);
+#endif
+}
+
 /**
  * @brief Main data handshake function
  * @param pindata Pointer to PinData array
@@ -785,13 +790,13 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
         if (manchester_idx == 255)
         {
-            printf("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
+            LOG("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
             global_datahandshake_pindata[idx].manchester_instance_index = 255;
         }
         else
         {
             global_datahandshake_pindata[idx].manchester_instance_index = manchester_idx;
-            printf("Created Manchester instance %u for pin %u\n", manchester_idx, pindata[pin_index].pin);
+            LOG("Created Manchester instance %u for pin %u\n", manchester_idx, pindata[pin_index].pin);
             valid_pins_for_fsm_mask |= (1ULL << idx);
         }
 
@@ -799,16 +804,23 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     }
 
     internal_valid_pins = valid_pins_for_fsm_mask;
-    printf("Data handshake initialized \n");
+    LOG("Data handshake initialized \n");
 
     start_send_data_timer();
-    while (global_last_worker < MAXIMUM_IDLE_TIME_MS)
+    while (global_last_worker < MAXIMUM_IDLE_TIME)
     {
         while (!interrupt_cont)
             ;
         interrupt_cont = false;
-        fsm_data_handshake();
+        pman_timer_isr();
+        if (isr_counter > 10)
+        {
+            isr_counter = 0;
+            fsm_data_handshake();
+        }
+        isr_counter++;
     }
+    printf("Data handshake finished due to timeout\n");
     stop_send_data_timer();
 
     // Cleanup
@@ -822,7 +834,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         global_datahandshake_pindata = NULL;
     }
     parallel_manchester_deinit();
-    
+
     result.status = DATA_HANDSHAKE_SUCCESS;
     result.mutex_pin = mutex_pin;
     result.i_am_mutex_owner = i_am_mutex_owner;

@@ -6,7 +6,7 @@
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_utils.h"
-#define DATA_TIMER TIMER_A2
+#define DATA_TIMER TIMER_B0
 
 #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
