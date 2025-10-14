@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PMAN_ENCODER_BUFFER_SIZE 32
-#define PMAN_DECODER_BUFFER_SIZE 32
-#define NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION 1000
-
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 #if defined(NRF52840_XXAA)
@@ -72,11 +68,12 @@ static inline void pman_set_TX(const bool state, const uint8_t pin)
     }
 }
 
-static inline void pman_timer_isr(void)
+
+void pman_timer_isr(void)
 {
     gpio_drive_high(DEBUG_PIN_ABS);
     const uint8_t count = pman_instance_count;
-    const uint64_t all_ports_state = gpio_read_all_ports(); // einmal lesen → viel schneller
+    const uint64_t all_ports_state = gpio_read_all_ports(); // Read once to save time
 
     for (uint8_t i = 0; i < count; i++)
     {
@@ -133,6 +130,7 @@ static inline void pman_timer_isr(void)
 
                 if (current_mode < last_mode && last_mode != 3)
                 {
+                    // Here a error occures
                 }
                 instance->cycles_without_transition = 0;
             }
@@ -220,7 +218,8 @@ static void pman_stop_timer()
 uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate)
 {
     uint32_t bit_time_us = 1000000UL / rate;
-    return bit_time_us / PMAN_TX_RATE;
+    return bit_time_us / PMAN_TXRX_RATE;
+    // PMAN_TXRX_RATE runter setzen dann hat man mehr entstpannung für den MSP
 }
 
 // Update rx_callback to use instance buffer directly
@@ -240,10 +239,10 @@ static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 
 void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(tx_rate);
+  //  uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(tx_rate);
 
     gpio_output_init(DEBUG_PIN_ABS);
-    pman_setup_and_start_timer(sample_interval_us);
+  //  pman_setup_and_start_timer(sample_interval_us);
 
     LOG("Manchester initialized\n");
 }
@@ -293,7 +292,7 @@ uint8_t parallel_manchester_add_instance(uint8_t pin, uint8_t *buffer, uint8_t b
            pin, pman_instance_count, (void *)buffer, buffer_size);
 
     // Initialize the spooky encoder and decoder with the provided buffer
-    if (spooky_encoder_init(&new_instance->enc, new_instance->buffer, new_instance->buffer_size, PMAN_TX_RATE) != 0)
+    if (spooky_encoder_init(&new_instance->enc, new_instance->buffer, new_instance->buffer_size, PMAN_TXRX_RATE) != 0)
     {
         printf("Error: Encoder init failed for pin %u\n", pin);
         return 255; // Invalid index
