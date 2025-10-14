@@ -17,6 +17,7 @@
 #define _crc_h
 
 #include <stdint.h>
+#include <stddef.h>
 
 
 #define FALSE	0
@@ -30,7 +31,7 @@
 
 #if defined(CRC_CCITT)
 
-typedef unsigned short  crc;
+typedef uint8_t crc;
 
 #define CRC_NAME			"CRC-CCITT"
 #define POLYNOMIAL			0x1021
@@ -42,7 +43,7 @@ typedef unsigned short  crc;
 
 #elif defined(CRC16)
 
-typedef unsigned short  crc;
+typedef uint16_t crc;
 
 #define CRC_NAME			"CRC-16"
 #define POLYNOMIAL			0x8005
@@ -54,15 +55,15 @@ typedef unsigned short  crc;
 
 #elif defined(CRC32)
 
-typedef unsigned long  crc;
+typedef uint32_t crc;
 
 #define CRC_NAME			"CRC-32"
-#define POLYNOMIAL			0x04C11DB7
-#define INITIAL_REMAINDER	0xFFFFFFFF
-#define FINAL_XOR_VALUE		0xFFFFFFFF
+#define POLYNOMIAL			(uint32_t)0x04C11DB7
+#define INITIAL_REMAINDER	(uint32_t)0xFFFFFFFF
+#define FINAL_XOR_VALUE		(uint32_t)0xFFFFFFFF
 #define REFLECT_DATA		TRUE
 #define REFLECT_REMAINDER	TRUE
-#define CHECK_VALUE			0xCBF43926
+#define CHECK_VALUE			(uint32_t)0xCBF43926
 
 #else
 
@@ -70,11 +71,6 @@ typedef unsigned long  crc;
 
 #endif
 
-crc   crcFast(unsigned char const message[], int nBytes);
-
-#ifdef __MSP430FR5994__
-#include <stdint.h>
-uint32_t msp430_crc32_hw(const uint8_t *data, uint32_t len);
-#endif
+crc crcFast(const uint8_t *message, uint32_t nBytes);
 
 #endif /* _crc_h */
