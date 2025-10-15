@@ -34,6 +34,9 @@ void mutex_handler_request_mutex()
         uint8_t request = MUTEX_REQEST;
         while (!currently_having_mutex)
         {
+            // reinitialize open drain pin
+            gpio_od_init(current_mutex_pin);
+
             uint8_t request = MUTEX_REQEST;
             manchester_transmit_array(&request, 1);
             uint8_t received;
@@ -80,6 +83,9 @@ void mutex_handler_release_mutex()
     }
     else
     {
+
+        // reinitialize open drain pin
+        gpio_od_init(current_mutex_pin);
         bool released_permitted = false;
 
         while (!released_permitted)
