@@ -23,7 +23,9 @@ static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = ((100 + 30) / DATA_TIMER_
 static const uint16_t TIMEOUT_CYCLES = (10000 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t TIMEOUT_CYCLES_SENDING_REQUEST = (10000 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = (20000 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t MAXIMUM_IDLE_TIME = 300;
+static const uint16_t MINMUM_REQUEST_CYCLES = 10;
+static const uint16_t MAXIMUM_REQUEST_CYCLES = 500;
+static const uint16_t MAXIMUM_IDLE_TIME = 600; // This needs to be higher than the maximum request time
 
 // Global variables
 PinData *global_pindata;
@@ -117,7 +119,7 @@ static void analyze_pindata_events(PinData *pindata)
 
 static uint16_t get_listen_until_time()
 {
-    uint16_t random_offset = (uint16_t)(random32() % 400); // Random offset between 1000 and 10000 ms
+    uint16_t random_offset = (uint16_t)(random32() % (MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES)) + 10; // between 10 and 500 ms
     return random_offset;
 }
 

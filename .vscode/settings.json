@@ -42,6 +42,8 @@
         "set_one_high_measure_all.h": "c",
         "uart_transmitter.h": "c",
         "data_handshake.h": "c",
-        "random_utils.h": "c"
+        "random_utils.h": "c",
+        "paralell_manchester.h": "c",
+        "stdlib.h": "c"
     }
 }

@@ -75,8 +75,10 @@
 #include "serialisation.h"
 #include "uart_transmitter.h"
 #include "set_one_high_measure_all.h"
+#include "mutex_handeler.h"
 
 #include "crc.h"
+#include <inttypes.h>
 
 // Handshake timing constants
 #define INITIAL_DELAY_MAX_MS 10000
@@ -102,6 +104,8 @@ volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
 
 // Inspired from Hacker’s Delight by Henry S. Warren, Jr.
 
+DataHandshakeResult data_handshake_result_test;
+
 void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzufügen
 {
     *mask = 0xFFFFFFFFFFFFFFFFULL;
@@ -109,10 +113,14 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
     *mask &= ~(1ULL << 11); // Pin 11
+    data_handshake_result_test.mutex_pin = 12;
+    data_handshake_result_test.i_am_mutex_owner = true;
 
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
+    data_handshake_result_test.mutex_pin = ABS_PIN(3, 7);
+    data_handshake_result_test.i_am_mutex_owner = false;
 #endif
 }
 
@@ -139,16 +147,19 @@ int main(void)
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-    // LOG("Running on %s\n", get_chip_family_name());
+    // Generate test CRC32
+    uint8_t *test_string = "Hello";
+    crc test_data = crcFast((const uint8_t *)test_string, 5);
+    printf("Test CRC32 of '%s': %" PRIu32 "\n", test_string, test_data); // LOG("Running on %s\n", get_chip_family_name());
+
+    uint32_t test = 4157704578;
+    printf("Test: %" PRIu32 "\n", test);
     // LOG("Chip UID: %s\n", get_unique_id_str());
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
-
-    // Initialize UART transmitter
-    uart_transmitter_init();
 
     set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
@@ -158,13 +169,31 @@ int main(void)
         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
 
+    mutex_handeler_init(&data_handshake_result_test);
+    mutex_handler_request_mutex();
+    printf("now having mutex\n");
+
+    // Initialize UART transmitter
+    uart_transmitter_init();
+
     // get_initial_pin_state(pin_data, &initial_state_mask);
 
     // print_active_pins_from_mask(initial_state_mask);
 
     // set_role_debug();
     perform_handshake(pin_data, initial_state_mask);
-    perform_data_handshake(pin_data, initial_state_mask);
+    DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, initial_state_mask);
+
+    if (data_handshake_result.status == DATA_HANDSHAKE_SUCCESS)
+    {
+        mutex_handeler_init(&data_handshake_result);
+        mutex_handler_request_mutex();
+        printf("now having mutex\n");
+    }
+    else
+    {
+        printf("Data handshake failed with status %d\n", data_handshake_result.status);
+    }
 
     //   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 

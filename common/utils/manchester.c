@@ -71,7 +71,7 @@ static bool read_Rx()
 
 static void manchester_timer_isr(void)
 {
-
+    gpio_toggle(DEBUG_PIN_ABS);
     switch (mode)
     {
     case MANCHESTER_SEND:
@@ -143,7 +143,7 @@ static void manchester_stop_timer()
 
 static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
 {
-    if (data_size < 2)
+    if (data_size < 1)
         return;
     if (receive_buffer != NULL)
     {
@@ -328,7 +328,6 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
     }
 
     mode = MANCHESTER_NONE;
-    LOG("Transmission complete\n");
     return true;
 }
 

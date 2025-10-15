@@ -26,7 +26,7 @@
 #include <msp430.h>
 #endif
 
-#define TX_RATE 8 // Number of samples per bit (must match encoder/decoder settings)
+#define TX_RATE 4 // Number of samples per bit (must match encoder/decoder settings)
 
 typedef enum {
     BAUD_300 = 300,
