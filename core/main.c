@@ -133,12 +133,6 @@ void set_role_debug()
 #elif defined(__MSP430FR5994__)
     add_pin_event(pin_data, ABS_PIN(3, 6), HANDSHAKE_OK_RESPONDER);
     add_pin_event(pin_data, ABS_PIN(3, 7), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(4, 1), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(4, 2), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(4, 3), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(4, 7), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(7, 1), HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, ABS_PIN(7, 0), HANDSHAKE_OK_INITIATOR);
 #endif
 }
 
@@ -154,25 +148,32 @@ int main(void)
 
     uint32_t test = 4157704578;
     printf("Test: %" PRIu32 "\n", test);
-    // LOG("Chip UID: %s\n", get_unique_id_str());
-
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
 
+    // Blink DEBUG_PIN1
+    for (int i = 0; i < 5; ++i) {
+        gpio_drive_high(DEBUG_PIN1);
+        delay_ms(200);
+        gpio_drive_low(DEBUG_PIN1);
+        delay_ms(200);
+    }
+
+    
+
     set_standart_blacklist_pins(&initial_state_mask);
+
+    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+
+    return 0;
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
             continue;      // Skip blacklisted pins (bit = 1)
         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
-
-    mutex_handeler_init(&data_handshake_result_test);
-    mutex_handler_request_mutex();
-    printf("now having mutex\n");
-
     // Initialize UART transmitter
     uart_transmitter_init();
 
@@ -184,44 +185,58 @@ int main(void)
     perform_handshake(pin_data, initial_state_mask);
     DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, initial_state_mask);
 
-    if (data_handshake_result.status == DATA_HANDSHAKE_SUCCESS)
+    if (data_handshake_result.status != DATA_HANDSHAKE_SUCCESS)
     {
-        mutex_handeler_init(&data_handshake_result);
-        mutex_handler_request_mutex();
-        printf("now having mutex\n");
+        return 1; // Handshake failed, exit program
     }
-    else
-    {
-        printf("Data handshake failed with status %d\n", data_handshake_result.status);
-    }
+    mutex_handeler_init(&data_handshake_result);
+    mutex_handler_request_mutex();
+    printf("now having mutex\n");
 
-    //   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+    // reset all pins to clean state
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS;
+         ++pin)
+    {
+        gpio_reset(pin);
+        gpio_input_init(pin, GPIO_PULL_NONE);
+    }
+    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     // Send the collected pin data over UART
-    // UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
 
-    // switch (uart_result)
-    // {
-    // case UART_TRANSMISSION_OK:
-    //     printf("SUCCESS: Pin data transmitted successfully via UART\n");
-    //     break;
-    // case UART_TRANSMISSION_ERROR_INIT_FAILED:
-    //     printf("ERROR: UART initialization failed\n");
-    //     break;
-    // case UART_TRANSMISSION_ERROR_SEND_FAILED:
-    //     printf("ERROR: UART transmission failed\n");
-    //     break;
-    // case UART_TRANSMISSION_ERROR_ACK_FAILED:
-    //     printf("ERROR: UART acknowledgement failed\n");
-    //     break;
-    // case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
-    //     printf("ERROR: Memory allocation failed during UART transmission\n");
-    //     break;
-    // case UART_TRANSMISSION_ERROR_NULL_POINTER:
-    //     printf("ERROR: Null pointer in UART transmission\n");
-    //     break;
-    // default:
-    //     printf("ERROR: Unknown UART transmission error occurred\n");
-    //     break;
-    // }
+    // TODO Handle different error codes
+    mutex_handler_release_mutex();
+    printf("released mutex\n");
 }
+
+//   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+
+// Send the collected pin data over UART
+// UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+
+// switch (uart_result)
+// {
+// case UART_TRANSMISSION_OK:
+//     printf("SUCCESS: Pin data transmitted successfully via UART\n");
+//     break;
+// case UART_TRANSMISSION_ERROR_INIT_FAILED:
+//     printf("ERROR: UART initialization failed\n");
+//     break;
+// case UART_TRANSMISSION_ERROR_SEND_FAILED:
+//     printf("ERROR: UART transmission failed\n");
+//     break;
+// case UART_TRANSMISSION_ERROR_ACK_FAILED:
+//     printf("ERROR: UART acknowledgement failed\n");
+//     break;
+// case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
+//     printf("ERROR: Memory allocation failed during UART transmission\n");
+//     break;
+// case UART_TRANSMISSION_ERROR_NULL_POINTER:
+//     printf("ERROR: Null pointer in UART transmission\n");
+//     break;
+// default:
+//     printf("ERROR: Unknown UART transmission error occurred\n");
+//     break;
+// }
+//}

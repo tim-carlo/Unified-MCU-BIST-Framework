@@ -4,8 +4,6 @@
 static bool iam_mutex_owner = false;
 static uint8_t current_mutex_pin = 255;
 static bool currently_having_mutex = false;
-static bool permitted_mutex_request = false;
-
 /**
  * @brief Initialize the mutex handler
  *
@@ -61,7 +59,6 @@ void mutex_handler_request_mutex()
                 // if we receive a request then send a allow signal
                 if (received == MUTEX_REQEST)
                 {
-
                     manchester_transmit_array(&ack, 1);
                 }
                 else if (received == MUTEX_RELEASE)
@@ -98,6 +95,7 @@ void mutex_handler_release_mutex()
                 if (received == MUTEX_ACK)
                 {
                     released_permitted = true;
+                    currently_having_mutex = false;
                 }
             }
         }

@@ -1,8 +1,12 @@
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
+#include "msp430fr5994_helper.h"
 #include "printf.h"
 #include "stack.h"
 #include <stdbool.h>
+
+
+#define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
 
 // Timer callback arrays - separate for overflow and compare interrupts
 static void (*timer_overflow_callback[5])(void) = {NULL, NULL, NULL, NULL, NULL};
@@ -33,8 +37,6 @@ void configure_timer(const timer_type timer, const uint16_t prescaler, const uin
 
     // Set clock source to SMCLK
     *ctl |= TASSEL__SMCLK;
-
-    
 
     // Set prescaler
     *ctl &= ~(ID_3); // Clear existing prescaler bits
@@ -126,7 +128,7 @@ void set_timer_compare_callback(const timer_type timer, void (*const callback)(v
 
     // Enable compare interrupt for CCR0
     volatile uint16_t *cctl0 = GET_TxxCCTL0(timer);
-    *cctl0 |= CCIE; // Enable Compare interrupt
+    *cctl0 |= CCIE;   // Enable Compare interrupt
     *cctl0 &= ~CCIFG; // Clear any pending interrupt flag
 }
 
@@ -191,12 +193,12 @@ void start_timer_with_interrupt(const timer_type timer)
 
     // Clear any pending interrupts first
     *cctl0 &= ~CCIFG; // Clear compare interrupt flag
-    
+
     // Ensure CCIE is set (should already be set by callback function)
     *cctl0 |= CCIE; // Enable compare interrupt
-    
+
     // Start timer in UP mode (mode should already be set by configure_timer)
-    *ctl &= ~MC_3; // Clear mode bits first
+    *ctl &= ~MC_3;  // Clear mode bits first
     *ctl |= MC__UP; // Set UP mode
 }
 
@@ -302,8 +304,8 @@ static void delay_completion_callback(void)
     }
     else
     {
-        // Prepare for next overflow
-        set_timer_compare(TIMER_A0, 0, 0xFFFF);
+        // Prepare for next overflow - but don't change compare value unnecessarily
+        // The overflow callback will handle this
     }
 }
 
@@ -318,7 +320,10 @@ static void delay_overflow_callback(void)
         if (overflow_count == 0)
         {
             // Last overflow, set final count
-            set_timer_compare(TIMER_A0, 0, (remaining_ticks - 1) % 0x10000);
+            uint32_t final_ticks = remaining_ticks % 0x10000;
+            if (final_ticks == 0)
+                final_ticks = 0x10000;
+            set_timer_compare(TIMER_A0, 0, final_ticks - 1);
         }
     }
 }
@@ -332,14 +337,30 @@ void delay_ticks(uint32_t ticks)
     if (ticks == 0)
         return;
 
+    ticks = ticks - us_to_timer_ticks(TIMER_A0, 400); // Subtract 400us to account for overhead
+
+    // Disable interrupts during setup to prevent race conditions
+    __disable_interrupt();
+
     // Save current timer configuration
     uint16_t saved_config = TA0CTL;
+    uint16_t saved_cctl0 = TA0CCTL0;
+
+    // Stop timer completely first
+    TA0CTL = 0;
+    TA0CCTL0 = 0;
+    TA0CCR0 = 0;
+    TA0R = 0;
 
     // Configure timer with divider 8 for longer delays
-    configure_timer(TIMER_A0, 8, MC__UP);
+    configure_timer(TIMER_A0, 8, MC__STOP); // Start in STOP mode
 
     // Adjust ticks for divider
     remaining_ticks = (ticks + 7) / 8;
+
+    // Initialize delay state BEFORE setting up interrupts
+    delay_done = false;
+    overflow_count = 0;
 
     // Calculate overflow count
     if (remaining_ticks <= 0x10000)
@@ -353,29 +374,37 @@ void delay_ticks(uint32_t ticks)
         set_timer_compare(TIMER_A0, 0, 0xFFFF);
     }
 
-    // Set callbacks
+    // Set callbacks AFTER initializing state
     set_timer_compare_callback(TIMER_A0, delay_completion_callback);
     if (overflow_count > 0)
     {
         set_timer_overflow_callback(TIMER_A0, delay_overflow_callback);
     }
 
-    delay_done = false;
+    // Clear any pending interrupts
+    TA0CCTL0 &= ~CCIFG;
 
-    // Start timer
+    // Re-enable interrupts
+    __enable_interrupt();
+    // Start timer LAST
     start_timer_with_interrupt(TIMER_A0);
 
-    // Wait for completion
     while (!delay_done)
     {
-        ;
     }
 
-    // Cleanup
+    // Cleanup - disable interrupts during cleanup
+    __disable_interrupt();
+
+    // Stop timer and clear callbacks
+    stop_timer(TIMER_A0);
     clear_timer_event_callback(TIMER_A0);
 
     // Restore previous timer configuration
     TA0CTL = saved_config;
+    TA0CCTL0 = saved_cctl0;
+
+    __enable_interrupt();
 }
 
 /**
@@ -439,16 +468,7 @@ void delay_ms(uint32_t ms)
 {
     const uint32_t ticks_per_ms = SMCLK_HZ / 1000;
 
-    while (ms >= 1000)
-    {
-        delay_ticks(SMCLK_HZ); // 1 second
-        ms -= 1000;
-    }
-
-    if (ms > 0)
-    {
-        delay_ticks(ms * ticks_per_ms);
-    }
+    delay_ticks(ms * ticks_per_ms);
 }
 
 // Timer utility functions
