@@ -9,8 +9,9 @@
 #define DEBUG_PIN1 ABS_PIN(3, 4)
 #elif defined(NRF52840_XXAA)
 #define DEBUG_PIN1 13
-
 #endif
+
+#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 #define NUMBER_OF_SAMPLES 5
 #define SETTLE_TIME_US 100
@@ -21,7 +22,6 @@ static uint64_t read_all_pins(uint64_t blacklist_mask)
     for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
     {
         uint64_t sample = 0;
-        // Invertiere die Blacklist-Maske: nur Pins mit 0-Bit werden getestet
         BitmapIterator sample_it = bitmap_iterator_create(~blacklist_mask);
         uint8_t pin;
         while (bitmap_iterator_next(&sample_it, &pin))
@@ -72,7 +72,6 @@ static bool sample_pin_state(uint8_t pin, bool expected_state)
  */
 static void reset_all_pins(uint64_t blacklist_mask)
 {
-    // Invertiere die Blacklist-Maske: 1 wird zu 0 (skip), 0 wird zu 1 (test)
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
@@ -110,7 +109,6 @@ static void sample_pin_changes(uint64_t blacklist_mask, uint64_t initial_state, 
  */
 static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
-    // Invertiere die Blacklist-Maske: 1=skip wird zu 0, 0=test wird zu 1
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
@@ -174,7 +172,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
  */
 static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
-    // Invertiere die Blacklist-Maske
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
@@ -237,11 +234,9 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
  */
 static void phase_2_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
-    // Invertiere die Blacklist-Maske
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
-    printf("Phase 2: No pull, drive high\n");
 
     // Configure all pins with no pull
     while (bitmap_iterator_next(&it, &pin))
