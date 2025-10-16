@@ -8,33 +8,34 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/* MSP430-optimierte Byte-Swaps mit __swap_bytes() */
-
-/* 16-Bit Swap: direkt __swap_bytes() verwenden */
 #define __bswap_16(x) (__extension__ \
   ({ \
     uint16_t __v = (x); \
     __swap_bytes(__v); \
   }))
 
-/* 32-Bit Swap: zwei 16-Bit Halbwörter swapen + tauschen */
-#define __bswap_32(x) (__extension__ \
-  ({ \
-    uint32_t __x = (x); \
-    uint16_t __hi = __swap_bytes((uint16_t)(__x >> 16)); \
-    uint16_t __lo = __swap_bytes((uint16_t)(__x & 0xFFFF)); \
-    ((__lo << 16) | __hi); \
+#define __bswap_32(x) (__extension__                   \
+  ({                                                   \
+    uint32_t __x = (uint32_t)(x);                      \
+    uint16_t __hi = (uint16_t)(__x >> 16);             \
+    uint16_t __lo = (uint16_t)(__x & 0xFFFF);          \
+    uint32_t __new_hi = (uint32_t)__swap_bytes(__lo);  \
+    uint32_t __new_lo = (uint32_t)__swap_bytes(__hi);  \
+    ((__new_hi << 16) | __new_lo);                     \
   }))
 
-/* 64-Bit Swap: vier 16-Bit Halbwörter swapen + Reihenfolge umdrehen */
-#define __bswap_64(x) (__extension__ \
-  ({ \
-    uint64_t __x = (x); \
-    uint16_t w0 = __swap_bytes((uint16_t)(__x >> 48)); \
-    uint16_t w1 = __swap_bytes((uint16_t)(__x >> 32)); \
-    uint16_t w2 = __swap_bytes((uint16_t)(__x >> 16)); \
-    uint16_t w3 = __swap_bytes((uint16_t)(__x & 0xFFFF)); \
-    ((uint64_t)w3 << 48) | ((uint64_t)w2 << 32) | ((uint64_t)w1 << 16) | w0; \
+#define __bswap_64(x) (__extension__                                   \
+  ({                                                                   \
+    uint64_t __x = (uint64_t)(x);                                      \
+    uint16_t w0 = (uint16_t)(__x >> 48);                               \
+    uint16_t w1 = (uint16_t)(__x >> 32);                               \
+    uint16_t w2 = (uint16_t)(__x >> 16);                               \
+    uint16_t w3 = (uint16_t)(__x & 0xFFFF);                            \
+    uint64_t nw0 = (uint64_t)__swap_bytes(w3);                         \
+    uint64_t nw1 = (uint64_t)__swap_bytes(w2);                         \
+    uint64_t nw2 = (uint64_t)__swap_bytes(w1);                         \
+    uint64_t nw3 = (uint64_t)__swap_bytes(w0);                         \
+    ((nw0 << 48) | (nw1 << 32) | (nw2 << 16) | nw3);                   \
   }))
 
 #ifdef __cplusplus
