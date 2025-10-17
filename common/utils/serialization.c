@@ -93,28 +93,17 @@ SerializationResult serialize_next_chunk()
 
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_PIN);
         write_ptr += bytes_written;
+
+        // write CBOR pin number
         bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->pin);
         write_ptr += bytes_written;
 
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_EVENTS);
         write_ptr += bytes_written;
 
-        // Write events array
-        if (pin_data->event_index > 0)
-        {
-            bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->event_index);
-            write_ptr += bytes_written;
-            for (uint8_t j = 0; j < pin_data->event_index; j++)
-            {
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->pin_event[j]);
-                write_ptr += bytes_written;
-            }
-        }
-        else
-        {
-            bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, 0);
-            write_ptr += bytes_written;
-        }
+        // write CBOR event mask
+        bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->event_mask);
+        write_ptr += bytes_written;
 
         // Handle connections array (sanity check for embedded safety)
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTIONS);
@@ -122,11 +111,16 @@ SerializationResult serialize_next_chunk()
 
         if (pin_data->connection_index > 0)
         {
+            // Sanity check: limit maximum connections to 10
             if (pin_data->connection_index > 10)
             {
                 free(cbor_buffer);
                 return SERIALIZATION_ERROR_INVALID_INPUT;
             }
+
+            // sort connections before serialization, is important for consistent ordering
+            // To make sure the cobor output is consistent across multiple runs
+            sort_pin_connections(current_pindata, pin_data->pin);
 
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connection_index);
             write_ptr += bytes_written;
@@ -147,12 +141,11 @@ SerializationResult serialize_next_chunk()
                     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_DEVICE_ID);
                     write_ptr += bytes_written;
 
-                    // Get actual device ID from seen_devices array using device_index
+                    // only write device index for compactness
+                    // This must be sorted if the framework should work with multiple devices
+                    // Only send the index to make the chucks compaireable
                     uint8_t device_idx = pin_data->connections[j].device_index;
-                    uint64_t device_id = (device_idx < seen_devices_count && seen_devices != NULL)
-                                             ? seen_devices[device_idx]
-                                             : 0;
-                    bytes_written = cb0r_write(write_ptr, CB0R_INT, device_id);
+                    bytes_written = cb0r_write(write_ptr, CB0R_INT, device_idx);
                     write_ptr += bytes_written;
                 }
             }
@@ -207,7 +200,8 @@ SerializationResult serialize_next_chunk()
     current_chunk->chunk_id = current_chunk_id;
 
     printf("Packet buffer (hex) for chunk ID %d: ", current_chunk_id);
-    for (size_t i = 0; i < total_packet_size; i++) {
+    for (size_t i = 0; i < total_packet_size; i++)
+    {
         printf("%02X", packet_buffer[i]);
     }
     printf("\n");
@@ -217,7 +211,7 @@ SerializationResult serialize_next_chunk()
 
 // Generate header with device info and transmission metadata
 // Fixed generate_cbor_header function - using little endian
-SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size)
+SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested)
 {
     if (output_chunk == NULL || pindata == NULL)
     {
@@ -268,6 +262,13 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_MAP, 5);
     write_ptr += bytes_written;
 
+
+    // 0. ACK REQUESTED (Key 8)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, 1); // Assume ACK requested for this example
+    write_ptr += bytes_written;
+
     // 1. Device UUID (Key 0)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_DEVICE_UUID);
     write_ptr += bytes_written;
@@ -300,14 +301,42 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_INT, active_pins);
     write_ptr += bytes_written;
 
+    // 6. Number of seen devices (Key 5)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_NUMBER_SEEN_DEVICES);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, seen_devices_count);
+    write_ptr += bytes_written;
+
+    // 7. List of seen device IDs (Key 6)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_SEEN_DEVICE_IDS);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
+    write_ptr += bytes_written;
+    if (seen_devices_count > 0 && seen_devices != NULL)
+    {
+        for (uint8_t i = 0; i < seen_devices_count; i++)
+        {
+            bytes_written = cb0r_write(write_ptr, CB0R_INT, seen_devices[i]);
+            write_ptr += bytes_written;
+        }
+    }
+    else
+    {
+        // No seen devices
+        bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, 0);
+        write_ptr += bytes_written;
+    }
+
     // Calculate CRC32 for header integrity over CBOR data
     size_t header_data_size = write_ptr - cbor_buffer;
     current_header_hash = crcFast((uint8_t const *)cbor_buffer, header_data_size);
 
     printf("CBOR header data size: %zu bytes\n", header_data_size);
     printf("CBOR header packet binary: ");
-    for (size_t i = 0; i < header_data_size; i++) {
-        for (int bit = 7; bit >= 0; bit--) {
+    for (size_t i = 0; i < header_data_size; i++)
+    {
+        for (int bit = 7; bit >= 0; bit--)
+        {
             printf("%d", (cbor_buffer[i] >> bit) & 1);
         }
     }
