@@ -28,7 +28,7 @@ InitializationResult initialize_serialization(SerializedChunk *output_chunk, Pin
 }
 
 // Serialize pin data in chunks for transmission
-// Fixed serialize_next_chunk function - using little endian
+// Fixed serialize_next_chunk function - korrigierte Chunk ID Behandlung
 SerializationResult serialize_next_chunk()
 {
     if (current_chunk == NULL || current_pindata == NULL)
@@ -62,13 +62,7 @@ SerializationResult serialize_next_chunk()
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    // Write CBOR map header (now only 3 entries, no hash inside)
-    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
-    write_ptr += bytes_written;
-
-    bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CHUNK_ID);
-    write_ptr += bytes_written;
-    bytes_written = cb0r_write(write_ptr, CB0R_INT, current_chunk_id);
+    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
     write_ptr += bytes_written;
 
     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_NUM_ENTRIES);
@@ -173,11 +167,12 @@ SerializationResult serialize_next_chunk()
     }
 
     // Calculate CRC32 for integrity over CBOR data
-    size_t cbor_data_size = write_ptr - cbor_buffer;
+    uint16_t cbor_data_size = write_ptr - cbor_buffer;
+    printf("DEBUG: CBOR data size for chunk ID %d: %zu bytes\n", current_chunk_id, cbor_data_size);
     current_hash = crcFast((unsigned char const *)cbor_buffer, cbor_data_size);
 
     // Create final packet: [1 BYTE PACKET_ID][2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
-    size_t total_packet_size = 1 + 2 + cbor_data_size + 4; // Packet ID + Length + CBOR + CRC32
+    uint16_t total_packet_size = 1 + 2 + cbor_data_size + 4; // Packet ID + Length + CBOR + CRC32
     uint8_t *packet_buffer = (uint8_t *)malloc(total_packet_size);
     if (packet_buffer == NULL)
     {
@@ -192,7 +187,7 @@ SerializationResult serialize_next_chunk()
     packet_ptr += 1;
 
     // Write 2-byte length (LITTLE ENDIAN) - length of CBOR data only
-    uint16_t cbor_size_le = htole16((uint16_t)cbor_data_size);
+    uint16_t cbor_size_le = (uint16_t)cbor_data_size;
     memcpy(packet_ptr, &cbor_size_le, sizeof(uint16_t));
     packet_ptr += sizeof(uint16_t);
 
@@ -201,7 +196,7 @@ SerializationResult serialize_next_chunk()
     packet_ptr += cbor_data_size;
 
     // Write 4-byte CRC32 (LITTLE ENDIAN)
-    uint32_t hash_le = htole32(current_hash);
+    uint32_t hash_le = current_hash;
     memcpy(packet_ptr, &hash_le, sizeof(uint32_t));
 
     // Set final packet data and CRC
@@ -210,6 +205,12 @@ SerializationResult serialize_next_chunk()
     current_chunk->data = packet_buffer;
     current_chunk->crc32 = current_hash;
     current_chunk->chunk_id = current_chunk_id;
+
+    printf("Packet buffer (hex) for chunk ID %d: ", current_chunk_id);
+    for (size_t i = 0; i < total_packet_size; i++) {
+        printf("%02X", packet_buffer[i]);
+    }
+    printf("\n");
 
     return SERIALIZATION_OK;
 }
@@ -304,9 +305,11 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     current_header_hash = crcFast((uint8_t const *)cbor_buffer, header_data_size);
 
     printf("CBOR header data size: %zu bytes\n", header_data_size);
-    printf("CBOR header packet hex: ");
+    printf("CBOR header packet binary: ");
     for (size_t i = 0; i < header_data_size; i++) {
-        printf("%02X", cbor_buffer[i]);
+        for (int bit = 7; bit >= 0; bit--) {
+            printf("%d", (cbor_buffer[i] >> bit) & 1);
+        }
     }
     printf("\n");
     printf("crc32: %08" PRIx32 "\n", current_header_hash);
