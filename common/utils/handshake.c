@@ -3,6 +3,10 @@
 // Static pointer to handshake state
 static HandshakeState *handshake_state = NULL;
 
+
+//#define LOG(fmt, ...) // Uncomment this line to disable LOGging
+#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+
 /**
  * @brief Initialize handshake state
  * @return Pointer to initialized HandshakeState or NULL on failure
@@ -231,8 +235,10 @@ static void stop_handshake_timer(void)
 #endif
 }
 
-void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist_mask)
+HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist_mask)
 {
+
+    HandshakeResult result = HANDSHAKE_NO_WORKING_PIN_FOUND;
     // Initialize handshake state
     if (handshake_state_init() == NULL)
     {
@@ -250,10 +256,10 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
     BitmapIterator it = bitmap_iterator_create(~initial_blacklist_mask & all_pins_mask);
 
     uint64_t valid_pins_mask = ~initial_blacklist_mask & all_pins_mask;
-    printf("Valid pins mask: 0x%016llX\n", valid_pins_mask);
+    LOG("Valid pins mask: 0x%016llX\n", valid_pins_mask);
 
     handshake_state->number_of_active_pins = __builtin_popcountll(valid_pins_mask);
-    printf("Number of active pins: %u\n", handshake_state->number_of_active_pins);
+    LOG("Number of active pins: %u\n", handshake_state->number_of_active_pins);
     if (handshake_state->number_of_active_pins == 0)
     {
         return; // Nothing to process
@@ -285,10 +291,10 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
     }
 
     // Debug: Print global_timing_pindata initialization
-    printf("Initialized TimingPinData array:\n");
+    LOG("Initialized TimingPinData array:\n");
     for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
     {
-        printf("  [%u] pin=%u, status=0x%02X, current_job=%d, unsuccessful_syns=%u\n",
+        LOG("  [%u] pin=%u, status=0x%02X, current_job=%d, unsuccessful_syns=%u\n",
                i,
                handshake_state->global_timing_pindata[i].pin,
                handshake_state->global_timing_pindata[i].status,
@@ -308,11 +314,12 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
         gpio_od_release(handshake_state->global_timing_pindata[i].pin);
     }
 
-    printf("Handshake time elapsed: %u ms\n", handshake_state->handshake_time);
+    LOG("Handshake time elapsed: %u ms\n", handshake_state->handshake_time);
     stop_handshake_timer();
 
     it = bitmap_iterator_create(valid_pins_mask);
     idx = 0;
+    bool found_working_pin = false;
     while (bitmap_iterator_next(&it, &pin_index))
     {
         TimingPinData *timing_data = &handshake_state->global_timing_pindata[idx++];
@@ -327,12 +334,14 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
             {
             case ROLE_INITIATOR:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_OK_INITIATOR);
-                printf("Pin %u: ROLE_INITIATOR\n", physical_pin);
+                LOG("Pin %u: ROLE_INITIATOR\n", physical_pin);
+                found_working_pin = true;
                 break;
 
             case ROLE_RESPONDER:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_OK_RESPONDER);
-                printf("Pin %u: ROLE_RESPONDER\n", physical_pin);
+                LOG("Pin %u: ROLE_RESPONDER\n", physical_pin);
+                found_working_pin = true;
                 break;
 
             case ROLE_UNCLEAR:
@@ -349,7 +358,12 @@ void perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist
             add_pin_event(pin_data_array, physical_pin, HANDSHAKE_FAILURE);
         }
     }
+    if (found_working_pin)
+    {
+        result = HANDSHAKE_FOUND_WORKING_PIN;
+    }
 
     // Cleanup - deinitialize handshake state
     handshake_state_deinit(handshake_state);
+    return result;
 }
