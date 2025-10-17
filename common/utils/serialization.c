@@ -237,7 +237,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     uint8_t active_pins = 0;
     for (uint8_t i = 0; i < pindata_size; i++)
     {
-        if (pindata[i].event_index > 0 || pindata[i].connection_index > 0)
+        if (pindata[i].event_mask != 0 || pindata[i].connection_index > 0)
         {
             active_pins++;
         }
