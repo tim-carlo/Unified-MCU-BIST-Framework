@@ -142,32 +142,16 @@ int main(void)
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
     // Generate test CRC32
-    uint8_t *test_string = "Hello";
-    crc test_data = crcFast((const uint8_t *)test_string, 5);
+    uint8_t *test_string = "123456789";
+    crc test_data = crcFast((const uint8_t *)test_string, 9);
     printf("Test CRC32 of '%s': %" PRIu32 "\n", test_string, test_data); // LOG("Running on %s\n", get_chip_family_name());
 
-    uint32_t test = 4157704578;
-    printf("Test: %" PRIu32 "\n", test);
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
 
-    // Blink DEBUG_PIN1
-    for (int i = 0; i < 5; ++i) {
-        gpio_drive_high(DEBUG_PIN1);
-        delay_ms(200);
-        gpio_drive_low(DEBUG_PIN1);
-        delay_ms(200);
-    }
-
-    
-
     set_standart_blacklist_pins(&initial_state_mask);
-
-    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
-
-    return 0;
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
@@ -176,6 +160,9 @@ int main(void)
     }
     // Initialize UART transmitter
     uart_transmitter_init();
+    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+
+    printf("UART trans result: %d\n", uart_result);
 
     // get_initial_pin_state(pin_data, &initial_state_mask);
 
@@ -203,11 +190,11 @@ int main(void)
     run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     // Send the collected pin data over UART
-    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
 
     // TODO Handle different error codes
     mutex_handler_release_mutex();
     printf("released mutex\n");
+    return 0;
 }
 
 //   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
