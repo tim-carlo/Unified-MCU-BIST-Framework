@@ -242,7 +242,7 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     // Initialize handshake state
     if (handshake_state_init() == NULL)
     {
-        return; // Failed to initialize state
+        return result; // Initialization failed
     }
 
     // Store initial blacklist mask
@@ -262,7 +262,7 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     LOG("Number of active pins: %u\n", handshake_state->number_of_active_pins);
     if (handshake_state->number_of_active_pins == 0)
     {
-        return; // Nothing to process
+        return result; // No valid pins to use
     }
 
     // Allocate or reallocate global TimingPinData array
@@ -273,7 +273,7 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     handshake_state->global_timing_pindata = calloc(handshake_state->number_of_active_pins, sizeof(TimingPinData));
     if (!handshake_state->global_timing_pindata)
     {
-        return; // Allocation failed
+        return result; // Allocation failed
     }
 
     // Initialize TimingPinData for each valid pin
@@ -288,18 +288,6 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
             .current_job = TASK_JOB_SYN,
             .number_of_unsuccessful_syns = 1, // start with 1 to avoid immediate retry
         };
-    }
-
-    // Debug: Print global_timing_pindata initialization
-    LOG("Initialized TimingPinData array:\n");
-    for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
-    {
-        LOG("  [%u] pin=%u, status=0x%02X, current_job=%d, unsuccessful_syns=%u\n",
-               i,
-               handshake_state->global_timing_pindata[i].pin,
-               handshake_state->global_timing_pindata[i].status,
-               handshake_state->global_timing_pindata[i].current_job,
-               handshake_state->global_timing_pindata[i].number_of_unsuccessful_syns);
     }
 
     // start handshake process

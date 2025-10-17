@@ -9,22 +9,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Define pin mappings for MSP430
-#define LED_RED_PORT 1
-#define LED_RED_PIN 0
-#define LED_GREEN_PORT 1
-#define LED_GREEN_PIN 1
-#define ABSOLUTE_PIN_RED ABS_PIN(LED_RED_PORT, LED_RED_PIN)
-#define ABSOLUTE_PIN_GREEN ABS_PIN(LED_GREEN_PORT, LED_GREEN_PIN)
-
-#define TIMER_A TIMER_A4
-#define TIMER_B TIMER_B0
-
-#define MANCHESTER_TX_PIN ABS_PIN(3, 7)
-#define MANCHESTER_RX_PIN ABS_PIN(3, 7)
-#define PINA ABS_PIN(3, 6)
-#define PINB ABS_PIN(3, 7)
-
 #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
@@ -42,27 +26,12 @@
 #include "nrf52840_uart.h"
 
 #include "printf.h"
-#define TEST_PIN 3
-#define TEST_PORT NRF_P1
-
-#define LED_RED_PIN 3
-#define LED_RED_PORT NRF_P0
-#define LED_GREEN_PIN 4
-#define LED_GREEN_PORT NRF_P0
-
-#define ABSOLUTE_PIN_RED (LED_RED_PORT == NRF_P0 ? LED_RED_PIN : LED_RED_PIN + 32)
-#define ABSOLUTE_PIN_GREEN (LED_GREEN_PORT == NRF_P0 ? LED_GREEN_PIN : LED_GREEN_PIN + 32)
-
-#define PINA 11
-#define PINB 12
 
 #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
 #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
 #define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
 
-#define MANCHESTER_TX_PIN 12
-#define MANCHESTER_RX_PIN 12
 #endif
 
 #include "stack.h"
@@ -79,14 +48,6 @@
 
 #include "crc.h"
 #include <inttypes.h>
-
-// Handshake timing constants
-#define INITIAL_DELAY_MAX_MS 10000
-#define MAXIMUM_NUMBER_OF_FALSE_RESPONSES 2 // Maximum number of false responses before blacklisting a pin
-                                            // Maximum number of tries for a pin before giving up
-
-#define INITIATOR_ROLE 0
-#define RESPONDER_ROLE 1
 
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
@@ -136,15 +97,49 @@ void set_role_debug()
 #endif
 }
 
+void perfom_mutex_operations()
+{
+    // reset all pins to clean state
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        gpio_reset(pin);
+    }
+    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+
+    uart_transmitter_init();
+    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
+
+    switch (uart_result)
+    {
+    case UART_TRANSMISSION_OK:
+        LOG("UART Transmission completed successfully\n");
+        break;
+    case UART_TRANSMISSION_ERROR_INIT_FAILED:
+        LOG("ERROR: UART initialization failed\n");
+        break;
+    case UART_TRANSMISSION_ERROR_SEND_FAILED:
+        LOG("ERROR: UART transmission failed\n");
+        break;
+    case UART_TRANSMISSION_ERROR_ACK_FAILED:
+        LOG("ERROR: UART acknowledgement failed\n");
+        break;
+    case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
+        LOG("ERROR: Memory allocation failed during UART transmission\n");
+        break;
+    case UART_TRANSMISSION_ERROR_NULL_POINTER:
+        LOG("ERROR: Null pointer provided to UART transmission function\n");
+        break;
+    default:
+        LOG("ERROR: Unknown error occurred during UART transmission\n");
+        break;
+    }
+}
+
 int main(void)
 {
     io_init();
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-    // Generate test CRC32
-    uint8_t *test_string = "123456789";
-    crc test_data = crcFast((const uint8_t *)test_string, 9);
-    printf("Test CRC32 of '%s': %" PRIu32 "\n", test_string, test_data); // LOG("Running on %s\n", get_chip_family_name());
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
@@ -158,72 +153,31 @@ int main(void)
             continue;      // Skip blacklisted pins (bit = 1)
         gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
     }
-    // Initialize UART transmitter
-    uart_transmitter_init();
-    UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
 
-    printf("UART trans result: %d\n", uart_result);
+    HandshakeResult handshake_result = perform_handshake(pin_data, initial_state_mask);
 
-    // get_initial_pin_state(pin_data, &initial_state_mask);
+    // if no working pin found, exit program, but run initial tests first
+    if (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND)
+    {
+        perfom_mutex_operations();
+        return 1; // Handshake failed, exit program
+    }
 
-    // print_active_pins_from_mask(initial_state_mask);
-
-    // set_role_debug();
-    perform_handshake(pin_data, initial_state_mask);
     DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, initial_state_mask);
 
     if (data_handshake_result.status != DATA_HANDSHAKE_SUCCESS)
     {
+        perfom_mutex_operations();
         return 1; // Handshake failed, exit program
     }
     mutex_handeler_init(&data_handshake_result);
     mutex_handler_request_mutex();
-    printf("now having mutex\n");
+    LOG("now having mutex\n");
 
-    // reset all pins to clean state
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS;
-         ++pin)
-    {
-        gpio_reset(pin);
-        gpio_input_init(pin, GPIO_PULL_NONE);
-    }
-    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
-
-    // Send the collected pin data over UART
+    perfom_mutex_operations();
 
     // TODO Handle different error codes
     mutex_handler_release_mutex();
-    printf("released mutex\n");
+    LOG("released mutex\n");
     return 0;
 }
-
-//   run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
-
-// Send the collected pin data over UART
-// UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
-
-// switch (uart_result)
-// {
-// case UART_TRANSMISSION_OK:
-//     printf("SUCCESS: Pin data transmitted successfully via UART\n");
-//     break;
-// case UART_TRANSMISSION_ERROR_INIT_FAILED:
-//     printf("ERROR: UART initialization failed\n");
-//     break;
-// case UART_TRANSMISSION_ERROR_SEND_FAILED:
-//     printf("ERROR: UART transmission failed\n");
-//     break;
-// case UART_TRANSMISSION_ERROR_ACK_FAILED:
-//     printf("ERROR: UART acknowledgement failed\n");
-//     break;
-// case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
-//     printf("ERROR: Memory allocation failed during UART transmission\n");
-//     break;
-// case UART_TRANSMISSION_ERROR_NULL_POINTER:
-//     printf("ERROR: Null pointer in UART transmission\n");
-//     break;
-// default:
-//     printf("ERROR: Unknown UART transmission error occurred\n");
-//     break;
-// }
-//}

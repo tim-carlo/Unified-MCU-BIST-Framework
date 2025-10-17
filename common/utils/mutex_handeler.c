@@ -46,6 +46,8 @@ void mutex_handler_request_mutex()
                 }
             }
         }
+        // now we have the mutex, line can be released
+        gpio_reset(current_mutex_pin);
     }
     else
     {
@@ -60,6 +62,8 @@ void mutex_handler_request_mutex()
                 if (received == MUTEX_REQEST)
                 {
                     manchester_transmit_array(&ack, 1);
+                    // now the other device has the mutex so we can reset the open drain pin
+                    gpio_reset(current_mutex_pin);
                 }
                 else if (received == MUTEX_RELEASE)
                 {
@@ -99,6 +103,8 @@ void mutex_handler_release_mutex()
                 }
             }
         }
+        // now reset the line to normal state
+        gpio_reset(current_mutex_pin);
     }
 }
 

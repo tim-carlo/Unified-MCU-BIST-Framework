@@ -136,7 +136,7 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     uint8_t ack_buffer[4];
 
     // 1. Generate and send CBOR header packet
-    serialization_result = generate_cbor_header(&header_chunk, pindata, pindata_size);
+    serialization_result = generate_cbor_header(&header_chunk, pindata, pindata_size, true);
     if (serialization_result != SERIALIZATION_OK)
     {
         send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_SEND_FAILED);

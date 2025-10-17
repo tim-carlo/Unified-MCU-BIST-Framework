@@ -112,7 +112,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
-    printf("Phase 0: Pull-down, drive low\n");
+    LOG("Phase 0: Pull-down, drive low\n");
 
     while (bitmap_iterator_next(&it, &pin))
     {
@@ -127,7 +127,6 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     it = bitmap_iterator_create(~blacklist_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %u\n", (unsigned int)pin);
         gpio_drive_high(DEBUG_PIN1);
         // Pin als Input mit Pull-Down konfigurieren
         gpio_input_init(pin, GPIO_PULL_DOWN);
@@ -177,7 +176,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
 
-    printf("Phase 1: Pull-up, drive high\n");
+    LOG("Phase 1: Pull-up, drive high\n");
 
     // Configure all pins with no pull initially
     while (bitmap_iterator_next(&it, &pin))
@@ -240,6 +239,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     // Invertiere die Blacklist-Maske
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
+    LOG("Phase 2: No pull, drive low\n");
 
     // Configure all pins with no pull
     while (bitmap_iterator_next(&it, &pin))
@@ -255,7 +255,6 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     it = bitmap_iterator_create(~blacklist_mask);
     while (bitmap_iterator_next(&it, &pin))
     {
-        printf("Testing pin %u\n", (unsigned int)pin);
         // Configure test pin as output and drive low
         gpio_output_init(pin);
         gpio_drive_low(pin);
@@ -307,6 +306,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
 {
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
+    LOG("Phase 3: No pull, drive high\n");
 
     // Configure all pins with no pull
     while (bitmap_iterator_next(&it, &pin))
@@ -378,8 +378,8 @@ void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uin
     // Run all 4 phases
     phase_0_pulldown_drive_low(blacklist_mask, pindata);
     phase_1_pullup_drive_high(blacklist_mask, pindata);
-    phase_2_no_pull_drive_high(blacklist_mask, pindata);
-    phase_3_no_pull_drive_low(blacklist_mask, pindata);
+    phase_2_no_pull_drive_low(blacklist_mask, pindata);
+    phase_3_no_pull_drive_high(blacklist_mask, pindata);
     gpio_reset(DEBUG_PIN1);
 
     LOG("Completed set-one-high-measure-all\n");

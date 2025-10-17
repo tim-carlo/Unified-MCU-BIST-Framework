@@ -65,31 +65,16 @@ static void analyze_pindata_events(PinData *pindata)
 
     while (bitmap_iterator_next(&it, &pin))
     {
-        bool has_initiator = false;
-        bool has_responder = false;
+        bool has_initiator = check_if_pinevent_exists(pindata, pin, HANDSHAKE_OK_INITIATOR);
+        bool has_responder = check_if_pinevent_exists(pindata, pin, HANDSHAKE_OK_RESPONDER);
 
-        // Analyze all events for this pin
-        for (uint8_t i = 0; i < pindata[pin].event_index && i < EVENT_BUFFER_SIZE; i++)
-        {
-            PinEventType event = pindata[pin].pin_event[i];
-
-            switch (event)
-            {
-            case HANDSHAKE_OK_INITIATOR:
-                has_initiator = true;
-                break;
-
-            case HANDSHAKE_OK_RESPONDER:
-                has_responder = true;
-                break;
-
-            default:
-                break;
-            }
-        }
+        // This is needed to check if the pin is expected to work in only one direction
+        // So that we can test this single direction pins properly
+        // Therefore we are initiator on this pin
+        bool experted_to_work_in_one_direction = check_if_pinevent_exists(pindata, pin, EXPECTS_TO_WORK_IN_ONE_DIRECTION);
 
         // Apply LOGic for mask assignment and blacklist update
-        if (has_initiator && !has_responder)
+        if (has_initiator && !has_responder || experted_to_work_in_one_direction)
         {
             initiator_mask |= (1ULL << pin);
             number_of_pins++;
