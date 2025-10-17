@@ -230,13 +230,13 @@ void uart_write_bytes(uart_instance_t uart, const uint8_t* data, size_t length) 
  * @brief Write a 32-bit value as raw bytes to UART
  * 
  * @param uart UART instance
- * @param value 32-bit value to send (big-endian)
+ * @param value 32-bit value to send (LITTLE-ENDIAN)
  */
 void uart_write_uint32(uart_instance_t uart, uint32_t value) {
     if (uart == NULL) return;
     
-    uint32_t value_be = htobe32(value);
-    uart_write_bytes(uart, (const uint8_t*)&value_be, sizeof(uint32_t));
+    uint32_t value_le = htole32(value);
+    uart_write_bytes(uart, (const uint8_t*)&value_le, sizeof(uint32_t));
 }
 
 /**
