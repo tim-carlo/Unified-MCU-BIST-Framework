@@ -38,6 +38,9 @@ void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
     PinData *data = &pindata[pin];
     data->pin_event[data->event_index] = event;
     data->event_index = (data->event_index + 1) % EVENT_BUFFER_SIZE; // Circular buffer
+
+    // Update event mask
+    data->event_mask |= (1 << event);
 }
 
 /**
@@ -147,6 +150,69 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, 
     data->connections[data->connection_index].other_pin = other_pin_index;
     data->connections[data->connection_index].device_index = device_index;
     data->connection_index++;
+}
+
+/**
+ * @brief Sort the pin connections based on device index and other pin
+ * @param pindata Pointer to the PinData array
+ * @param pin Pin number
+ */
+void sort_pin_connections(PinData *pindata, uint8_t pin)
+{
+    PinData *data = &pindata[pin];
+    if (data->connections == NULL || data->connection_index < 2)
+    {
+        return; // No need to sort
+    }
+    // Simple bubble sort for small arrays
+    for (uint8_t i = 0; i < data->connection_index - 1; i++)
+    {
+        bool swapped = false;
+        for (uint8_t j = 0; j < data->connection_index - i - 1; j++)
+        {
+            PinConnection *a = &data->connections[j];
+            PinConnection *b = &data->connections[j + 1];
+
+            if (a->device_index > b->device_index ||
+                (a->device_index == b->device_index && a->other_pin > b->other_pin))
+            {
+                PinConnection tmp = *a;
+                *a = *b;
+                *b = tmp;
+                swapped = true;
+            }
+        }
+        if (!swapped)
+            break; // Already sorted
+    }
+}
+
+/**
+ * @brief Sort the seen devices list to ensure deterministic ordering
+ */
+void sort_seen_devices(PinData *pindata)
+{
+    if (seen_devices_count < 2)
+    {
+        return; // No need to sort
+    }
+    // Simple bubble sort for small arrays
+    for (uint8_t i = 0; i < seen_devices_count - 1; i++)
+    {
+        bool swapped = false;
+        for (uint8_t j = 0; j < seen_devices_count - i - 1; j++)
+        {
+            if (seen_devices[j] > seen_devices[j + 1])
+            {
+                uint64_t tmp = seen_devices[j];
+                seen_devices[j] = seen_devices[j + 1];
+                seen_devices[j + 1] = tmp;
+                swapped = true;
+            }
+        }
+        if (!swapped)
+            break; // Already sorted
+    }
 }
 
 /**
