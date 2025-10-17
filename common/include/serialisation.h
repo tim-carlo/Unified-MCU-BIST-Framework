@@ -33,8 +33,10 @@ extern "C" {
 
 typedef struct
 {
+    uint8_t chunk_id;
     uint8_t *data;
     size_t size_in_bytes;
+    crc crc32;
 } SerializedChunk;
 
 
@@ -84,12 +86,6 @@ typedef enum {
     INITIALIZATION_ERROR = -1
 } InitializationResult;
 
-typedef struct {
-    uint8_t chunk_id;
-    uint8_t num_entries;
-    uint32_t crc_value;
-    PinData *pindata;
-} Chunk;
 
 // Function declarations
 InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size);

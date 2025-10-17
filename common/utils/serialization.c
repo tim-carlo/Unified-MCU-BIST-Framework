@@ -1,9 +1,11 @@
 #include "serialisation.h"
 #include <string.h>
+#include <stdlib.h>
+#include <inttypes.h>
 
 SerializedChunk *current_chunk = NULL;
 uint8_t current_pin_data_index = 0;
-uint8_t current_chunk_id = 0;
+uint8_t current_chunk_id = 1;
 
 static PinData *current_pindata = NULL;
 static uint8_t actual_pindata_size = 0;
@@ -26,6 +28,7 @@ InitializationResult initialize_serialization(SerializedChunk *output_chunk, Pin
 }
 
 // Serialize pin data in chunks for transmission
+// Fixed serialize_next_chunk function - using little endian
 SerializationResult serialize_next_chunk()
 {
     if (current_chunk == NULL || current_pindata == NULL)
@@ -101,9 +104,10 @@ SerializationResult serialize_next_chunk()
 
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_EVENTS);
         write_ptr += bytes_written;
-        
+
         // Write events array
-        if (pin_data->event_index > 0) {
+        if (pin_data->event_index > 0)
+        {
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->event_index);
             write_ptr += bytes_written;
             for (uint8_t j = 0; j < pin_data->event_index; j++)
@@ -111,7 +115,9 @@ SerializationResult serialize_next_chunk()
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->pin_event[j]);
                 write_ptr += bytes_written;
             }
-        } else {
+        }
+        else
+        {
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, 0);
             write_ptr += bytes_written;
         }
@@ -119,18 +125,21 @@ SerializationResult serialize_next_chunk()
         // Handle connections array (sanity check for embedded safety)
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTIONS);
         write_ptr += bytes_written;
-        
-        if (pin_data->connection_index > 0) {
-            if (pin_data->connection_index > 10) {
+
+        if (pin_data->connection_index > 0)
+        {
+            if (pin_data->connection_index > 10)
+            {
                 free(cbor_buffer);
                 return SERIALIZATION_ERROR_INVALID_INPUT;
             }
 
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connection_index);
             write_ptr += bytes_written;
-            
+
             // Write connection data inside the array
-            if (pin_data->connections != NULL) {
+            if (pin_data->connections != NULL)
+            {
                 for (uint8_t j = 0; j < pin_data->connection_index; j++)
                 {
                     bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
@@ -143,17 +152,19 @@ SerializationResult serialize_next_chunk()
 
                     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_DEVICE_ID);
                     write_ptr += bytes_written;
-                    
+
                     // Get actual device ID from seen_devices array using device_index
                     uint8_t device_idx = pin_data->connections[j].device_index;
-                    uint64_t device_id = (device_idx < seen_devices_count && seen_devices != NULL) 
-                                        ? seen_devices[device_idx] 
-                                        : 0;
+                    uint64_t device_id = (device_idx < seen_devices_count && seen_devices != NULL)
+                                             ? seen_devices[device_idx]
+                                             : 0;
                     bytes_written = cb0r_write(write_ptr, CB0R_INT, device_id);
                     write_ptr += bytes_written;
                 }
             }
-        } else {
+        }
+        else
+        {
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, 0);
             write_ptr += bytes_written;
         }
@@ -163,41 +174,48 @@ SerializationResult serialize_next_chunk()
 
     // Calculate CRC32 for integrity over CBOR data
     size_t cbor_data_size = write_ptr - cbor_buffer;
-    current_hash = crcFast((unsigned char const*)cbor_buffer, cbor_data_size);
+    current_hash = crcFast((unsigned char const *)cbor_buffer, cbor_data_size);
 
-    // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE HASH]
-    size_t total_packet_size = 2 + cbor_data_size + 4; // Length + CBOR + Hash
+    // Create final packet: [1 BYTE PACKET_ID][2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
+    size_t total_packet_size = 1 + 2 + cbor_data_size + 4; // Packet ID + Length + CBOR + CRC32
     uint8_t *packet_buffer = (uint8_t *)malloc(total_packet_size);
-    if (packet_buffer == NULL) {
+    if (packet_buffer == NULL)
+    {
         free(cbor_buffer);
         return SERIALIZATION_MEMORY_ALLOCATION_FAILED;
     }
 
     uint8_t *packet_ptr = packet_buffer;
-    
-    // Write 2-byte length (big endian)
-    uint16_t cbor_size_be = htobe16((uint16_t)cbor_data_size);
-    memcpy(packet_ptr, &cbor_size_be, sizeof(uint16_t));
+
+    // Write 1-byte packet ID
+    *packet_ptr = current_chunk_id;
+    packet_ptr += 1;
+
+    // Write 2-byte length (LITTLE ENDIAN) - length of CBOR data only
+    uint16_t cbor_size_le = htole16((uint16_t)cbor_data_size);
+    memcpy(packet_ptr, &cbor_size_le, sizeof(uint16_t));
     packet_ptr += sizeof(uint16_t);
-    
+
     // Copy CBOR data
     memcpy(packet_ptr, cbor_buffer, cbor_data_size);
     packet_ptr += cbor_data_size;
-    
-    // Write 4-byte hash (big endian)
-    uint32_t hash_be = htobe32(current_hash);
-    memcpy(packet_ptr, &hash_be, sizeof(uint32_t));
-    packet_ptr += sizeof(uint32_t);
 
-    // Set final packet data
+    // Write 4-byte CRC32 (LITTLE ENDIAN)
+    uint32_t hash_le = htole32(current_hash);
+    memcpy(packet_ptr, &hash_le, sizeof(uint32_t));
+
+    // Set final packet data and CRC
     free(cbor_buffer);
     current_chunk->size_in_bytes = total_packet_size;
     current_chunk->data = packet_buffer;
+    current_chunk->crc32 = current_hash;
+    current_chunk->chunk_id = current_chunk_id;
 
     return SERIALIZATION_OK;
 }
 
 // Generate header with device info and transmission metadata
+// Fixed generate_cbor_header function - using little endian
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size)
 {
     if (output_chunk == NULL || pindata == NULL)
@@ -283,38 +301,48 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
 
     // Calculate CRC32 for header integrity over CBOR data
     size_t header_data_size = write_ptr - cbor_buffer;
-    current_header_hash = crcFast((unsigned char const*)cbor_buffer, header_data_size);
+    current_header_hash = crcFast((uint8_t const *)cbor_buffer, header_data_size);
 
-    // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE HASH]
-    size_t total_packet_size = 2 + header_data_size + 4; // Length + CBOR + Hash
+    printf("CBOR header data size: %zu bytes\n", header_data_size);
+    printf("CBOR header packet hex: ");
+    for (size_t i = 0; i < header_data_size; i++) {
+        printf("%02X", cbor_buffer[i]);
+    }
+    printf("\n");
+    printf("crc32: %08" PRIx32 "\n", current_header_hash);
+
+    // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
+    size_t total_packet_size = 2 + header_data_size + 4; // Length + CBOR + CRC32
     uint8_t *packet_buffer = (uint8_t *)malloc(total_packet_size);
-    if (packet_buffer == NULL) {
+    if (packet_buffer == NULL)
+    {
         free(cbor_buffer);
         cbor_buffer = NULL;
         return SERIALIZATION_MEMORY_ALLOCATION_FAILED;
     }
 
     uint8_t *packet_ptr = packet_buffer;
-    
-    // Write 2-byte length (big endian)
-    uint16_t cbor_size_be = htobe16((uint16_t)header_data_size);
-    memcpy(packet_ptr, &cbor_size_be, sizeof(uint16_t));
+
+    // Write 2-byte length (LITTLE ENDIAN) - length of CBOR data only
+    uint16_t cbor_size_le = htole16((uint16_t)header_data_size);
+    memcpy(packet_ptr, &cbor_size_le, sizeof(uint16_t));
     packet_ptr += sizeof(uint16_t);
-    
+
     // Copy CBOR data
     memcpy(packet_ptr, cbor_buffer, header_data_size);
     packet_ptr += header_data_size;
-    
-    // Write 4-byte hash (big endian)
-    uint32_t hash_be = htobe32(current_header_hash);
-    memcpy(packet_ptr, &hash_be, sizeof(uint32_t));
-    packet_ptr += sizeof(uint32_t);
 
-    // Set final packet data
+    // Write 4-byte CRC32 (LITTLE ENDIAN)
+    uint32_t hash_le = htole32(current_header_hash);
+    memcpy(packet_ptr, &hash_le, sizeof(uint32_t));
+
+    // Set final packet data and CRC
     free(cbor_buffer);
     cbor_buffer = NULL;
     output_chunk->size_in_bytes = total_packet_size;
     output_chunk->data = packet_buffer;
+    output_chunk->crc32 = current_header_hash;
+    output_chunk->chunk_id = 0; // Header chunk ID is 0
 
     return SERIALIZATION_OK;
 }
