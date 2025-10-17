@@ -17,7 +17,7 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size)
     for (uint8_t i = 0; i < size; ++i)
     {
         pindata[i].pin = i;
-        pindata[i].event_index = 0;
+        pindata[i].event_mask = 0;
         pindata[i].connection_index = 0;
         pindata[i].connection_capacity = 0;
         pindata[i].connections = NULL;
@@ -36,11 +36,21 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size)
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
 {
     PinData *data = &pindata[pin];
-    data->pin_event[data->event_index] = event;
-    data->event_index = (data->event_index + 1) % EVENT_BUFFER_SIZE; // Circular buffer
+    data->event_mask |= (1 << event);// Update event mask
+}
 
-    // Update event mask
-    data->event_mask |= (1 << event);
+/**
+ * @brief Check if a specific event exists for a pin
+ *
+ * @param pindata Pointer to the PinData array
+ * @param pin Pin number
+ * @param event Event type to check
+ * @return true if event exists, false otherwise
+ */
+bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event)
+{
+    PinData *data = &pindata[pin];
+    return (data->event_mask & (1 << event)) != 0;
 }
 
 /**
@@ -212,41 +222,6 @@ void sort_seen_devices(PinData *pindata)
         }
         if (!swapped)
             break; // Already sorted
-    }
-}
-
-/**
- * @brief Print the pin data array and list events for each element
- *
- * @param pindata Pointer to the PinData array
- * @param size Size of the array
- */
-void print_pin_data_array(const PinData *pindata, uint8_t size)
-{
-    for (uint8_t i = 0; i < size; ++i)
-    {
-        printf("Pin %u:\n", pindata[i].pin);
-        printf("  Event Index: %u\n", pindata[i].event_index);
-        printf("  Events: ");
-        for (uint8_t j = 0; j < EVENT_BUFFER_SIZE; ++j)
-        {
-            switch (pindata[i].pin_event[j])
-            {
-            case HANDSHAKE_OK_INITIATOR:
-                printf("HANDSHAKE_OK_INITIATOR ");
-                break;
-            case HANDSHAKE_OK_RESPONDER:
-                printf("HANDSHAKE_OK_RESPONDER ");
-                break;
-            case HANDSHAKE_FAILURE:
-                printf("HANDSHAKE_FAILURE ");
-                break;
-            default:
-                printf("%d ", pindata[i].pin_event[j]);
-                break;
-            }
-        }
-        printf("\n");
     }
 }
 
