@@ -9,11 +9,6 @@
 static uart_instance_t tx_uart = NULL;
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
-// Define little endian conversion for MSP430 (already little endian)
-#ifndef htole32
-#define htole32(x) (x)
-#define le32toh(x) (x)
-#endif
 static uart_instance_t *tx_uart = NULL;
 #endif
 
@@ -35,15 +30,6 @@ void uart_transmitter_init(void)
     uart_pins = create_uart_pins(8, 9);
     //uart_init(tx_uart, 9600, &uart_pins);
 #endif
-}
-
-/**
- * @brief Write uint32 value in LITTLE ENDIAN format
- */
-static void uart_write_uint32_le(uart_instance_t uart, uint32_t value)
-{
-    uint32_t le_value = htole32(value);
-    uart_write_bytes(uart, (uint8_t*)&le_value, sizeof(uint32_t));
 }
 
 /**
@@ -124,8 +110,8 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
  */
 static void send_error_with_code(uint32_t error_code)
 {
-    uart_write_uint32_le(tx_uart, ERROR_IDENTIFIER);
-    uart_write_uint32_le(tx_uart, error_code);
+    uart_write_uint32(tx_uart, ERROR_IDENTIFIER);
+    uart_write_uint32(tx_uart, error_code);
 }
 
 // Combined transmission function with acknowledgement checking
@@ -157,13 +143,13 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
         return UART_TRANSMISSION_ERROR_SEND_FAILED;
     }
 
-    uart_write_uint32_le(tx_uart, HEADER_START_IDENTIFIER);
+    uart_write_uint32(tx_uart, HEADER_START_IDENTIFIER);
     if (header_chunk.data != NULL && header_chunk.size_in_bytes > 0)
     {
         // Send complete header packet: [2 bytes length (LE)][CBOR][4 bytes CRC32 (LE)]
         uart_write_bytes(tx_uart, header_chunk.data, header_chunk.size_in_bytes);
     }
-    uart_write_uint32_le(tx_uart, HEADER_END_IDENTIFIER);
+    uart_write_uint32(tx_uart, HEADER_END_IDENTIFIER);
 
     // Use CRC from SerializedChunk structure, not from packet bytes
     uint32_t expected_hash = header_chunk.crc32;
@@ -176,12 +162,12 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
         {
             printf("HEADER: Retry attempt %d\n", header_retry_count);
             // Resend header packet
-            uart_write_uint32_le(tx_uart, HEADER_START_IDENTIFIER);
+            uart_write_uint32(tx_uart, HEADER_START_IDENTIFIER);
             if (header_chunk.data != NULL && header_chunk.size_in_bytes > 0)
             {
                 uart_write_bytes(tx_uart, header_chunk.data, header_chunk.size_in_bytes);
             }
-            uart_write_uint32_le(tx_uart, HEADER_END_IDENTIFIER);
+            uart_write_uint32(tx_uart, HEADER_END_IDENTIFIER);
         }
 
         ack_result = wait_for_ack(expected_hash, ack_buffer);
@@ -210,7 +196,7 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     }
 
     // Send transmission start identifier
-    uart_write_uint32_le(tx_uart, TRANSMISSION_START_IDENTIFIER);
+    uart_write_uint32(tx_uart, TRANSMISSION_START_IDENTIFIER);
     uint8_t packet_count = 0;
 
     // Send data in chunks until all pins processed
@@ -228,15 +214,11 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
         if (serialization_result == SERIALIZATION_OK && chunk.data && chunk.size_in_bytes > 0)
         {
             // Send chunk with identifiers
-            uart_write_uint32_le(tx_uart, CHUNCK_START_IDENTIFIER);
+            uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
 
-            // Send complete chunk packet: [1 byte packet ID][2 bytes length (LE)][CBOR][4 bytes CRC32 (LE)]
-            // Note: The packet ID is already included in the serialized chunk data
-            if (chunk.data != NULL && chunk.size_in_bytes > 0)
-            {
-                uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
-            }
-            uart_write_uint32_le(tx_uart, CHUNCK_END_IDENTIFIER);
+            uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
+
+            uart_write_uint32(tx_uart, CHUNCK_END_IDENTIFIER);
 
             // Use CRC from SerializedChunk structure, not from packet bytes
             uint32_t chunk_expected_hash = chunk.crc32;
@@ -249,12 +231,9 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
                 {
                     printf("CHUNK %d: Retry attempt %d\n", packet_count, chunk_retry_count);
                     // Resend chunk packet
-                    uart_write_uint32_le(tx_uart, CHUNCK_START_IDENTIFIER);
-                    if (chunk.data != NULL && chunk.size_in_bytes > 0)
-                    {
-                        uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
-                    }
-                    uart_write_uint32_le(tx_uart, CHUNCK_END_IDENTIFIER);
+                    uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
+                    uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
+                    uart_write_uint32(tx_uart, CHUNCK_END_IDENTIFIER);
                 }
 
                 ack_result = wait_for_ack(chunk_expected_hash, ack_buffer);
@@ -288,7 +267,7 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
 
     // Send transmission end identifier
-    uart_write_uint32_le(tx_uart, TRANSMISSION_END_IDENTIFIER);
+    uart_write_uint32(tx_uart, TRANSMISSION_END_IDENTIFIER);
     uart_write_text(tx_uart, "END_TRANSMISSION\n");
 
     return UART_TRANSMISSION_OK;
