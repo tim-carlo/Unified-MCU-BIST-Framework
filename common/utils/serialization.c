@@ -161,7 +161,6 @@ SerializationResult serialize_next_chunk()
 
     // Calculate CRC32 for integrity over CBOR data
     uint16_t cbor_data_size = write_ptr - cbor_buffer;
-    printf("DEBUG: CBOR data size for chunk ID %d: %zu bytes\n", current_chunk_id, cbor_data_size);
     current_hash = crcFast((unsigned char const *)cbor_buffer, cbor_data_size);
 
     // Create final packet: [1 BYTE PACKET_ID][2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
@@ -198,14 +197,6 @@ SerializationResult serialize_next_chunk()
     current_chunk->data = packet_buffer;
     current_chunk->crc32 = current_hash;
     current_chunk->chunk_id = current_chunk_id;
-
-    printf("Packet buffer (hex) for chunk ID %d: ", current_chunk_id);
-    for (size_t i = 0; i < total_packet_size; i++)
-    {
-        printf("%02X", packet_buffer[i]);
-    }
-    printf("\n");
-
     return SERIALIZATION_OK;
 }
 
