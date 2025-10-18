@@ -102,9 +102,10 @@ static void analyze_pindata_events(PinData *pindata)
     LOG("Number of active pins: %u\n", number_of_pins);
 }
 
-static uint16_t get_listen_until_time()
+static uint16_t get_listen_until_time(float factor)
 {
     uint16_t random_offset = (uint16_t)(random32() % (MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES)) + 10; // between 10 and 500 ms
+    random_offset *= factor;
     return random_offset;
 }
 
@@ -213,14 +214,6 @@ static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket
     packet->crc_value = read_u32_le(&data[20]);
     return true;
 }
-
-typedef enum
-{
-    NONE,
-    SENDING_REQUEST,
-    DISCARDING_REQUEST,
-    SENDING_ANSWER,
-} DataHandshakeGlobalLock;
 
 static bool start_receiving_request(DataHandshakeData *p)
 {
@@ -345,7 +338,7 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     gpio_od_release(pin);
 
     // Small delay to ensure line is released before transmitting
-    delay_us(1000);
+    //delay_us(1000);
 
     // Mark that we're sending a request
     dhandshake_set_send_request(p, true);
@@ -380,7 +373,7 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
-    delay_us(1000);
+    //delay_us(1000);
 
     // Check for null pointer to prevent crashes
     if (!p->answer_packet)
@@ -404,7 +397,7 @@ static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 static void reschedule_request(DataHandshakeData *p, uint32_t counter)
 {
     // Schedule next send time to avoid immediate resend
-    p->time_until_next_send = get_listen_until_time();
+    p->time_until_next_send = get_listen_until_time(1);
     p->last_send_job_order = counter; // Reset to allow immediate sending when time is up
 }
 
@@ -665,11 +658,7 @@ static void fsm_data_handshake(void)
 static uint8_t isr_counter = 0;
 static void send_data_isr(void)
 {
-    // gpio_toggle(DEBUG_PIN1);
-    // fsm_data_handshake();
     interrupt_cont = true;
-
-    // isr_counter++;
 }
 
 static void start_send_data_timer(void)
@@ -694,11 +683,10 @@ static void start_send_data_timer(void)
 static void stop_send_data_timer(void)
 {
 #if defined(NRF52840_XXAA)
-    clear_timer_event_callback(DATA_TIMER); // NRF52-spezifisch
+    clear_timer_event_callback(DATA_TIMER);
     stop_timer(DATA_TIMER);
 
 #elif defined(__MSP430FR5994__)
-    // MSP430-spezifische Timer-Cleanup
     stop_timer(DATA_TIMER);
     clear_timer_event_callback(DATA_TIMER);
 #endif
@@ -734,6 +722,8 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
     uint64_t valid_pins_for_fsm_mask = 0;
 
+    uint8_t initiator_cnt = 1;
+
     while (bitmap_iterator_next(&it, &pin_index))
     {
         uint8_t *pin_data_buffer = calloc(max_packet_size, sizeof(uint8_t));
@@ -766,7 +756,8 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         {
             dhandshake_set_role(&global_datahandshake_pindata[idx], false); // Initiator
             // If the pin is initiator, the device will send requests on this pin
-            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time();
+            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt*0.5f);
+            initiator_cnt++;
         }
         else if (responder_mask & (1ULL << pin_index))
         {
