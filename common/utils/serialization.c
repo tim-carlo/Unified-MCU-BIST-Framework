@@ -322,18 +322,6 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     size_t header_data_size = write_ptr - cbor_buffer;
     current_header_hash = crcFast((uint8_t const *)cbor_buffer, header_data_size);
 
-    printf("CBOR header data size: %zu bytes\n", header_data_size);
-    printf("CBOR header packet binary: ");
-    for (size_t i = 0; i < header_data_size; i++)
-    {
-        for (int bit = 7; bit >= 0; bit--)
-        {
-            printf("%d", (cbor_buffer[i] >> bit) & 1);
-        }
-    }
-    printf("\n");
-    printf("crc32: %08" PRIx32 "\n", current_header_hash);
-
     // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
     size_t total_packet_size = 2 + header_data_size + 4; // Length + CBOR + CRC32
     uint8_t *packet_buffer = (uint8_t *)malloc(total_packet_size);
