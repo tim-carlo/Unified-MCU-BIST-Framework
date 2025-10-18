@@ -5,12 +5,6 @@
 #include "printf.h"
 #include <string.h>
 
-#if defined(__MSP430FR5994__)
-#define DEBUG_PIN1 ABS_PIN(3, 4)
-#elif defined(NRF52840_XXAA)
-#define DEBUG_PIN1 13
-#endif
-
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 #define NUMBER_OF_SAMPLES 5

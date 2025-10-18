@@ -6,12 +6,10 @@
 #include "nrf52840_helper.h"
 #include "nrf52840_time.h"
 #include "nrf52840_gpio.h"
-#define DEBUG_PIN_ABS 38 // Pin 1.6
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_gpio.h"
-#define DEBUG_PIN_ABS ABS_PIN(3, 0)
 #endif
 
 #define ENCODER_BUFFER_SIZE 32
@@ -71,7 +69,7 @@ static bool read_Rx()
 
 static void manchester_timer_isr(void)
 {
-    gpio_toggle(DEBUG_PIN_ABS);
+    gpio_toggle(DEBUG_PIN1);
     switch (mode)
     {
     case MANCHESTER_SEND:
@@ -200,7 +198,7 @@ void manchester_init(BaudRate rate)
     setup_and_start_timer(sample_interval_us);
 
 #if DEBUG == 1
-    gpio_output_init(DEBUG_PIN_ABS);
+    gpio_output_init(DEBUG_PIN1);
 #endif
 }
 void manchester_deinit()
@@ -248,7 +246,7 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         }
         timeout_counter++;
 #if DEBUG == 1
-        gpio_toggle(DEBUG_PIN_ABS);
+        gpio_toggle(DEBUG_PIN1);
 #endif
     }
 

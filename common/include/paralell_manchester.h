@@ -10,6 +10,8 @@
 #include "spooky_decoder.h"
 #include "spooky_encoder.h"
 
+#include "pin_config.h"
+
 #if defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_helper.h"

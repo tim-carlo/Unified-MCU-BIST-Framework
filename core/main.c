@@ -9,10 +9,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
-#define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
-#define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
-#define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be changed as needed
+// #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
+// #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
+// #define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
+// #define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be changed as needed
 
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
@@ -27,13 +27,14 @@
 
 #include "printf.h"
 
-#define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
-#define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
-#define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
-#define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
+// #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
+// #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
+// #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
+// #define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
 
 #endif
 
+#include "pin_config.h"
 #include "stack.h"
 #include "timing_pindata.h"
 #include "check_initial_state.h"
@@ -85,16 +86,23 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 #endif
 }
 
-void set_role_debug()
+void set_shepherd_pins()
 {
-#if defined(NRF52840_XXAA)
-    add_pin_event(pin_data, 11, HANDSHAKE_OK_INITIATOR);
-    add_pin_event(pin_data, 12, HANDSHAKE_OK_RESPONDER);
-
-#elif defined(__MSP430FR5994__)
-    add_pin_event(pin_data, ABS_PIN(3, 6), HANDSHAKE_OK_RESPONDER);
-    add_pin_event(pin_data, ABS_PIN(3, 7), HANDSHAKE_OK_INITIATOR);
-#endif
+    initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
+    initial_state_mask &= ~(1ULL << GPIO2);
+    initial_state_mask &= ~(1ULL << GPIO3);
+    initial_state_mask &= ~(1ULL << GPIO4);
+    initial_state_mask &= ~(1ULL << GPIO5);
+    initial_state_mask &= ~(1ULL << GPIO6);
+    initial_state_mask &= ~(1ULL << GPIO7);
+    initial_state_mask &= ~(1ULL << GPIO8);
+    initial_state_mask &= ~(1ULL << GPIO9);
+    initial_state_mask &= ~(1ULL << GPIO10);
+    initial_state_mask &= ~(1ULL << GPIO11);
+    // initial_state_mask &= ~(1ULL << GPIO12);
+    // initial_state_mask &= ~(1ULL << GPIO13);
+    // initial_state_mask &= ~(1ULL << GPIO14);
+    // initial_state_mask &= ~(1ULL << GPIO15);
 }
 
 void perfom_mutex_operations()
@@ -138,15 +146,25 @@ void perfom_mutex_operations()
 int main(void)
 {
     io_init();
-    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
+    // blink LED2
+    set_shepherd_pins();
+    printf("Starting main program\n");
+
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        gpio_drive_high(PIN_LED2);
+        delay_ms(100);
+        gpio_drive_low(PIN_LED2);
+        delay_ms(100);
+    }
+
+    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
     gpio_output_init(DEBUG_PIN3);
     gpio_output_init(DEBUG_PIN4);
-
-    set_standart_blacklist_pins(&initial_state_mask);
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
