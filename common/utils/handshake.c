@@ -100,10 +100,11 @@ const TimingTaskDef task_lut[] = {
  */
 static void reader_isr(void)
 {
+    gpio_drive_high(DEBUG_PIN1); 
     if (handshake_state == NULL)
         return; // Safety check
 
-    gpio_drive_high(DEBUG_PIN1); // Set debug pin high to indicate ISR entry
+    // Set debug pin high to indicate ISR entry
     for (uint8_t pin_index = 0; pin_index < handshake_state->number_of_active_pins; pin_index++)
     {
         TimingPinData *data = &handshake_state->global_timing_pindata[pin_index];
