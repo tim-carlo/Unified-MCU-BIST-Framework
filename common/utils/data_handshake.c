@@ -95,11 +95,6 @@ static void analyze_pindata_events(PinData *pindata)
             internal_blacklist_mask |= (1ULL << pin);
         }
     }
-
-    LOG("Blacklist mask:  0x%016llx\n", (unsigned long long)internal_blacklist_mask);
-    LOG("Initiator mask:  0x%016llx\n", (unsigned long long)initiator_mask);
-    LOG("Responder mask:  0x%016llx\n", (unsigned long long)responder_mask);
-    LOG("Number of active pins: %u\n", number_of_pins);
 }
 
 static uint16_t get_listen_until_time(float factor)
@@ -256,6 +251,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     // Mark that we received a request
     dhandshake_set_received_request(p, true);
     // Add a pin connection to the request packet
+
     add_pin_connection(&global_pindata[pin], pin, request_packet.pin, request_packet.uuid);
     LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, request_packet.pin);
 
@@ -269,7 +265,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     answer_packet.crc_value = 0; // Will be calculated later
 
     // Handle mutex request
-    if (request_packet.mutex_request == REQEST_MUTEX_ON_THIS_PIN)
+    if (request_packet.mutex_request == REQEST_MUTEX_ON_THIS_PIN && request_packet.uuid != uuid)
     {
         // If I am not holding the mutex the other device can attempt to get it again since he probably lost it
         if (mutex_pin == 255 || !i_am_mutex_owner)
@@ -798,7 +794,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         }
         isr_counter++;
     }
-    printf("Data handshake finished due to timeout\n");
+    LOG("Data handshake finished due to timeout\n");
     stop_send_data_timer();
 
     // Cleanup

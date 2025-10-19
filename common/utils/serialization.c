@@ -11,8 +11,9 @@ static PinData *current_pindata = NULL;
 static uint8_t actual_pindata_size = 0;
 static uint32_t current_hash = 0;
 static uint32_t current_header_hash = 0;
+static bool ack_required = false;
 
-InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size)
+InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req)
 {
     if (output_chunk == NULL || pindata == NULL)
         return INITIALIZATION_ERROR;
@@ -23,12 +24,13 @@ InitializationResult initialize_serialization(SerializedChunk *output_chunk, Pin
     current_chunk->size_in_bytes = 0;
     current_pin_data_index = 0;
     actual_pindata_size = pindata_size;
+    ack_required = ack_req;
 
     return INITIALIZATION_OK;
 }
 
 // Serialize pin data in chunks for transmission
-// Fixed serialize_next_chunk function - korrigierte Chunk ID Behandlung
+// Fixed serialize_next_chunk function - add ack_required field to CBOR
 SerializationResult serialize_next_chunk()
 {
     if (current_chunk == NULL || current_pindata == NULL)
@@ -62,14 +64,23 @@ SerializationResult serialize_next_chunk()
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
+    // CHANGED: CBOR map now has 3 entries (was 2) - added ack_required field
+    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
     write_ptr += bytes_written;
 
+    // ADD: ACK_REQUIRED field (Key 8) 
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, ack_required ? 1 : 0);
+    write_ptr += bytes_written;
+
+    // Existing KEY_NUM_ENTRIES field (Key 7)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_NUM_ENTRIES);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, entries_to_serialize);
     write_ptr += bytes_written;
 
+    // Existing KEY_PINS field (Key 9)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_PINS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, entries_to_serialize);
@@ -119,7 +130,7 @@ SerializationResult serialize_next_chunk()
             }
 
             // sort connections before serialization, is important for consistent ordering
-            // To make sure the cobor output is consistent across multiple runs
+            // To make sure the cbor output is consistent across multiple runs
             sort_pin_connections(current_pindata, pin_data->pin);
 
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connection_index);
@@ -200,8 +211,7 @@ SerializationResult serialize_next_chunk()
     return SERIALIZATION_OK;
 }
 
-// Generate header with device info and transmission metadata
-// Fixed generate_cbor_header function - using little endian
+
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested)
 {
     if (output_chunk == NULL || pindata == NULL)
@@ -209,7 +219,6 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
         return SERIALIZATION_ERROR_NULL_POINTER;
     }
 
-    // Buffer
     uint8_t *cbor_buffer = (uint8_t *)malloc(HEADER_BUFFER_SIZE);
     if (cbor_buffer == NULL)
     {
@@ -224,7 +233,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     const char *device_family = get_chip_family_name();
     uint8_t family_name_len = strlen(device_family);
 
-    // Count active pins (pins with events or connections)
+    // Count active pins
     uint8_t active_pins = 0;
     for (uint8_t i = 0; i < pindata_size; i++)
     {
@@ -234,39 +243,35 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
         }
     }
 
-    // Calculate total number of chunks needed based on all pins
+    // Calculate total chunks
     uint8_t total_chunks = 0;
     if (pindata_size > 0)
     {
         total_chunks = (pindata_size + NUMBER_OF_ENTRIES_PER_CHUNK - 1) / NUMBER_OF_ENTRIES_PER_CHUNK;
     }
 
-    // Buffer overflow protection
     if (HEADER_BUFFER_SIZE < (32 + family_name_len))
     {
         free(cbor_buffer);
-        cbor_buffer = NULL;
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    // Write CBOR header map with device metadata (now only 5 entries, no hash inside)
-    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 5);
+    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 7);
     write_ptr += bytes_written;
 
-
-    // 0. ACK REQUESTED (Key 8)
+    // 1. ACK REQUESTED (Key 8) 
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
     write_ptr += bytes_written;
-    bytes_written = cb0r_write(write_ptr, CB0R_INT, 1); // Assume ACK requested for this example
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, ack_requested ? 1 : 0);
     write_ptr += bytes_written;
 
-    // 1. Device UUID (Key 0)
+    // 2. Device UUID (Key 0)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_DEVICE_UUID);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, device_uuid);
     write_ptr += bytes_written;
 
-    // 2. Device Family Name (Key 1)
+    // 3. Device Family Name (Key 1)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_DEVICE_FAMILY);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_UTF8, family_name_len);
@@ -274,35 +279,36 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     memcpy(write_ptr, device_family, family_name_len);
     write_ptr += family_name_len;
 
-    // 3. Total chunks (Key 2)
+    // 4. Total chunks (Key 2)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_TOTAL_CHUNKS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, total_chunks);
     write_ptr += bytes_written;
 
-    // 4. Total pins (Key 3)
+    // 5. Total pins (Key 3)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_TOTAL_PINS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, pindata_size);
     write_ptr += bytes_written;
 
-    // 5. Active pins (Key 4)
+    // 6. Active pins (Key 4)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_ACTIVE_PINS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, active_pins);
     write_ptr += bytes_written;
 
-    // 6. Number of seen devices (Key 5)
+    // 7. Number of seen devices (Key 5)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_NUMBER_SEEN_DEVICES);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, seen_devices_count);
     write_ptr += bytes_written;
 
-    // 7. List of seen device IDs (Key 6)
+    // 8. List of seen device IDs (Key 6)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_SEEN_DEVICE_IDS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
     write_ptr += bytes_written;
+    
     if (seen_devices_count > 0 && seen_devices != NULL)
     {
         for (uint8_t i = 0; i < seen_devices_count; i++)
@@ -311,49 +317,35 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
             write_ptr += bytes_written;
         }
     }
-    else
-    {
-        // No seen devices
-        bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, 0);
-        write_ptr += bytes_written;
-    }
 
-    // Calculate CRC32 for header integrity over CBOR data
     size_t header_data_size = write_ptr - cbor_buffer;
     current_header_hash = crcFast((uint8_t const *)cbor_buffer, header_data_size);
 
-    // Create final packet: [2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
-    size_t total_packet_size = 2 + header_data_size + 4; // Length + CBOR + CRC32
+    size_t total_packet_size = 2 + header_data_size + 4;
     uint8_t *packet_buffer = (uint8_t *)malloc(total_packet_size);
     if (packet_buffer == NULL)
     {
         free(cbor_buffer);
-        cbor_buffer = NULL;
         return SERIALIZATION_MEMORY_ALLOCATION_FAILED;
     }
 
     uint8_t *packet_ptr = packet_buffer;
 
-    // Write 2-byte length (LITTLE ENDIAN) - length of CBOR data only
     uint16_t cbor_size_le = htole16((uint16_t)header_data_size);
     memcpy(packet_ptr, &cbor_size_le, sizeof(uint16_t));
     packet_ptr += sizeof(uint16_t);
 
-    // Copy CBOR data
     memcpy(packet_ptr, cbor_buffer, header_data_size);
     packet_ptr += header_data_size;
 
-    // Write 4-byte CRC32 (LITTLE ENDIAN)
     uint32_t hash_le = htole32(current_header_hash);
     memcpy(packet_ptr, &hash_le, sizeof(uint32_t));
 
-    // Set final packet data and CRC
     free(cbor_buffer);
-    cbor_buffer = NULL;
     output_chunk->size_in_bytes = total_packet_size;
     output_chunk->data = packet_buffer;
     output_chunk->crc32 = current_header_hash;
-    output_chunk->chunk_id = 0; // Header chunk ID is 0
+    output_chunk->chunk_id = 0;
 
     return SERIALIZATION_OK;
 }

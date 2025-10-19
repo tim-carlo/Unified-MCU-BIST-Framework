@@ -5,7 +5,7 @@
 #include "printf.h"
 #include <string.h>
 
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 #define NUMBER_OF_SAMPLES 5
 #define SETTLE_TIME_US 100

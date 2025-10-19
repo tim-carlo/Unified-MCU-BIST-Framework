@@ -59,59 +59,68 @@ uart_instance_t msp430_uart3_instance = {
 
 /**
  * @brief Calculate baud rate values for MSP430 according to TI documentation
+ * In this function for 16MHz SMCLK for simplicity.
+ * Look at SLAU367 for more details.
  *
  * @param baud_rate Desired baud rate
  * @param br0 Pointer to store BR0 value
  * @param br1 Pointer to store BR1 value
  * @param mctlw Pointer to store MCTLW value
  */
-static void calculate_baud_rate(unsigned long baud_rate, uint16_t *br0, uint16_t *br1, uint16_t *mctlw)
+static void calculate_baud_rate(uint16_t baud_rate, uint16_t *br0, uint16_t *br1, uint16_t *mctlw)
 {
-
-    double baud_div = (double)SMCLK_HZ / (double)baud_rate;
-
-    if (baud_div >= 16.0)
+    switch (baud_rate)
     {
-        uint16_t UCBRx = (uint16_t)(baud_div / 16.0);
-        double frac = (baud_div / 16.0) - UCBRx;
-        uint8_t UCBRFx = (uint8_t)round(frac * 16.0);
+    case 9600:
+        *br0 = 104;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0x4900; // UCBRSx=0x49, UCBRFx=2
+        break;
 
-        // Approximate UCBRSx from fractional remainder (empirical tuning) according to SLAU367
-        uint8_t UCBRSx = 0;
-        double frac_x8 = frac * 8.0;
-        if (frac_x8 > 7.0)
-            UCBRSx = 0xFF;
-        else if (frac_x8 > 6.0)
-            UCBRSx = 0xF7;
-        else if (frac_x8 > 5.0)
-            UCBRSx = 0xAA;
-        else if (frac_x8 > 4.0)
-            UCBRSx = 0x92;
-        else if (frac_x8 > 3.0)
-            UCBRSx = 0x49;
-        else if (frac_x8 > 2.0)
-            UCBRSx = 0x20;
-        else if (frac_x8 > 1.0)
-            UCBRSx = 0x10;
-        else
-            UCBRSx = 0x00;
+    case 19200:
+        *br0 = 52;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0x4900;
+        break;
 
-        *br0 = UCBRx & 0xFF;
-        *br1 = (UCBRx >> 8) & 0xFF;
-        *mctlw = (UCOS16) | (UCBRFx << 4) | (UCBRSx << 8);
-    }
-    else
-    {
-        uint16_t UCBRx = (uint16_t)baud_div;
-        double frac = baud_div - UCBRx;
-        uint8_t UCBRSx = (uint8_t)round(frac * 8.0) << 5;
+    case 38400:
+        *br0 = 26;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0xB600;
+        break;
 
-        *br0 = UCBRx & 0xFF;
-        *br1 = (UCBRx >> 8) & 0xFF;
-        *mctlw = (UCBRSx << 8);
+    case 57600:
+        *br0 = 17;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0xF700;
+        break;
+
+    case 115200:
+        *br0 = 8;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0xF700;
+        break;
+
+    case 230400:
+        *br0 = 4;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0x5500;
+        break;
+
+    case 460800:
+        *br0 = 2;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0xD600;
+        break;
+
+    default:
+        // Fallback to 9600 baud
+        *br0 = 104;
+        *br1 = 0;
+        *mctlw = UCOS16 | 0x4900;
+        break;
     }
 }
-
 /**
  * @brief Initialize UART peripheral according to TI recommended sequence
  *
@@ -119,44 +128,55 @@ static void calculate_baud_rate(unsigned long baud_rate, uint16_t *br0, uint16_t
  * @param baud_rate Baud rate
  * @param pins Pin configuration structure
  */
-void uart_init(uart_instance_t *uart, const unsigned long baud_rate, const uart_pins_t *pins)
+void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_t *pins)
 {
     if (uart == NULL || pins == NULL)
         return;
 
-    // Step 1: Set UCSWRST (BIT.B #UCSWRST,&UCAxCTL1)
-    *(uart->CTLW0) = UCSWRST;
+    // // Step 1: Set UCSWRST (BIT.B #UCSWRST,&UCAxCTL1)
+    // *(uart->CTLW0) = UCSWRST;
 
-    // Step 2: Initialize all eUSCI_A registers with UCSWRST = 1 (including UCAxCTL1)
-    *(uart->CTLW0) |= UCSSEL__SMCLK; // Select SMCLK as clock source
+    // // Step 2: Initialize all eUSCI_A registers with UCSWRST = 1 (including UCAxCTL1)
+    // *(uart->CTLW0) |= UCSSEL__SMCLK; // Select SMCLK as clock source
+
+    // uint16_t br0, br1, mctlw;
+    // calculate_baud_rate(baud_rate, &br0, &br1, &mctlw);
+    // *(uart->BR0) = 104;
+    // *(uart->BR1) = 0;
+    // *(uart->MCTLW) = UCOS16 | 0x4900;
+
+    // // Enable UART module
+    // *(uart->CTLW0) &= ~UCSWRST; // Release from reset
 
     // Configure ports (Step 3)
-    volatile uint8_t *port_sel0 = (volatile uint8_t *)pins->port_sel0;
-    volatile uint8_t *port_sel1 = (volatile uint8_t *)pins->port_sel1;
-    uint8_t tx_mask = pins->tx_pin_mask;
-    uint8_t rx_mask = pins->rx_pin_mask;
-    if (port_sel0 && port_sel1)
-    {
-        // Set pins to UART function (secondary function)
-        *port_sel0 &= ~(tx_mask | rx_mask); // Clear PxSEL0
-        *port_sel1 |= (tx_mask | rx_mask);  // Set PxSEL1
-    }
+    // volatile uint8_t *port_sel0 = (volatile uint8_t *)pins->port_sel0;
+    // volatile uint8_t *port_sel1 = (volatile uint8_t *)pins->port_sel1;
+    // uint8_t tx_mask = pins->tx_pin_mask;
+    // uint8_t rx_mask = pins->rx_pin_mask;
+    // if (port_sel0 && port_sel1)
+    // {
+    //     // Set pins to UART function (secondary function)
+    //     *port_sel0 &= ~(tx_mask | rx_mask); // Clear PxSEL0
+    //     *port_sel1 |= (tx_mask | rx_mask);  // Set PxSEL1
+    // }
+    UCA0CTLW0 = UCSWRST;         // Reset UART
+    UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
+    UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
+    UCA0BR1 = 0;                 // High byte
+    UCA0MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
 
+    P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
+    P2SEL1 |= BIT0 | BIT1;
     // Step 4: Clear UCSWRST through software (BIC.B #UCSWRST,&UCAxCTL1)
-    uint16_t br0, br1, mctlw;
-    calculate_baud_rate(baud_rate, &br0, &br1, &mctlw);
-    *(uart->BR0) = br0;
-    *(uart->BR1) = br1;
-    *(uart->MCTLW) = mctlw;
 
     // Enable glitch suppression for better receive reliability
-    *(uart->CTLW0) &= ~UCSWRST; // Release from reset
+    //*(uart->CTLW0) &= ~UCSWRST; // Release from reset
 
     // Step 5: Enable interrupts (optional) through UCRXxIE and/or UCTXxIE
     // This is done later in uart_set_receive_mode if needed
 
     // Clear any pending flags
-    *(uart->IFG) &= ~(uart->rx_flag_bit | uart->tx_flag_bit);
+    //*(uart->IFG) &= ~(uart->rx_flag_bit | uart->tx_flag_bit);
 }
 
 /**
@@ -499,19 +519,19 @@ void uart_clear_errors(uart_instance_t *uart)
 uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
 {
     uart_pins_t pins = {0};
-    // Calculate port and pin index
+
     uint8_t tx_port = ABS_TO_PORT(abs_tx_pin);
-    uint8_t tx_idx = ABS_TO_PINIDX(abs_tx_pin);
+    uint8_t tx_idx  = ABS_TO_PINIDX(abs_tx_pin);
     uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
-    uint8_t rx_idx = ABS_TO_PINIDX(abs_rx_pin);
+    uint8_t rx_idx  = ABS_TO_PINIDX(abs_rx_pin);
 
-    // Port selection registers base addresses (MSP430 specific)
-    volatile uint8_t *port_sel0 = (volatile uint8_t *)(0x200 + tx_port * 0x20); // PnSEL0 offset
-    volatile uint8_t *port_sel1 = (volatile uint8_t *)(0x201 + tx_port * 0x20); // PnSEL1 offset
+    pins.tx_sel0 = (volatile uint16_t *)(0x0200 + tx_port*0x20 + PORT_SEL0_OFFSET);
+    pins.tx_sel1 = (volatile uint16_t *)(0x0200 + tx_port*0x20 + PORT_SEL1_OFFSET);
+    pins.tx_mask = BV(tx_idx);
 
-    pins.port_sel0 = port_sel0;
-    pins.port_sel1 = port_sel1;
-    pins.tx_pin_mask = BV(tx_idx);
-    pins.rx_pin_mask = BV(rx_idx);
+    pins.rx_sel0 = (volatile uint16_t *)(0x0200 + rx_port*0x20 + PORT_SEL0_OFFSET);
+    pins.rx_sel1 = (volatile uint16_t *)(0x0200 + rx_port*0x20 + PORT_SEL1_OFFSET);
+    pins.rx_mask = BV(rx_idx);
+
     return pins;
 }

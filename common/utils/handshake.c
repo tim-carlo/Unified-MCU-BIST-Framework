@@ -4,8 +4,8 @@
 static HandshakeState *handshake_state = NULL;
 
 
-//#define LOG(fmt, ...) // Uncomment this line to disable LOGging
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) // Uncomment this line to disable Logging
+//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 /**
  * @brief Initialize handshake state

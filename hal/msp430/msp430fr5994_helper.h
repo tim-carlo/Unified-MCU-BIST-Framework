@@ -8,8 +8,9 @@
 #include <stddef.h>
 
 #include "printf.h"  // Custom printf implementation
-#include "stack.h"   // Stack implementation for managing GPIO states
 #include "pindata.h" // PinData structure and helper functions
+
+#include "msp430fr5994_uart.h"
 
 #define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
@@ -51,9 +52,7 @@ extern uint32_t lfsr31;
 extern "C"
 {
 #endif
-
     void io_init(void);
-
 #ifdef __cplusplus
 }
 #endif

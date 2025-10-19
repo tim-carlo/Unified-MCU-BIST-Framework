@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) //printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 #if defined(NRF52840_XXAA)
 #define PMAN_TIMER NRF_TIMER4
@@ -71,7 +72,6 @@ static inline void pman_set_TX(const bool state, const uint8_t pin)
 
 void pman_timer_isr(void)
 {
-    gpio_drive_high(DEBUG_PIN3);
     const uint8_t count = pman_instance_count;
     const uint64_t all_ports_state = gpio_read_all_ports(); // Read once to save time
 
@@ -178,7 +178,6 @@ void pman_timer_isr(void)
             break;
         }
     }
-    gpio_drive_low(DEBUG_PIN3);
 }
 
 static void pman_setup_and_start_timer(uint16_t sample_interval_us)

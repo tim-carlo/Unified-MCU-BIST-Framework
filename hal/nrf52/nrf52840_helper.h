@@ -13,8 +13,6 @@
 #include "nrf52840_uart.h"
 
 #define NUMBER_OF_GPIO_PINS 48
-#define UART_PIN_TX 6
-#define UART_PIN_RX 8
 
 #define DEBOUNCE_SAMPLES 5
 #define DEBOUNCE_DELAY_US 20

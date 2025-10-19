@@ -25,10 +25,13 @@ typedef struct
 
 typedef struct
 {
-    volatile uint8_t *port_sel0; // Port selection register 0
-    volatile uint8_t *port_sel1; // Port selection register 1
-    uint8_t tx_pin_mask;         // TX pin mask
-    uint8_t rx_pin_mask;         // RX pin mask
+    volatile uint16_t *tx_sel0;
+    volatile uint16_t *tx_sel1;
+    uint16_t tx_mask;
+
+    volatile uint16_t *rx_sel0;
+    volatile uint16_t *rx_sel1;
+    uint16_t rx_mask;
 } uart_pins_t;
 
 // Predefined UART instances
@@ -43,7 +46,7 @@ extern uart_instance_t msp430_uart3_instance;
 #define MSP430_UART3 (&msp430_uart3_instance)
 
 // Basic UART functions
-void uart_init(uart_instance_t *uart, const unsigned long baud_rate, const uart_pins_t *pins);
+void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_t *pins);
 bool uart_data_ready(uart_instance_t *uart);
 bool uart_tx_idle(uart_instance_t *uart);
 char uart_read(uart_instance_t *uart);

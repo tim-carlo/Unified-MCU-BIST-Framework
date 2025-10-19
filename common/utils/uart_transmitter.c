@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+
 #if defined(NRF52840_XXAA)
 #include "endian.h"
 static uart_instance_t tx_uart = NULL;
@@ -43,7 +45,7 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
 {
     if (ack_buffer == NULL)
         return WAIT_FOR_ACK_NULL_POINTER;
-    printf("W\n");
+    LOG("W\n");
     // Enable receive mode before waiting for ACK
     uart_set_receive_mode(tx_uart, true);
 
@@ -70,7 +72,7 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
 
     if (ack_index < 12)
     {
-        printf("ACK timeout - only received %d bytes\n", ack_index);
+        LOG("DEBUG: ACK timeout - only received %d bytes\n", ack_index);
         return WAIT_FOR_ACK_TIMEOUT;
     }
 
@@ -86,21 +88,20 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
 
     if (start_id != ACK_START_IDENTIFIER)
     {
-        printf("ACK START identifier mismatch! Expected: 0x%08lX, Got: 0x%08lX\n", (unsigned long)ACK_START_IDENTIFIER, (unsigned long)start_id);
         return WAIT_FOR_ACK_NO_START_IDENTIFIER;
     }
     if (end_id != ACK_END_IDENTIFIER)
     {
-        printf("ACK END identifier mismatch! Expected: 0x%08lX, Got: 0x%08lX\n", (unsigned long)ACK_END_IDENTIFIER, (unsigned long)end_id);
         return WAIT_FOR_ACK_NO_END_IDENTIFIER;
     }
     if (received_hash != expected_hash)
     {
-        printf("ACK value mismatch! Expected: 0x%08lX, Got: 0x%08lX\n", (unsigned long)expected_hash, (unsigned long)received_hash);
+        LOG("DEBUG: wrong hash\n");
         return WAIT_FOR_ACK_INVALID_HASH;
     }
 
-    printf("ACK frame valid!\n");
+    delay_ms(1000); // Small delay to ensure UART stability
+    LOG("DEBUG: ACK OKE\n");
     return WAIT_FOR_ACK_OK;
 }
 
@@ -221,8 +222,6 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             {
                 if (chunk_retry_count > 0)
                 {
-                    printf("CHUNK %d: Retry attempt %d\n", packet_count, chunk_retry_count);
-                    // Resend chunk packet
                     uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
                     uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
                     uart_write_uint32(tx_uart, CHUNCK_END_IDENTIFIER);
@@ -237,7 +236,6 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             {
                 send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_ACK_FAILED);
                 free(chunk.data);
-                uart_write_text(tx_uart, "END_TRANSMISSION\n");
                 return UART_TRANSMISSION_ERROR_ACK_FAILED;
             }
 
@@ -247,12 +245,10 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             chunk.crc32 = 0;
             current_chunk_id++;
             packet_count++;
-
-            printf("DEBUG: Completed chunk %d, current_pin_data_index now=%d\n", packet_count - 1, current_pin_data_index);
         }
         else
         {
-            printf("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n",
+            LOG("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n",
                    serialization_result, (void *)chunk.data, chunk.size_in_bytes);
         }
 
@@ -269,14 +265,12 @@ UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8
 {
     if (pindata == NULL)
     {
-        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_NULL_POINTER);
         return UART_TRANSMISSION_ERROR_NULL_POINTER;
     }
 
     // Initialize UART if not already done
     if (tx_uart == NULL)
     {
-        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_INIT_FAILED);
         return UART_TRANSMISSION_ERROR_INIT_FAILED;
     }
 
@@ -287,7 +281,6 @@ UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8
     serialization_result = generate_cbor_header(&header_chunk, pindata, pindata_size, false);
     if (serialization_result != SERIALIZATION_OK)
     {
-        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_SEND_FAILED);
         return UART_TRANSMISSION_ERROR_INIT_FAILED;
     }
 
@@ -341,7 +334,6 @@ UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8
     } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
     // Send transmission end identifier
     uart_write_uint32(tx_uart, TRANSMISSION_END_IDENTIFIER);
-    uart_write_text(tx_uart, "END_TRANSMISSION\n");
     return UART_TRANSMISSION_OK;
 }
 
@@ -367,7 +359,7 @@ void example_cbor_header_transmission_with_ack(void)
     // Test complete transmission with header and acknowledgement checking
     UartTransmissionResult result = send_complete_transmission_with_ack(test_pins, 32);
 
-    printf("DEBUG: Transmission completed with result: %d\n", result);
+    LOG("DEBUG: Transmission completed with result: %d\n", result);
 
     switch (result)
     {
