@@ -23,12 +23,12 @@ void uart_transmitter_init(void)
     tx_uart = NRF_UART0;
     uart_pins_t uart_pins;
     uart_pins = create_uart_pins(6, 8);
-    //uart_init(tx_uart, 9600, &uart_pins);
+    // uart_init(tx_uart, 9600, &uart_pins);
 #elif defined(__MSP430FR5994__)
     tx_uart = MSP430_UART0;
     uart_pins_t uart_pins;
     uart_pins = create_uart_pins(8, 9);
-    //uart_init(tx_uart, 9600, &uart_pins);
+    // uart_init(tx_uart, 9600, &uart_pins);
 #endif
 }
 
@@ -79,11 +79,11 @@ static WaitForAckResult wait_for_ack(uint32_t expected_hash, uint8_t *ack_buffer
     memcpy(&le_start_id, &ack_bytes[0], sizeof(le_start_id));
     memcpy(&le_received_hash, &ack_bytes[4], sizeof(le_received_hash));
     memcpy(&le_end_id, &ack_bytes[8], sizeof(le_end_id));
-    
+
     uint32_t start_id = le32toh(le_start_id);
     uint32_t received_hash = le32toh(le_received_hash);
     uint32_t end_id = le32toh(le_end_id);
-    
+
     if (start_id != ACK_START_IDENTIFIER)
     {
         printf("ACK START identifier mismatch! Expected: 0x%08lX, Got: 0x%08lX\n", (unsigned long)ACK_START_IDENTIFIER, (unsigned long)start_id);
@@ -160,7 +160,6 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     {
         if (header_retry_count > 0)
         {
-            printf("HEADER: Retry attempt %d\n", header_retry_count);
             // Resend header packet
             uart_write_uint32(tx_uart, HEADER_START_IDENTIFIER);
             if (header_chunk.data != NULL && header_chunk.size_in_bytes > 0)
@@ -186,12 +185,11 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
 
     // 2. Send data chunks with individual acknowledgements
     SerializedChunk chunk;
-    serialization_result = initialize_serialization(&chunk, pindata, pindata_size);
+    serialization_result = initialize_serialization(&chunk, pindata, pindata_size, true);
 
     if (serialization_result != SERIALIZATION_OK)
     {
         send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_SEND_FAILED);
-        uart_write_text(tx_uart, "END_TRANSMISSION\n");
         return UART_TRANSMISSION_ERROR_SEND_FAILED;
     }
 
@@ -202,14 +200,8 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     // Send data in chunks until all pins processed
     do
     {
-        printf("DEBUG: Starting chunk %d, current_pin_data_index=%d, pindata_size=%d\n", 
-               packet_count, current_pin_data_index, pindata_size);
-        
         current_chunk = &chunk;
         serialization_result = serialize_next_chunk();
-        
-        printf("DEBUG: After serialize_next_chunk, result=%d, chunk.data=%p, chunk.size_in_bytes=%zu, chunk.crc32=0x%08X\n", 
-               serialization_result, (void*)chunk.data, chunk.size_in_bytes, chunk.crc32);
 
         if (serialization_result == SERIALIZATION_OK && chunk.data && chunk.size_in_bytes > 0)
         {
@@ -255,13 +247,13 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
             chunk.crc32 = 0;
             current_chunk_id++;
             packet_count++;
-            
-            printf("DEBUG: Completed chunk %d, current_pin_data_index now=%d\n", packet_count-1, current_pin_data_index);
+
+            printf("DEBUG: Completed chunk %d, current_pin_data_index now=%d\n", packet_count - 1, current_pin_data_index);
         }
         else
         {
-            printf("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n", 
-                   serialization_result, (void*)chunk.data, chunk.size_in_bytes);
+            printf("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n",
+                   serialization_result, (void *)chunk.data, chunk.size_in_bytes);
         }
 
     } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
@@ -270,6 +262,86 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
     uart_write_uint32(tx_uart, TRANSMISSION_END_IDENTIFIER);
     uart_write_text(tx_uart, "END_TRANSMISSION\n");
 
+    return UART_TRANSMISSION_OK;
+}
+
+UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8_t pindata_size)
+{
+    if (pindata == NULL)
+    {
+        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_NULL_POINTER);
+        return UART_TRANSMISSION_ERROR_NULL_POINTER;
+    }
+
+    // Initialize UART if not already done
+    if (tx_uart == NULL)
+    {
+        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_INIT_FAILED);
+        return UART_TRANSMISSION_ERROR_INIT_FAILED;
+    }
+
+    SerializationResult serialization_result;
+    SerializedChunk header_chunk;
+
+    // 1. Generate and send CBOR header packet
+    serialization_result = generate_cbor_header(&header_chunk, pindata, pindata_size, false);
+    if (serialization_result != SERIALIZATION_OK)
+    {
+        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_SEND_FAILED);
+        return UART_TRANSMISSION_ERROR_INIT_FAILED;
+    }
+
+    uart_write_uint32(tx_uart, HEADER_START_IDENTIFIER);
+    if (header_chunk.data != NULL && header_chunk.size_in_bytes > 0)
+    {
+        // Send complete header packet: [2 bytes length (LE)][CBOR][4 bytes CRC32 (LE)]
+        uart_write_bytes(tx_uart, header_chunk.data, header_chunk.size_in_bytes);
+    }
+    uart_write_uint32(tx_uart, HEADER_END_IDENTIFIER);
+
+    free(header_chunk.data);
+
+    // Short delay to ensure header is processed before data chunks
+    delay_ms(100);
+
+    // 2. Send data chunks without acknowledgements
+    SerializedChunk chunk;
+    serialization_result = initialize_serialization(&chunk, pindata, pindata_size, false);
+
+    if (serialization_result != SERIALIZATION_OK)
+    {
+        send_error_with_code((uint32_t)UART_TRANSMISSION_ERROR_SEND_FAILED);
+        return UART_TRANSMISSION_ERROR_INIT_FAILED;
+    }
+
+    // Send transmission start identifier
+    uart_write_uint32(tx_uart, TRANSMISSION_START_IDENTIFIER);
+
+    // Send data in chunks until all pins processed
+    do
+    {
+        current_chunk = &chunk;
+        serialization_result = serialize_next_chunk();
+
+        if (serialization_result == SERIALIZATION_OK && chunk.data && chunk.size_in_bytes > 0)
+        {
+            // Send chunk with identifiers
+            uart_write_uint32(tx_uart, CHUNCK_START_IDENTIFIER);
+            uart_write_bytes(tx_uart, chunk.data, chunk.size_in_bytes);
+            uart_write_uint32(tx_uart, CHUNCK_END_IDENTIFIER);
+
+            free(chunk.data);
+            chunk.data = NULL;
+            chunk.size_in_bytes = 0;
+            chunk.crc32 = 0;
+            current_chunk_id++;
+            // Short delay to ensure chunk is processed before next chunk
+            delay_ms(100);
+        }
+    } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
+    // Send transmission end identifier
+    uart_write_uint32(tx_uart, TRANSMISSION_END_IDENTIFIER);
+    uart_write_text(tx_uart, "END_TRANSMISSION\n");
     return UART_TRANSMISSION_OK;
 }
 
