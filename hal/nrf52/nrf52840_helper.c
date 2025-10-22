@@ -8,7 +8,7 @@
  * This function initializes the UART for printf output and starts the HFCLK.
  * It should be called at the beginning of the main function.
  */
-void io_init(void)
+void mcu_init(void)
 {
     // Start HFCLK if not running
     if (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)

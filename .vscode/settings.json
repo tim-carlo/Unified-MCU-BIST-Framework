@@ -44,6 +44,9 @@
         "data_handshake.h": "c",
         "random_utils.h": "c",
         "paralell_manchester.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "nrf52840_uart.h": "c",
+        "endian.h": "c",
+        "string.h": "c"
     }
 }

@@ -252,6 +252,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         // Configure test pin as output and drive low
         gpio_output_init(pin);
         gpio_drive_low(pin);
+        
 
         // Validate that pin goes low when driven low
         if (!sample_pin_state(pin, false))
@@ -260,6 +261,8 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         }
 
         gpio_drive_high(DEBUG_PIN1);
+
+        delay_ms(10);
 
         // Take samples and count changes
         sample_pin_changes(blacklist_mask, initial_state, pin, counter);

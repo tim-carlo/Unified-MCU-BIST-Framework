@@ -26,6 +26,6 @@
 #define INVALID_PIN 255 // Invalid pin number
 
 
-void io_init(void);
+void mcu_init(void);
 
 #endif // NRF52840_HELPER_H

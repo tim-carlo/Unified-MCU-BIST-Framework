@@ -1,7 +1,7 @@
 #ifndef MSP430FR5994_GPIO_HAL_H
 #define MSP430FR5994_GPIO_HAL_H
-
-#include "msp430fr5994.h"
+#include <msp430.h>
+#include <msp430fr5994.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "printf.h"

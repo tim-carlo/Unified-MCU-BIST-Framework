@@ -9,6 +9,7 @@
 
 #include "printf.h"  // Custom printf implementation
 #include "pindata.h" // PinData structure and helper functions
+#include "pin_config.h"
 
 #include "msp430fr5994_uart.h"
 
@@ -52,7 +53,7 @@ extern uint32_t lfsr31;
 extern "C"
 {
 #endif
-    void io_init(void);
+    void mcu_init(void);
 #ifdef __cplusplus
 }
 #endif
