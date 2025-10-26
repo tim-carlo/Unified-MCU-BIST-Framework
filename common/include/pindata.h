@@ -17,8 +17,11 @@
 
 #define EVENT_BUFFER_SIZE 10
 #define INITIAL_CONNECTION_CAPACITY 1 // Initial capacity for connections array
-#define MAX_SEEN_DEVICES 5 // Maximum number of seen devices to track
 #define MY_DEVICE_ID_INDEX 0 // Index of own device in seen_devices arrays
+
+#define MAX_CONNECTIONS_PER_PIN 3 // Adjust this if more is needed
+#define MAX_SEEN_DEVICES 2 // Maximum number of seen devices to track
+#define DEVICE_NOT_FOUND 255
 
 typedef uint8_t PinEventType;
 enum
@@ -56,16 +59,17 @@ typedef union
 
 
 // List so that the algorithm can be extended in the future to work with multiple devices
-extern uint64_t *seen_devices;
-extern uint8_t seen_devices_count;
+extern uint64_t seen_devices[MAX_SEEN_DEVICES];
+extern uint8_t seen_devices_index = 0;
+extern uint8_t seen_devices_count = 0;
 
 
 typedef struct
 {
     uint8_t pin;
-    PinConnection *connections;
-    uint8_t connection_index;
-    uint8_t connection_capacity;
+    PinConnection connections[MAX_CONNECTIONS_PER_PIN];
+    uint8_t connection_index; // that is the highest used index in connections
+    uint8_t connections_count; // number of valid connections
     uint32_t event_mask; // Bitmask to track which events have occurred
 } PinData;
 
@@ -74,17 +78,18 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
 bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event);
 
-uint8_t add_seen_device(uint64_t *other_device_id);
+uint8_t add_seen_device(uint64_t other_device_id);
 uint8_t get_index_of_unique_id(uint64_t unique_id);
 
-void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t device_index);
-void print_pin_data_array(const PinData *pindata, uint8_t size);
+void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint64_t device_uuid);
 
 // Sorting functions to make all outputs deterministic
 void sort_pin_connections(PinData *pindata, uint8_t pin);
 
 // Not sure if this is needed externally
-void sort_seen_devices(PinData *pindata);
+void sort_seen_devices();   
+
+uint64_t get_own_device_id();
 
 
 #endif // PINDATA_H

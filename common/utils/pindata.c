@@ -1,16 +1,14 @@
 #include "pindata.h"
-#include "printf.h"
+#include "printf.h" // assumed for debug output
 
-// Global seen devices list
-uint64_t *seen_devices = NULL;
+// NOTE: seen_devices and seen_devices_index are defined in the header file.
+
 uint8_t seen_devices_count = 0;
+uint64_t seen_devices[MAX_SEEN_DEVICES];
+uint8_t seen_devices_index = 0;
 
 /**
- * @brief Initialize an array of PinData structures
- * And set the first seen device as own device ID
- *
- * @param pindata Pointer to the PinData array
- * @param size Size of the array
+ * @brief Initializes the PinData array.
  */
 void initialize_pin_data_array(PinData *pindata, uint8_t size)
 {
@@ -19,92 +17,78 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size)
         pindata[i].pin = i;
         pindata[i].event_mask = 0;
         pindata[i].connection_index = 0;
-        pindata[i].connection_capacity = 0;
-        pindata[i].connections = NULL;
+        pindata[i].connections_count = 0;
     }
-    // Initialize seen devices with own device ID
+    // Add own device ID as first element
     uint64_t own_id = get_unique_id();
-    add_seen_device(&own_id);
+    add_seen_device(own_id);
 }
+
 /**
- * @brief Add an event to the pin's event buffer
- *
- * @param pindata Pointer to the PinData array
- * @param pin Pin number
- * @param event Event type to add
+ * @brief Adds a pin event.
  */
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
 {
-    PinData *data = &pindata[pin];
-    data->event_mask |= (1 << event);// Update event mask
+    pindata[pin].event_mask |= (1 << event);
 }
 
 /**
- * @brief Check if a specific event exists for a pin
- *
- * @param pindata Pointer to the PinData array
- * @param pin Pin number
- * @param event Event type to check
- * @return true if event exists, false otherwise
+ * @brief Checks whether a pin event exists.
  */
 bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event)
 {
-    PinData *data = &pindata[pin];
-    return (data->event_mask & (1 << event)) != 0;
+    return (pindata[pin].event_mask & (1 << event)) != 0;
 }
 
 /**
- * @brief Get the index of unique id object
- *
- * @param unique_id
- * @return uint8_t
+ * @brief Finds the index of a device ID in the list.
  */
 uint8_t get_index_of_unique_id(uint64_t unique_id)
 {
+    // CORRECT: The loop MUST iterate over the actual number of stored
+    // devices (`seen_devices_count`), not over the write pointer (`seen_devices_index`).
     for (uint8_t i = 0; i < seen_devices_count; i++)
     {
         if (seen_devices[i] == unique_id)
         {
-            return i; // return existing index
+            return i; // device found
         }
     }
-    return 255; // not found
+    return DEVICE_NOT_FOUND; // not found
 }
 
 /**
- * @brief Add a device ID to the seen devices list if not already present
- *
- * @param other_device_id Pointer to the device ID to add
- * @return Index of the device in seen_devices array, or 255 if failed
+ * @brief Adds a device ID to the list (ring buffer logic).
  */
-uint8_t add_seen_device(uint64_t *other_device_id)
+uint8_t add_seen_device(uint64_t other_device_id)
 {
-    // already seen?
-    uint8_t existing_index = get_index_of_unique_id(*other_device_id);
-    if (existing_index != 255)
+
+    uint8_t existing_index = get_index_of_unique_id(other_device_id);
+    if (existing_index != DEVICE_NOT_FOUND)
     {
-        return existing_index;
+        return existing_index; // return index of existing device
     }
 
+    seen_devices[seen_devices_index] = other_device_id;
+    uint8_t index_that_was_written = seen_devices_index;
+
+    seen_devices_index = (seen_devices_index + 1) % MAX_SEEN_DEVICES;
     if (seen_devices_count < MAX_SEEN_DEVICES)
     {
-        uint64_t *new_seen = realloc(seen_devices, sizeof(uint64_t) * (seen_devices_count + 1));
-        if (new_seen != NULL)
-        {
-            seen_devices = new_seen;
-            seen_devices[seen_devices_count] = *other_device_id;
-            uint8_t new_index = seen_devices_count;
-            seen_devices_count++;
-            return new_index;
-        }
+        seen_devices_count++;
     }
-    return 255; // failure indicator
+
+    return index_that_was_written;
 }
 
-// Helper to check if a connection already exists
+/**
+ * @brief Helper function to check whether a connection already exists.
+ */
 static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_index)
 {
-    for (uint8_t i = 0; i < data->connection_index; i++)
+    const uint8_t count = (data->connection_index < MAX_CONNECTIONS_PER_PIN) ? data->connection_index : MAX_CONNECTIONS_PER_PIN;
+
+    for (uint8_t i = 0; i < count; i++)
     {
         if (data->connections[i].other_pin == other_pin && data->connections[i].device_index == device_index)
         {
@@ -115,70 +99,57 @@ static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_i
 }
 
 /**
- * @brief Add a connection to another pin and device ID
- * @param pindata Pointer to the PinData array
- * @param pin Pin number
- * @param other_pin_index Other pin number
+ * @brief Adds a pin connection (ring buffer logic).
  */
-void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t device_index)
+void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint64_t device_uuid)
 {
     PinData *data = &pindata[pin];
 
-    // Prevent duplicate connections
+    uint8_t device_index = get_index_of_unique_id(device_uuid);
+    if (device_index == DEVICE_NOT_FOUND)
+    {
+        // Device not found, add it
+        device_index = add_seen_device(&device_uuid);
+    }
+
     if (connection_exists(data, other_pin_index, device_index))
     {
         return;
     }
+    uint8_t conn_idx_to_write = data->connection_index % MAX_CONNECTIONS_PER_PIN;
+    data->connections[conn_idx_to_write].other_pin = other_pin_index;
+    data->connections[conn_idx_to_write].device_index = device_index;
 
-    // Init connection list if needed
-    if (data->connections == NULL)
-    {
-        data->connections = malloc(sizeof(PinConnection) * INITIAL_CONNECTION_CAPACITY);
-        if (data->connections == NULL)
-        {
-            return; // allocation failed
-        }
-        data->connection_index = 0;
-        data->connection_capacity = INITIAL_CONNECTION_CAPACITY;
-    }
-
-    if (data->connection_index >= data->connection_capacity)
-    {
-        uint8_t new_capacity = data->connection_capacity * 2;
-        PinConnection *new_connections =
-            realloc(data->connections, sizeof(PinConnection) * new_capacity);
-
-        if (new_connections == NULL)
-        {
-            return; // realloc failed
-        }
-
-        data->connections = new_connections;
-        data->connection_capacity = new_capacity;
-    }
-
-    data->connections[data->connection_index].other_pin = other_pin_index;
-    data->connections[data->connection_index].device_index = device_index;
     data->connection_index++;
+    if (conn_idx_to_write >= MAX_CONNECTIONS_PER_PIN)
+    {
+        data->connections_count = 1;
+    }
+    else
+    {
+        data->connections_count++;
+    }
 }
 
 /**
- * @brief Sort the pin connections based on device index and other pin
- * @param pindata Pointer to the PinData array
- * @param pin Pin number
+ * @brief Sorts the connections of a pin.
  */
 void sort_pin_connections(PinData *pindata, uint8_t pin)
 {
     PinData *data = &pindata[pin];
-    if (data->connections == NULL || data->connection_index < 2)
+
+    const uint8_t count = (data->connection_index < MAX_CONNECTIONS_PER_PIN) ? data->connection_index : MAX_CONNECTIONS_PER_PIN;
+
+    if (count < 2)
     {
-        return; // No need to sort
+        return; // nothing to sort
     }
-    // Simple bubble sort for small arrays
-    for (uint8_t i = 0; i < data->connection_index - 1; i++)
+
+    // Simple bubble sort
+    for (uint8_t i = 0; i < count - 1; i++)
     {
         bool swapped = false;
-        for (uint8_t j = 0; j < data->connection_index - i - 1; j++)
+        for (uint8_t j = 0; j < count - i - 1; j++)
         {
             PinConnection *a = &data->connections[j];
             PinConnection *b = &data->connections[j + 1];
@@ -193,20 +164,20 @@ void sort_pin_connections(PinData *pindata, uint8_t pin)
             }
         }
         if (!swapped)
-            break; // Already sorted
+            break; // already sorted
     }
 }
 
 /**
- * @brief Sort the seen devices list to ensure deterministic ordering
+ * @brief Sorts the seen devices array.
  */
-void sort_seen_devices(PinData *pindata)
+void sort_seen_devices()
 {
     if (seen_devices_count < 2)
     {
-        return; // No need to sort
+        return;
     }
-    // Simple bubble sort for small arrays
+
     for (uint8_t i = 0; i < seen_devices_count - 1; i++)
     {
         bool swapped = false;
@@ -221,15 +192,18 @@ void sort_seen_devices(PinData *pindata)
             }
         }
         if (!swapped)
-            break; // Already sorted
+            break;
     }
 }
 
 /**
- * @brief Get the own device UUID from the seen_devices list
- * @return Own device UUID
+ * @brief Returns the own device UUID.
  */
 uint64_t get_own_device_id()
 {
-    return seen_devices[0];
+    if (seen_devices_count > 0)
+    {
+        return seen_devices[MY_DEVICE_ID_INDEX];
+    }
+    return 0;
 }
