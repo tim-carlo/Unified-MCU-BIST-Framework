@@ -8,8 +8,8 @@
 #include <string.h>
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
-#define LOG(fmt, ...) // printf(fmt, ##__VA_ARGS__)
-// #define LOG(fmt, ...) // Uncomment this line to disable LOGging
+//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) // Uncomment this line to disable LOGging
 
 static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
@@ -25,6 +25,9 @@ static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = (20000 / DATA_TIMER_INTERV
 static const uint16_t MINMUM_REQUEST_CYCLES = 10;
 static const uint16_t MAXIMUM_REQUEST_CYCLES = 500;
 static const uint16_t MAXIMUM_IDLE_TIME = 600; // This needs to be higher than the maximum request time
+
+static const uint8_t ANSWER_IDENTIFIER = 0x55;
+static const uint8_t REQUEST_IDENTIFIER = 0xAA;
 
 // Global variables
 PinData *global_pindata;
@@ -107,7 +110,6 @@ static inline bool start_receiving_request(DataHandshakeData *p)
 {
     uint8_t manchester_idx = p->manchester_instance_index;
 
-    // Start background reception - data will be written to instance buffer
     uint8_t *buffer = parallel_manchester_get_received_data(manchester_idx);
     return parallel_manchester_receive_background(manchester_idx, buffer, REQUEST_PACKSIZE);
 }
@@ -116,7 +118,6 @@ static inline bool start_receiving_answer(DataHandshakeData *p)
 {
     uint8_t manchester_idx = p->manchester_instance_index;
 
-    // Start background reception - data will be written to instance buffer
     uint8_t *buffer = parallel_manchester_get_received_data(manchester_idx);
     return parallel_manchester_receive_background(manchester_idx, buffer, ANSWER_PACKSIZE);
 }
@@ -128,7 +129,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     if (!received_data)
         return false;
 
-    if (received_data[0] != 0xAA)
+    if (received_data[0] != REQUEST_IDENTIFIER)
         return false;
 
     uint32_t received_crc_le;
@@ -160,7 +161,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
             mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN;
             mutex_pin = pin;
             i_am_mutex_owner = false;
-            LOG("Mutex granted to other device on pin %u\n", pin);
+            //LOG("Mutex granted to other device on pin %u\n", pin);
         }
         else
         {
@@ -169,7 +170,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     }
 
     // Assemble the packet with a single write for the mutex field
-    answer_buffer[0] = 0xFF;
+    answer_buffer[0] = ANSWER_IDENTIFIER;
     memcpy(&answer_buffer[1], &remote_uuid_le, sizeof(remote_uuid_le));
     answer_buffer[9] = remote_pin;
 
@@ -196,7 +197,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     if (!received_data)
         return false;
 
-    if (received_data[0] != 0xFF)
+    if (received_data[0] != ANSWER_IDENTIFIER)
     {
         LOG("Answer not for us (wrong packet type)\n");
         return false; // Check packet type
@@ -230,7 +231,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
-        LOG("Mutex granted to this device on pin %u\n", pin);
+       // LOG("Mutex granted to this device on pin %u\n", pin);
     }
 
     p->number_of_successful_tries++;
@@ -245,7 +246,7 @@ static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     // delay_us(1000);
 
     const uint8_t mutex = (mutex_pin == 255) ? REQEST_MUTEX_ON_THIS_PIN : 0;
-    p->data_buffer[0] = 0xAA;
+    p->data_buffer[0] = REQUEST_IDENTIFIER;
 
     const uint64_t le_uuid = htole64(uuid);
     memcpy(&p->data_buffer[1], &le_uuid, sizeof(le_uuid));
@@ -602,6 +603,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     uint64_t valid_pins_for_fsm_mask = 0;
 
     uint8_t initiator_cnt = 1;
+    uuid = get_own_device_id();
 
     while (bitmap_iterator_next(&it, &pin_index))
     {
@@ -691,6 +693,11 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         global_datahandshake_pindata = NULL;
     }
     parallel_manchester_deinit();
+
+    printf("Data Handshake Results:\n");
+    // mutex:
+    printf("  Mutex Pin: %u\n", mutex_pin);
+    printf("  I am Mutex Owner: %s\n", i_am_mutex_owner ? "Yes" : "No");
 
     result.status = DATA_HANDSHAKE_SUCCESS;
     result.mutex_pin = mutex_pin;

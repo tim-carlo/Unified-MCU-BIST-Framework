@@ -109,7 +109,7 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, 
     if (device_index == DEVICE_NOT_FOUND)
     {
         // Device not found, add it
-        device_index = add_seen_device(&device_uuid);
+        device_index = add_seen_device(device_uuid);
     }
 
     if (connection_exists(data, other_pin_index, device_index))

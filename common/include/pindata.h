@@ -59,9 +59,9 @@ typedef union
 
 
 // List so that the algorithm can be extended in the future to work with multiple devices
+extern uint8_t seen_devices_count;
 extern uint64_t seen_devices[MAX_SEEN_DEVICES];
-extern uint8_t seen_devices_index = 0;
-extern uint8_t seen_devices_count = 0;
+extern uint8_t seen_devices_index;
 
 
 typedef struct

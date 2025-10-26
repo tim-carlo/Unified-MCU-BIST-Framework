@@ -120,15 +120,8 @@ SerializationResult serialize_next_chunk()
         bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTIONS);
         write_ptr += bytes_written;
 
-        if (pin_data->connection_index > 0)
+        if (pin_data->connections_count > 0)
         {
-            // Sanity check: limit maximum connections to 10
-            if (pin_data->connection_index > 10)
-            {
-                free(cbor_buffer);
-                return SERIALIZATION_ERROR_INVALID_INPUT;
-            }
-
             // sort connections before serialization, is important for consistent ordering
             // To make sure the cbor output is consistent across multiple runs
             sort_pin_connections(current_pindata, pin_data->pin);
