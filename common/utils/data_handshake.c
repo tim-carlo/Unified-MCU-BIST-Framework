@@ -150,7 +150,7 @@ static inline void construct_answer_data_packet(uint64_t received_uuid,
 
     // Calculate CRC
     uint32_t crc_value = crcFast(data, 20);
-    uint32_t le_crc    = htole32(crc_value);
+    uint32_t le_crc = htole32(crc_value);
     memcpy(&data[20], &le_crc, sizeof(le_crc));
 
     return true;
@@ -206,7 +206,7 @@ static inline bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDat
     return true;
 }
 
-static bool start_receiving_request(DataHandshakeData *p)
+static inline bool start_receiving_request(DataHandshakeData *p)
 {
     uint8_t manchester_idx = p->manchester_instance_index;
 
@@ -215,7 +215,7 @@ static bool start_receiving_request(DataHandshakeData *p)
     return parallel_manchester_receive_background(manchester_idx, buffer, REQUEST_PACKSIZE);
 }
 
-static bool start_receiving_answer(DataHandshakeData *p)
+static inline bool start_receiving_answer(DataHandshakeData *p)
 {
     uint8_t manchester_idx = p->manchester_instance_index;
 
@@ -224,7 +224,7 @@ static bool start_receiving_answer(DataHandshakeData *p)
     return parallel_manchester_receive_background(manchester_idx, buffer, ANSWER_PACKSIZE);
 }
 
-static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
+static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 {
 
     RequestDataPacket request_packet;
@@ -286,7 +286,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     return true;
 }
 
-static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
+static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 {
     AnswerDataPacket answer_packet;
 
@@ -321,7 +321,7 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     return true;
 }
 
-static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
+static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
 
@@ -360,7 +360,13 @@ static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 
     uint8_t answer_buffer[ANSWER_PACKSIZE];
 
-    construct_answer_data_packet(p->answer_packet, answer_buffer);
+    construct_answer_data_packet(
+        p->answer_packet->received_uuid,
+        p->answer_packet->received_pin,
+        p->answer_packet->own_uuid,
+        p->answer_packet->sending_pin,
+        p->answer_packet->mutex_allowed,
+        answer_buffer);
 
     uint8_t manchester_idx = p->manchester_instance_index;
     bool result = parallel_manchester_transmit_background(manchester_idx, answer_buffer, ANSWER_PACKSIZE);
@@ -371,14 +377,14 @@ static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
     return true;
 }
 
-static void reschedule_request(DataHandshakeData *p, uint32_t counter)
+static inline void reschedule_request(DataHandshakeData *p, uint32_t counter)
 {
     // Schedule next send time to avoid immediate resend
     p->time_until_next_send = get_listen_until_time(1);
     p->last_send_job_order = counter; // Reset to allow immediate sending when time is up
 }
 
-static uint32_t counter = 0;
+static volatile uint32_t counter = 0;
 
 static void fsm_data_handshake(void)
 {
@@ -632,7 +638,7 @@ static void fsm_data_handshake(void)
         global_last_worker = 0;
     }
 }
-static uint8_t isr_counter = 0;
+static volatile uint8_t isr_counter = 0;
 static void send_data_isr(void)
 {
     interrupt_cont = true;
