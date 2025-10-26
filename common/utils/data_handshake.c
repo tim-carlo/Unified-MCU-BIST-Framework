@@ -8,9 +8,8 @@
 #include <string.h>
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
-//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+// #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #define LOG(fmt, ...) // Uncomment this line to disable LOGging
-
 
 static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
@@ -97,116 +96,113 @@ static void analyze_pindata_events(PinData *pindata)
     }
 }
 
-static uint16_t get_listen_until_time(float factor)
+static inline uint16_t get_listen_until_time(const float factor)
 {
     uint16_t random_offset = (uint16_t)(random32() % (MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES)) + 10; // between 10 and 500 ms
     random_offset *= factor;
     return random_offset;
 }
 
-static void write_u64_le(uint8_t *dst, uint64_t val)
-{
-    for (int i = 0; i < 8; i++)
-    {
-        dst[i] = (uint8_t)(val >> (8 * i));
-    }
-}
-
-static uint64_t read_u64_le(const uint8_t *src)
-{
-    uint64_t val = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        val |= ((uint64_t)src[i]) << (8 * i);
-    }
-    return val;
-}
-
-static void write_u32_le(uint8_t *dst, uint32_t val)
-{
-    for (int i = 0; i < 4; i++)
-    {
-        dst[i] = (uint8_t)(val >> (8 * i));
-    }
-}
-
-static uint32_t read_u32_le(const uint8_t *src)
-{
-    uint32_t val = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        val |= ((uint32_t)src[i]) << (8 * i);
-    }
-    return val;
-}
-
-#define REQUEST_PACKET_BUFFER_SIZE REQUEST_PACKSIZE
-#define ANSWER_PACKET_BUFFER_SIZE ANSWER_PACKSIZE
-
-// Buffer for request packet construction
-static uint8_t request_packet_buffer[REQUEST_PACKET_BUFFER_SIZE];
-// Buffer for answer packet construction
-static uint8_t answer_packet_buffer[ANSWER_PACKET_BUFFER_SIZE];
-
 // Packet format: [1 byte type][8 bytes UUID][1 byte Pin][1 byte Mutex Request][4 bytes CRC]
-static void construct_request_data_packet(RequestDataPacket *packet, uint8_t *data)
+static inline void construct_request_data_packet(uint64_t uuid,
+                                                 uint8_t pin,
+                                                 uint8_t mutex_request,
+                                                 uint8_t *data)
 {
-    // Use internal buffer for construction
-    uint8_t *buf = request_packet_buffer;
-    buf[0] = 0xAA; // Packet type
-    write_u64_le(&buf[1], packet->uuid);
-    buf[9] = packet->pin;
-    buf[10] = packet->mutex_request;      // Mutex request field
-    packet->crc_value = crcFast(buf, 11); // Calculate CRC over type, uuid, pin, and mutex request
-    write_u32_le(&buf[11], packet->crc_value);
 
-    memcpy(data, buf, REQUEST_PACKET_BUFFER_SIZE);
+    data[0] = 0xAA; // Packet type
+
+    const uint64_t le_uuid = htole64(uuid);
+    memcpy(&data[1], &le_uuid, sizeof(le_uuid));
+
+    data[9] = pin;
+    data[10] = mutex_request;
+
+    // Calculate CRC
+    uint32_t crc_value = crcFast(data, 11);
+    uint32_t le_crc = htole32(crc_value);
+    memcpy(&data[11], &le_crc, sizeof(le_crc));
+
+    return true;
 }
-
 // Packet format: [1 byte type][8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][1 byte mutex_allowed][4 bytes CRC]
-static void construct_answer_data_packet(AnswerDataPacket *packet, uint8_t *data)
+static inline void construct_answer_data_packet(uint64_t received_uuid,
+                                                uint8_t received_pin,
+                                                uint64_t own_uuid,
+                                                uint8_t sending_pin,
+                                                uint8_t mutex_allowed,
+                                                uint8_t *data)
 {
-    // Use internal buffer for construction
-    uint8_t *buf = answer_packet_buffer;
-    buf[0] = 0xFF; // Packet type
-    write_u64_le(&buf[1], packet->received_uuid);
-    buf[9] = packet->received_pin;
-    write_u64_le(&buf[10], packet->own_uuid);
-    buf[18] = packet->sending_pin;
-    buf[19] = packet->mutex_allowed;      // Write mutex_allowed field
-    packet->crc_value = crcFast(buf, 20); // Calculate CRC over type, received_uuid, received_pin, own_uuid, sending_pin, mutex_allowed
-    write_u32_le(&buf[20], packet->crc_value);
+    const uint64_t le_received_uuid = htole64(received_uuid);
+    const uint64_t le_own_uuid = htole64(own_uuid);
 
-    memcpy(data, buf, ANSWER_PACKET_BUFFER_SIZE);
+    data[0] = 0xFF; // Packet type
+    const uint64_t le_received_uuid = htole64(received_uuid);
+    memcpy(&data[1], &le_received_uuid, sizeof(le_received_uuid));
+
+    data[9] = received_pin;
+
+    const uint64_t le_own_uuid = htole64(own_uuid);
+    memcpy(&data[10], &le_own_uuid, sizeof(le_own_uuid));
+
+    data[18] = sending_pin;
+    data[19] = mutex_allowed;
+
+    // Calculate CRC
+    uint32_t crc_value = crcFast(data, 20);
+    uint32_t le_crc    = htole32(crc_value);
+    memcpy(&data[20], &le_crc, sizeof(le_crc));
+
+    return true;
 }
 
-static bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
+static inline bool deconstruct_request_data_packet(const uint8_t *data, RequestDataPacket *packet)
 {
-    // Check packet type
     if (data[0] != 0xAA)
     {
         return false;
     }
-    packet->uuid = read_u64_le(&data[1]);
+
+    uint64_t uuid_le;
+    memcpy(&uuid_le, &data[1], sizeof(uuid_le));
+    packet->uuid = le64toh(uuid_le);
+
     packet->pin = data[9];
-    packet->mutex_request = data[10]; // Extract mutex request field
-    packet->crc_value = read_u32_le(&data[11]);
+    packet->mutex_request = data[10];
+
+    uint32_t crc_le;
+    memcpy(&crc_le, &data[11], sizeof(crc_le));
+    packet->crc_value = le32toh(crc_le);
+
     return true;
 }
 
-static bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket *packet)
+static inline bool deconstruct_answer_data_packet(const uint8_t *data, AnswerDataPacket *packet)
 {
+
     // Check packet type
     if (data[0] != 0xFF)
     {
         return false;
     }
-    packet->received_uuid = read_u64_le(&data[1]);
+
+    uint64_t received_uuid_le;
+    memcpy(&received_uuid_le, &data[1], sizeof(received_uuid_le));
+    packet->received_uuid = le64toh(received_uuid_le);
+
     packet->received_pin = data[9];
-    packet->own_uuid = read_u64_le(&data[10]);
+
+    uint64_t own_uuid_le;
+    memcpy(&own_uuid_le, &data[10], sizeof(own_uuid_le));
+    packet->own_uuid = le64toh(own_uuid_le);
+
     packet->sending_pin = data[18];
-    packet->mutex_allowed = data[19]; // Read mutex_allowed field
-    packet->crc_value = read_u32_le(&data[20]);
+    packet->mutex_allowed = data[19];
+
+    uint32_t crc_le;
+    memcpy(&crc_le, &data[20], sizeof(crc_le));
+    packet->crc_value = le32toh(crc_le);
+
     return true;
 }
 
@@ -234,7 +230,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     RequestDataPacket request_packet;
 
     // Get received data from Manchester instance buffer
-    uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
+    const uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
     if (!received_data)
         return false;
 
@@ -258,11 +254,12 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
     AnswerDataPacket answer_packet;
 
     // Prepare answer packet using static structure to avoid memory leaks
-    answer_packet.received_uuid = request_packet.uuid;
-    answer_packet.received_pin = request_packet.pin;
-    answer_packet.own_uuid = uuid;
-    answer_packet.sending_pin = pin;
-    answer_packet.crc_value = 0; // Will be calculated later
+    AnswerDataPacket *answer_packet_p = (AnswerDataPacket *)p->data_buffer;
+    answer_packet_p->received_uuid = request_packet.uuid;
+    answer_packet_p->received_pin = request_packet.pin;
+    answer_packet_p->own_uuid = uuid;
+    answer_packet_p->sending_pin = pin;
+    answer_packet_p->crc_value = 0;
 
     // Handle mutex request
     if (request_packet.mutex_request == REQEST_MUTEX_ON_THIS_PIN && request_packet.uuid != uuid)
@@ -270,7 +267,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
         // If I am not holding the mutex the other device can attempt to get it again since he probably lost it
         if (mutex_pin == 255 || !i_am_mutex_owner)
         {
-            answer_packet.mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN; // Grant mutex
+            answer_packet_p->mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN; // Grant mutex
             mutex_pin = pin;
             i_am_mutex_owner = false;
             LOG("Mutex granted to other device on pin %u\n", pin);
@@ -281,7 +278,7 @@ static bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
         }
     }
 
-    p->answer_packet = &answer_packet;
+    p->answer_packet = answer_packet_p;
 
     // Mark that we're going to send an answer
     dhandshake_set_send_answer(p, true);
@@ -307,11 +304,6 @@ static bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
         LOG("Answer not for us");
         return false;
     }
-
-    // Mark successful handshake
-    dhandshake_set_received_answer(p, true);
-    dhandshake_set_successful_handshake(p, true);
-
     // Add pin connection to pindata events
     PinData *pindata = &global_pindata[pin];
     uint64_t other_device_id = answer_packet.own_uuid;
@@ -334,26 +326,21 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     gpio_od_release(pin);
 
     // Small delay to ensure line is released before transmitting
-    //delay_us(1000);
+    // delay_us(1000);
 
-    // Mark that we're sending a request
-    dhandshake_set_send_request(p, true);
-    RequestDataPacket request_packet;
-    request_packet.uuid = uuid;
-    request_packet.pin = pin;
-    request_packet.crc_value = 0; // Will be calculated in construct function
+    uint8_t mutex = 0;
 
     // if no mutex pin is set, request mutex on this pin
     if (mutex_pin == 255)
     {
-        request_packet.mutex_request = REQEST_MUTEX_ON_THIS_PIN; // Request mutex on this pin
+        mutex = REQEST_MUTEX_ON_THIS_PIN; // Request mutex on this pin
     }
 
-    p->request_packet = &request_packet;
-
     uint8_t request_buffer[REQUEST_PACKSIZE];
-
-    construct_request_data_packet(&request_packet, request_buffer);
+    construct_request_data_packet(uuid,
+                                  pin,
+                                  mutex,
+                                  request_buffer);
 
     const uint8_t manchester_idx = p->manchester_instance_index;
     bool result = parallel_manchester_transmit_background(manchester_idx, request_buffer, REQUEST_PACKSIZE);
@@ -365,17 +352,11 @@ static bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 }
 
 // Update send_answer_in_background to use the single buffer:
-static bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
+static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
-    //delay_us(1000);
-
-    // Check for null pointer to prevent crashes
-    if (!p->answer_packet)
-    {
-        return false;
-    }
+    // delay_us(1000);
 
     uint8_t answer_buffer[ANSWER_PACKSIZE];
 
@@ -752,7 +733,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         {
             dhandshake_set_role(&global_datahandshake_pindata[idx], false); // Initiator
             // If the pin is initiator, the device will send requests on this pin
-            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt*0.5f);
+            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt * 0.5f);
             initiator_cnt++;
         }
         else if (responder_mask & (1ULL << pin_index))
