@@ -133,21 +133,6 @@ void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_
     if (uart == NULL || pins == NULL)
         return;
 
-    // // Step 1: Set UCSWRST (BIT.B #UCSWRST,&UCAxCTL1)
-    // *(uart->CTLW0) = UCSWRST;
-
-    // // Step 2: Initialize all eUSCI_A registers with UCSWRST = 1 (including UCAxCTL1)
-    // *(uart->CTLW0) |= UCSSEL__SMCLK; // Select SMCLK as clock source
-
-    // uint16_t br0, br1, mctlw;
-    // calculate_baud_rate(baud_rate, &br0, &br1, &mctlw);
-    // *(uart->BR0) = 104;
-    // *(uart->BR1) = 0;
-    // *(uart->MCTLW) = UCOS16 | 0x4900;
-
-    // // Enable UART module
-    // *(uart->CTLW0) &= ~UCSWRST; // Release from reset
-
     // Configure ports (Step 3)
     // volatile uint8_t *port_sel0 = (volatile uint8_t *)pins->port_sel0;
     // volatile uint8_t *port_sel1 = (volatile uint8_t *)pins->port_sel1;

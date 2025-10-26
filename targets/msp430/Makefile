@@ -15,7 +15,6 @@ endef
 $(error $(GNU_ERROR_BODY))
 endif
 
-# Project structure directories
 PROJECT_ROOT := ../..
 CORE_DIR := $(PROJECT_ROOT)/core
 HAL_DIR := $(PROJECT_ROOT)/hal/msp430
@@ -33,7 +32,8 @@ DEVICE := MSP430FR5994
 CSRC_FILES := \
     $(wildcard $(CORE_DIR)/*.c) \
     $(wildcard $(HAL_DIR)/*.c) \
-    $(wildcard $(COMMON_UTILS_DIR)/*.c)
+    $(wildcard $(COMMON_UTILS_DIR)/*.c) \
+	$(wildcard $(COMMON_LIBS_DIR)/*.c)
 
 ASRC_FILES := \
     $(wildcard $(CORE_DIR)/*.S) \
@@ -54,6 +54,7 @@ INC_DIRS := \
     $(CORE_DIR) \
     $(HAL_DIR) \
     $(COMMON_INCLUDE_DIR) \
+	$(COMMON_LIBS_DIR) \
     $(SUPPORT_FILE_DIRECTORY)
 
 INCLUDES := $(foreach dir,$(INC_DIRS),-I$(dir))

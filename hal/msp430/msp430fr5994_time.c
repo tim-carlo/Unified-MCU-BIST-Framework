@@ -108,7 +108,7 @@ void reset_timer(const timer_type timer)
 }
 
 /**
- * @brief Set overflow callback - called on timer overflow (Slot 1)
+ * @brief Set overflow callback called on timer overflow (Slot 1)
  */
 void set_timer_overflow_callback(const timer_type timer, void (*const callback)(void))
 {
@@ -120,7 +120,7 @@ void set_timer_overflow_callback(const timer_type timer, void (*const callback)(
 }
 
 /**
- * @brief Set compare callback - called on compare match (Slot 0)
+ * @brief Set compare callback called on compare match (Slot 0)
  */
 void set_timer_compare_callback(const timer_type timer, void (*const callback)(void))
 {

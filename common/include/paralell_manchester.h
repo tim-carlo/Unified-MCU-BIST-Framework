@@ -88,7 +88,7 @@ uint8_t parallel_manchester_add_instance(uint8_t pin, uint8_t *buffer, uint8_t b
 bool parallel_manchester_remove_instance(uint8_t index);
 
 // Non-blocking transmission and receive functions
-bool parallel_manchester_transmit_background(uint8_t index, uint8_t *data, uint8_t size);
+bool parallel_manchester_transmit_background(uint8_t index, uint8_t size);
 bool parallel_manchester_transmit_complete(uint8_t index);
 bool parallel_manchester_receive_background(uint8_t index, uint8_t *data, uint8_t size);
 bool parallel_manchester_receive_complete(uint8_t index);

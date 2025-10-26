@@ -10,6 +10,11 @@
 #define NUMBER_OF_SAMPLES 5
 #define SETTLE_TIME_US 100
 
+// Phase 0 has a length of 10ms
+// Phase 1 has a length of 20ms
+// Phase 2 has a length of 30ms
+// Phase 3 has a length of 40ms
+
 static uint64_t read_all_pins(uint64_t blacklist_mask)
 {
     uint64_t result = ~0ULL;
@@ -125,6 +130,9 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
         // Pin als Input mit Pull-Down konfigurieren
         gpio_input_init(pin, GPIO_PULL_DOWN);
 
+        // Add 10 ms delay to allow pin state to stabilize the signal and make it recognizable in the logic analyzer
+        delay_ms(10);
+
         // measure own pin to verify it is actually low
         if (!sample_own_pin(pin, false))
         {
@@ -187,7 +195,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     {
         gpio_input_init(pin, GPIO_PULL_UP);
         gpio_drive_high(DEBUG_PIN1);
-        delay_us(SETTLE_TIME_US); // Allow time for signals to stabilize
+        delay_ms(20); // Allow time for signals to stabilize and make it recognizable in the logic analyzer
 
         // Validate that pin goes high when pulled up
         if (!sample_pin_state(pin, true))
@@ -252,6 +260,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         // Configure test pin as output and drive low
         gpio_output_init(pin);
         gpio_drive_low(pin);
+        delay_ms(30); // Allow time for signals to stabilize and make it recognizable in the logic analyzer
         
 
         // Validate that pin goes low when driven low
@@ -261,8 +270,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         }
 
         gpio_drive_high(DEBUG_PIN1);
-
-        delay_ms(10);
+        
 
         // Take samples and count changes
         sample_pin_changes(blacklist_mask, initial_state, pin, counter);
@@ -322,7 +330,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         gpio_output_init(pin);
         gpio_drive_high(pin);
 
-        delay_us(SETTLE_TIME_US); // Allow time for signals to stabilize
+        delay_ms(40); // Allow time for signals to stabilize and make it recognizable in the logic analyzer
 
         // Validate that pin goes high when driven high
         if (!sample_pin_state(pin, true))
@@ -369,8 +377,6 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
  */
 void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size)
 {
-
-    LOG("Starting set-one-high-measure-all with blacklist mask: 0x%016llX\n", blacklist_mask);
     gpio_output_init(DEBUG_PIN1);
     // Run all 4 phases
     phase_0_pulldown_drive_low(blacklist_mask, pindata);
@@ -378,6 +384,4 @@ void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uin
     phase_2_no_pull_drive_low(blacklist_mask, pindata);
     phase_3_no_pull_drive_high(blacklist_mask, pindata);
     gpio_reset(DEBUG_PIN1);
-
-    LOG("Completed set-one-high-measure-all\n");
 }

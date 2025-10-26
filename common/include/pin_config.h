@@ -6,7 +6,7 @@
 #include "nrf52840_helper.h"
 #endif
 
-#define DEV_KIT 0
+#define DEV_KIT 1
 
 #if (DEV_KIT == 0)
 
@@ -115,23 +115,53 @@
 #define PIN_UART_TX 6
 #define PIN_UART_RX 8
 
-#define DEBUG_PIN1 11
-#define DEBUG_PIN2 12
-#define DEBUG_PIN3 13
-#define DEBUG_PIN4 14
+#define DEBUG_PIN1 19
+#define DEBUG_PIN2 20
+#define DEBUG_PIN3 21
+#define DEBUG_PIN4 22
 
-#define PIN_LED2 3
+#define GPIO0 0
+#define GPIO1 1
+#define GPIO2 2
+#define GPIO3 3
+#define GPIO4 4
+#define GPIO5 5
+#define GPIO6 7
+#define GPIO7 9
+#define GPIO8 10
+#define GPIO9 15
+#define GPIO10 16
+#define GPIO11 17
+#define GPIO12 18
+
+#define PIN_LED2 26
+#define PIN_LED0 27
+
 
 #elif defined(__MSP430FR5994__)
 #define PIN_UART_TX ABS_PIN(2, 0) // P2.0
 #define PIN_UART_RX ABS_PIN(2, 1) // P2.1
 
-#define DEBUG_PIN1 ABS_PIN(3, 0) // P3.0
-#define DEBUG_PIN2 ABS_PIN(3, 1) // P3.1
-#define DEBUG_PIN3 ABS_PIN(3, 2) // P3.2
-#define DEBUG_PIN4 ABS_PIN(3, 3) // P3.3
+#define DEBUG_PIN1 ABS_PIN(7, 0) // P3.0
+#define DEBUG_PIN2 ABS_PIN(7, 1) // P3.1
 
-#define PIN_LED2 ABS_PIN(1, 0)
+#define PIN_LED0 ABS_PIN(1, 0)
+#define PIN_LED2 ABS_PIN(1, 1)
+#define GPIO0 ABS_PIN(3, 0)
+#define GPIO1 ABS_PIN(3, 1)
+#define GPIO2 ABS_PIN(3, 2)
+#define GPIO3 ABS_PIN(3, 3)
+#define GPIO4 ABS_PIN(3, 4)
+#define GPIO5 ABS_PIN(3, 5)
+#define GPIO6 ABS_PIN(3, 6)
+#define GPIO7 ABS_PIN(3, 7)
+#define GPIO8 ABS_PIN(5, 2)
+#define GPIO9 ABS_PIN(5, 3)
+#define GPIO10 ABS_PIN(5, 7)
+#define GPIO11 ABS_PIN(6, 0)
+#define GPIO12 ABS_PIN(6, 1)
+#define GPIO13 ABS_PIN(6, 2)
+#define GPIO14 ABS_PIN(6, 3)
 
 #endif
 

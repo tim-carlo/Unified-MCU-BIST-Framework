@@ -59,9 +59,8 @@ void mcu_init()
 
     // Unlock GPIO
     PM5CTL0 &= ~LOCKLPM5;
-
     // Configure clock to 16MHz
-    // Using DCO at 16MHz 
+    // Using DCO at 16MHz
     FRCTL0 = FRCTLPW | NWAITS_1;
     CSCTL0_H = CSKEY_H;
     CSCTL1 = DCOFSEL_4 | DCORSEL;
@@ -69,54 +68,39 @@ void mcu_init()
     CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;
     CSCTL0_H = 0;
 
-    // // Configure UART
-    // UCA0CTLW0 = UCSWRST;         // Reset UART
-    // UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
-    // UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
-    // UCA0BR1 = 0;                 // High byte
-    // UCA0MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
-    //
-
-    // Configure UART pins using the uart library
-    //uart_pins_t uart_pins;
-    //uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX);
-    // uart_init(MSP430_UART0, 9600, &uart_pins);
-    // UCA0CTLW0 &= ~UCSWRST; // Enable UART
-
-    
-    // Configure second UART (UCA1) on P2.5 (TX) and P2.6 (RX)
-    //P2SEL1 |= BIT5;
-    //P2SEL0 &= ~BIT5;
+#if DEV_KIT == 0
     P2SEL1 |= BIT5 | BIT6;
     P2SEL0 &= ~(BIT5 | BIT6);
-
-    UCA1CTLW0 = UCSWRST;         // Reset UART
-    UCA1CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
-    UCA1BR0 = 104;               // 16MHz/9600 = 1666.67
+    UCA1CTLW0 = UCSWRST;        // Reset UART
+    UCA1CTLW0 |= UCSSEL__SMCLK; // SMCLK source (16MHz)
+    UCA1BR0 = 104;              // 16MHz/9600 = 1666.67
     UCA1BR1 = 0;                 // High byte
     UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
-
     UCA1CTLW0 &= ~UCSWRST;       // Enable UART
+#else
+    P2SEL1 |= BIT0 | BIT1;    // Set UART function
+    P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
+    UCA0CTLW0 = UCSWRST;         // Reset UART
+    UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
+    UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
+    UCA0BR1 = 0;                 // High byte
+    UCA0MCTLW = UCOS16 | 0x4900; //
+    UCA0CTLW0 &= ~UCSWRST;       // Enable UART
+#endif
 
-    
+    // UCA1BR1 = 0;                 // High byte
+    // UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
 
-// #if DEV_KIT == 1
-//     // Configure UART pins
-//     P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
-//     P2SEL1 |= BIT0 | BIT1;    // Set UART function
-// #else
-//     P2SEL0 |= BIT5 | BIT6;    
-//     P2SEL1 &= ~(BIT5 | BIT6); 
-// #endif
-    
+    // 
 
-    // TX
-    // *(uart_pins.tx_sel0) &= ~uart_pins.tx_mask;
-    // *(uart_pins.tx_sel1) |= uart_pins.tx_mask;
-
-    // // RX
-    // *(uart_pins.rx_sel0) &= ~uart_pins.rx_mask;
-    // *(uart_pins.rx_sel1) |= uart_pins.rx_mask;
+    // #if DEV_KIT == 1
+    //     // Configure UART pins
+    //     P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
+    //     P2SEL1 |= BIT0 | BIT1;    // Set UART function
+    // #else
+    //     P2SEL0 |= BIT5 | BIT6;
+    //     P2SEL1 &= ~(BIT5 | BIT6);
+    // #endif
 
     // Configure all timers with ID__8 (divide by 8)
     // configure_timer((volatile uint16_t *)&TA1CTL, ID__8); // Configure Timer A1

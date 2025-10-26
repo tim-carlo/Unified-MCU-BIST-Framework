@@ -8,8 +8,8 @@
 #include <string.h>
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
-// #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-#define LOG(fmt, ...) // Uncomment this line to disable LOGging
+#define LOG(fmt, ...) // printf(fmt, ##__VA_ARGS__)
+// #define LOG(fmt, ...) // Uncomment this line to disable LOGging
 
 static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
@@ -124,45 +124,40 @@ static inline bool start_receiving_answer(DataHandshakeData *p)
 static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 {
 
-    RequestDataPacket request_packet;
-
-    // Get received data from Manchester instance buffer
-    const uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
+    const uint8_t *restrict received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
     if (!received_data)
         return false;
 
-    // Check packet type
     if (received_data[0] != 0xAA)
         return false;
+
     uint32_t received_crc_le;
     memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
-    uint32_t received_crc = le32toh(received_crc_le);
-
-    crc computed_crc = crcFast(p->data_buffer, 10);
-    if (computed_crc != request_packet.crc_value)
+    if (crcFast(received_data, 11) != le32toh(received_crc_le))
     {
-        return false; // CRC mismatch
+        LOG("Request CRC error\n");
+        return false;
     }
 
-    // Add a pin connection to the request packet
-    add_pin_connection(&global_pindata[pin], pin, request_packet.pin, request_packet.uuid);
-    LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, request_packet.pin);
+    uint64_t remote_uuid_le;
+    memcpy(&remote_uuid_le, &received_data[1], sizeof(remote_uuid_le));
+    const uint64_t remote_uuid = le64toh(remote_uuid_le);
 
-    // Prepare answer packet using static structure to avoid memory leaks
-    AnswerDataPacket *answer_packet_p = (AnswerDataPacket *)p->data_buffer;
-    answer_packet_p->received_uuid = request_packet.uuid;
-    answer_packet_p->received_pin = request_packet.pin;
-    answer_packet_p->own_uuid = uuid;
-    answer_packet_p->sending_pin = pin;
-    answer_packet_p->crc_value = 0;
+    const uint8_t remote_pin = received_data[9];
+    const uint8_t mutex_request = received_data[10];
 
-    // Handle mutex request
-    if (request_packet.mutex_request == REQEST_MUTEX_ON_THIS_PIN && request_packet.uuid != uuid)
+    add_pin_connection(&global_pindata[pin], pin, remote_pin, remote_uuid);
+    LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
+
+    uint8_t *restrict answer_buffer = p->data_buffer;
+
+    // Determine mutex state before writing to buffer
+    uint8_t mutex_allowed = 0;
+    if (mutex_request == REQEST_MUTEX_ON_THIS_PIN && remote_uuid != uuid)
     {
-        // If I am not holding the mutex the other device can attempt to get it again since he probably lost it
         if (mutex_pin == 255 || !i_am_mutex_owner)
         {
-            answer_packet_p->mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN; // Grant mutex
+            mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN;
             mutex_pin = pin;
             i_am_mutex_owner = false;
             LOG("Mutex granted to other device on pin %u\n", pin);
@@ -173,28 +168,41 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
         }
     }
 
-    p->answer_packet = answer_packet_p;
+    // Assemble the packet with a single write for the mutex field
+    answer_buffer[0] = 0xFF;
+    memcpy(&answer_buffer[1], &remote_uuid_le, sizeof(remote_uuid_le));
+    answer_buffer[9] = remote_pin;
 
-    // Mark that we're going to send an answer
+    const uint64_t le_own_uuid = htole64(uuid);
+    memcpy(&answer_buffer[10], &le_own_uuid, sizeof(le_own_uuid));
+
+    answer_buffer[18] = pin;
+    answer_buffer[19] = mutex_allowed;
+
+    // Finalize packet with CRC
+    const uint32_t crc_value = crcFast(answer_buffer, 20);
+    const uint32_t le_crc = htole32(crc_value);
+    memcpy(&answer_buffer[20], &le_crc, sizeof(le_crc));
+
+    // Signal readiness
     dhandshake_set_send_answer(p, true);
-    gpio_od_hold_low(pin); // Hold the line low to signal we're responding
+    gpio_od_hold_low(pin);
     return true;
 }
 
 static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 {
-    AnswerDataPacket answer_packet;
-
-    // Get received data from Manchester instance buffer
-    uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
+    const uint8_t *received_data = parallel_manchester_get_received_data(p->manchester_instance_index);
     if (!received_data)
         return false;
 
-    // Deconstruct answer packet
     if (received_data[0] != 0xFF)
+    {
+        LOG("Answer not for us (wrong packet type)\n");
         return false; // Check packet type
+    }
 
-    const uint64_t received_uuid_le;
+    uint64_t received_uuid_le;
     memcpy(&received_uuid_le, &received_data[1], sizeof(received_uuid_le));
     if (le64toh(received_uuid_le) != uuid)
     {
@@ -208,13 +216,14 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
         return false;
     }
 
-    const uint64_t other_device_uuid_le;
+    // TODO: Add CRC check for the answer packet here!
+
+    uint64_t other_device_uuid_le;
     memcpy(&other_device_uuid_le, &received_data[10], sizeof(other_device_uuid_le));
     const uint64_t other_device_uuid = le64toh(other_device_uuid_le);
     const uint8_t remote_pin = received_data[18];
     const uint8_t mutex_allowed = received_data[19];
 
-    // Add pin connection to pindata events
     add_pin_connection(&global_pindata[pin], pin, remote_pin, other_device_uuid);
 
     if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN)
@@ -225,7 +234,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     }
 
     p->number_of_successful_tries++;
-    LOG("Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
+    LOG("A: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     return true;
 }
 static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
@@ -235,43 +244,32 @@ static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     // Small delay to ensure line is released before transmitting
     // delay_us(1000);
 
-    uint8_t request_buffer[REQUEST_PACKSIZE];
-    uint8_t mutex = (mutex_pin == 255) ? REQEST_MUTEX_ON_THIS_PIN : 0;
-
-    // if no mutex pin is set, request mutex on this pin
-    request_buffer[0] = 0xAA; // Packet type
+    const uint8_t mutex = (mutex_pin == 255) ? REQEST_MUTEX_ON_THIS_PIN : 0;
+    p->data_buffer[0] = 0xAA;
 
     const uint64_t le_uuid = htole64(uuid);
-    memcpy(&request_buffer[1], &le_uuid, sizeof(le_uuid));
+    memcpy(&p->data_buffer[1], &le_uuid, sizeof(le_uuid));
 
-    request_buffer[9] = pin;
-    request_buffer[10] = mutex;
+    p->data_buffer[9] = pin;
+    p->data_buffer[10] = mutex;
 
-    uint32_t crc_value = crcFast(request_buffer, 11);
-    uint32_t le_crc = htole32(crc_value);
-    memcpy(&request_buffer[11], &le_crc, sizeof(le_crc));
+    const uint32_t crc_value = crcFast(p->data_buffer, 11);
+    const uint32_t le_crc = htole32(crc_value);
+    memcpy(&p->data_buffer[11], &le_crc, sizeof(le_crc));
 
     const uint8_t manchester_idx = p->manchester_instance_index;
-    bool result = parallel_manchester_transmit_background(manchester_idx, request_buffer, REQUEST_PACKSIZE);
+    const bool result = parallel_manchester_transmit_background(manchester_idx, REQUEST_PACKSIZE);
 
     return result;
 }
 
-// Update send_answer_in_background to use the single buffer:
 static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     gpio_od_release(pin);
     // Small delay to ensure line is released before transmitting
     // delay_us(1000);
 
-    uint8_t *answer_buffer = (uint8_t *)p->answer_packet;
-
-    answer_buffer[0] = 0xFF; // Packet type
-    uint32_t crc_value = crcFast(answer_buffer, 20);
-    uint32_t le_crc = htole32(crc_value);
-    memcpy(&answer_buffer[20], &le_crc, sizeof(le_crc));
-
-    const bool result = parallel_manchester_transmit_background(p->manchester_instance_index, answer_buffer, ANSWER_PACKSIZE);
+    const bool result = parallel_manchester_transmit_background(p->manchester_instance_index, ANSWER_PACKSIZE);
     return result;
 }
 

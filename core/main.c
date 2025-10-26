@@ -8,12 +8,6 @@
 #include "crc.h"
 #include <stdbool.h>
 #include <stdint.h>
-
-// #define DEBUG_PIN1 ABS_PIN(3, 4) // Pin used for debugging, can be changed as needed
-// #define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
-// #define DEBUG_PIN3 ABS_PIN(8, 1) // Additional debug pin, can be changed as needed
-// #define DEBUG_PIN4 ABS_PIN(8, 2) // Additional debug pin, can be changed as needed
-
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
@@ -24,13 +18,8 @@
 #include "nrf52840_utils.h"
 #include "nrf52840_gpio.h"
 #include "nrf52840_uart.h"
-
 #include "printf.h"
-
-// #define DEBUG_PIN1 26 // Pin used for debugging, can be changed as needed
-// #define DEBUG_PIN2 27 // Pin used for debugging, can be changed as needed
-// #define DEBUG_PIN3 39 // Additional debug pin, can be changed as needed
-// #define DEBUG_PIN4 40 // Additional debug pin, can be changed as needed
+#define NUMBER_OF_GPIO_PINS NRF52_NUM_PINS
 
 #endif
 
@@ -50,7 +39,7 @@
 #include "crc.h"
 #include <inttypes.h>
 
-#define DEBUG 0 // Set to 1 to enable debug logging, 0 to disable
+#define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
@@ -88,24 +77,40 @@ void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzuf
 
 #if DEV_KIT == 0
 
-const uint32_t all[]   = {
-        GPIO0,      /*GPIO1,*/ GPIO2,
-        GPIO3,      GPIO4,
-        GPIO5,      GPIO6,
-        GPIO7,      GPIO8,
-        GPIO9,      GPIO10,
-        GPIO11,     GPIO12,
-        GPIO13,     GPIO14,
-        GPIO15,     PWRGDL,
-        PWRGDH,     PIN_LED0,
-        PIN_LED2,   I2C_SCL,
-        I2C_SDA,    /*RTC_INT,*/ MAX_INT,
-        C2C_CLK,    C2C_CoPi,
-        C2C_CiPo,   C2C_PSel,
-        C2C_GPIO,   THRCTRL_H0,
-        THRCTRL_H1, THRCTRL_L0,
-        THRCTRL_L1,
-}; 
+const uint32_t all[] = {
+    GPIO0,
+    /*GPIO1,*/ GPIO2,
+    GPIO3,
+    GPIO4,
+    GPIO5,
+    GPIO6,
+    GPIO7,
+    GPIO8,
+    GPIO9,
+    GPIO10,
+    GPIO11,
+    GPIO12,
+    GPIO13,
+    GPIO14,
+    GPIO15,
+    PWRGDL,
+    PWRGDH,
+    PIN_LED0,
+    PIN_LED2,
+    I2C_SCL,
+    I2C_SDA,
+    /*RTC_INT,*/ MAX_INT,
+    C2C_CLK,
+    C2C_CoPi,
+    C2C_CiPo,
+    C2C_PSel,
+    C2C_GPIO,
+    THRCTRL_H0,
+    THRCTRL_H1,
+    THRCTRL_L0,
+    THRCTRL_L1,
+};
+#endif
 void set_shepherd_pins()
 {
     initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
@@ -124,7 +129,25 @@ void set_shepherd_pins()
     // initial_state_mask &= ~(1ULL << GPIO14);
     // initial_state_mask &= ~(1ULL << GPIO15);
 }
-#endif
+
+void set_pins_test_env_pins()
+{
+    initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
+    //initial_state_mask &= ~(1ULL << GPIO0);
+    //initial_state_mask &= ~(1ULL << GPIO1);
+    //initial_state_mask &= ~(1ULL << GPIO2);
+    //initial_state_mask &= ~(1ULL << GPIO3);
+    // initial_state_mask &= ~(1ULL << GPIO6);
+    // initial_state_mask &= ~(1ULL << GPIO7);
+    // initial_state_mask &= ~(1ULL << GPIO8);
+    // initial_state_mask &= ~(1ULL << GPIO9);
+    // initial_state_mask &= ~(1ULL << GPIO10);
+       initial_state_mask &= ~(1ULL << GPIO11);
+       initial_state_mask &= ~(1ULL << GPIO12);
+    // initial_state_mask &= ~(1ULL << GPIO13);
+    // initial_state_mask &= ~(1ULL << GPIO14);
+    // initial_state_mask &= ~(1ULL << GPIO15);
+}
 
 void led0_show_error()
 {
@@ -202,28 +225,26 @@ void perfom_mutex_operations()
 
 int main(void)
 {
-// #if defined(NRF52840_XXAA)
+    // #if defined(NRF52840_XXAA)
 
-//     // Configure all GPIO pins as inputs
-//     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-//     {
-//         gpio_input_init(pin, GPIO_PULL);  // set pin as input
-//     }
-//     while(1) {}
-// #endif
+    //     // Configure all GPIO pins as inputs
+    //     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    //     {
+    //         gpio_input_init(pin, GPIO_PULL);  // set pin as input
+    //     }
+    //     while(1) {}
+    // #endif
     mcu_init();
 
-#if defined(__MSP430FR5994__)
-     led2_show_error();
-#elif defined(NRF52840_XXAA)
-     led0_show_error();
-#endif
-
-    // blink LED2
-
-#if DEV_KIT == 0
+#if (DEV_KIT == 0)
     set_shepherd_pins();
+#if defined(__MSP430FR5994__)
+    led0_show_error();
+#elif defined(NRF52840_XXAA)
+    led2_show_error();
+#endif
 #else
+    // set_standart_blacklist_pins(&initial_state_mask);
     set_standart_blacklist_pins(&initial_state_mask);
 #endif
     LOG("DEBUG: Starting handshake process\n");

@@ -4,7 +4,7 @@
 #include <string.h>
 
 //#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-#define LOG(fmt, ...) //printf("DEBUG: " fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 #if defined(NRF52840_XXAA)
 #define PMAN_TIMER NRF_TIMER4
@@ -347,7 +347,7 @@ bool parallel_manchester_remove_instance(uint8_t index)
     return true;
 }
 // Non-blocking transmission function
-bool parallel_manchester_transmit_background(uint8_t index, uint8_t *data, uint8_t size)
+bool parallel_manchester_transmit_background(uint8_t index, uint8_t size)
 {
     if (index >= pman_instance_count)
     {
@@ -362,18 +362,12 @@ bool parallel_manchester_transmit_background(uint8_t index, uint8_t *data, uint8
     }
 
     // Validate input parameters against buffer size
-    if (data == NULL || size == 0 || size > instance->buffer_size)
+    if (size == 0 || size > instance->buffer_size)
     {
-        printf("Error: Data size %u exceeds buffer size %u\n", size, instance->buffer_size);
+        LOG("Error: Data size %u exceeds buffer size %u\n", size, instance->buffer_size);
         return false;
     }
-    // clear instance buffer
-    memset(instance->buffer, 0, instance->buffer_size);
-
-    // Copy data to instance buffer first
-    for (uint8_t i = 0; i < size; i++)
-        instance->buffer[i] = data[i];
-
+    
     // Clear encoder and enqueue data from instance buffer
     spooky_encoder_clear(&instance->enc);
     if (spooky_encoder_enqueue(&instance->enc, instance->buffer, size) != SPOOKY_ENCODER_ENQUEUE_OK)
