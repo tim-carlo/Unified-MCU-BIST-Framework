@@ -9,6 +9,8 @@ static volatile uint8_t *const PxIE[] = {&P1IE, &P2IE, &P3IE, &P4IE, &P5IE, &P6I
 static volatile uint8_t *const PxIFG[] = {&P1IFG, &P2IFG, &P3IFG, &P4IFG, &P5IFG, &P6IFG, &P7IFG, &P8IFG};
 static volatile uint8_t *const PxIES[] = {&P1IES, &P2IES, &P3IES, &P4IES, &P5IES, &P6IES, &P7IES, &P8IES};
 
+// In this function we ignore port J
+// Port J is on this device used for special functions
 static inline uintptr_t get_port_base_of_absolute_pin(uint8_t abs_pin)
 {
     if (abs_pin < 8)
@@ -43,7 +45,7 @@ static inline uint8_t abs_to_port(uint8_t abs_pin)
 void gpio_output_init(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
     *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) |= mask; // output
 }
@@ -51,7 +53,7 @@ void gpio_output_init(uint8_t abs_pin)
 void gpio_set_pull(uint8_t abs_pin, gpio_pull_t pull)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
     switch (pull)
     {
@@ -76,8 +78,7 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
     uint8_t pin = abs_to_pinidx(abs_pin);
-    // uint8_t port = abs_to_port(abs_pin);  // ← Unbenutzte Variable entfernen
-    uint8_t mask = (1 << pin);
+    const uint8_t mask = 1u << pin;
 
     // Configure pin as input as described here: https://www.ocfreaks.com/msp430-gpio-programming-tutorial/
     // Set as input
@@ -109,27 +110,27 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 void gpio_drive_high(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1 << abs_to_pinidx(abs_pin);
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) |= mask;
 }
 
 void gpio_drive_low(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) &= ~mask;
 }
 void gpio_toggle(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
     *(volatile uint8_t *)((uintptr_t)(base + PORT_OUT_OFFSET)) ^= mask;
 }
 
 void gpio_reset(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
     
     // Reset to input mode (clear DIR bit)
     *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) &= ~mask;
@@ -144,7 +145,7 @@ void gpio_reset(uint8_t abs_pin)
 bool gpio_read(uint8_t abs_pin)
 {
     uintptr_t base = get_port_base_of_absolute_pin(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
     return (*(volatile uint8_t *)((uintptr_t)(base + PORT_IN_OFFSET)) & mask) != 0;
 }
  
