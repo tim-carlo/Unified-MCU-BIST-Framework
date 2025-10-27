@@ -26,6 +26,8 @@ extern "C" {
 #define PORT_OUT_OFFSET 0x02
 #define PORT_DIR_OFFSET 0x04
 #define PORT_REN_OFFSET 0x06
+#define PORT_SEL0_OFFSET 0x0A
+#define PORT_SEL1_OFFSET 0x0C
 
 // Clock definitions
 #define SMCLK_HZ        16000000UL  // SMCLK frequency: 16 MHz

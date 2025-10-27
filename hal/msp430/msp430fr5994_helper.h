@@ -13,7 +13,7 @@
 
 #include "msp430fr5994_uart.h"
 
-#define ABS_PIN(port, pin) (((port) - 1) * 8 + (pin))
+#define ABS_PIN(port, pin) ((port * 8) + pin)
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
 // UART configuration - Fixed to UCA0 at 9600 baud

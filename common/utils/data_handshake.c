@@ -5,11 +5,12 @@
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
 #endif
-#include <string.h>
+// #include "printf.h"
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
-//#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+// #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #define LOG(fmt, ...) // Uncomment this line to disable LOGging
+#define OUTPUT_DEBUG_LOGS(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
@@ -149,6 +150,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, remote_uuid);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
+    p->number_of_received_requests++;
 
     uint8_t *restrict answer_buffer = p->data_buffer;
 
@@ -161,7 +163,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
             mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN;
             mutex_pin = pin;
             i_am_mutex_owner = false;
-            //LOG("Mutex granted to other device on pin %u\n", pin);
+            // LOG("Mutex granted to other device on pin %u\n", pin);
         }
         else
         {
@@ -185,8 +187,6 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint32_t le_crc = htole32(crc_value);
     memcpy(&answer_buffer[20], &le_crc, sizeof(le_crc));
 
-    // Signal readiness
-    dhandshake_set_send_answer(p, true);
     gpio_od_hold_low(pin);
     return true;
 }
@@ -231,7 +231,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
-       // LOG("Mutex granted to this device on pin %u\n", pin);
+        // LOG("Mutex granted to this device on pin %u\n", pin);
     }
 
     p->number_of_successful_tries++;
@@ -317,7 +317,6 @@ static void fsm_data_handshake(void)
                     gpio_drive_high(DEBUG_PIN2);
                     if (!start_receiving_request(p))
                     {
-                        dhandshake_set_failed_handshake(p, true);
                         LOG("Failed to start receiving request on pin %u\n", p->pin);
                     }
                     else
@@ -353,7 +352,6 @@ static void fsm_data_handshake(void)
             {
                 if (!send_request_in_background(p->pin, p))
                 {
-                    dhandshake_set_failed_handshake(p, true);
                     reschedule_request(p, counter); // reschedule in any case to avoid immediate resend
                     p->current_job = JOB_LISTEN;    // Go back to listening on failure
                 }
@@ -372,7 +370,6 @@ static void fsm_data_handshake(void)
             {
                 if (!send_answer_in_background(p->pin, p))
                 {
-                    dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
                 else
@@ -405,14 +402,12 @@ static void fsm_data_handshake(void)
             else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
             {
                 // Timeout occurred during transmission
-                dhandshake_set_failed_handshake(p, true);
                 reschedule_request(p, counter);
                 p->current_job = JOB_LISTEN; // Go back to listening on timeout
             }
             else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
             {
                 // Timeout occurred during transmission
-                dhandshake_set_failed_handshake(p, true);
                 p->current_job = JOB_LISTEN; // Go back to listening on timeout
             }
             something_happened = true;
@@ -436,7 +431,6 @@ static void fsm_data_handshake(void)
                     p->receiving_counter = 0;
                     if (!start_receiving_answer(p))
                     {
-                        dhandshake_set_failed_handshake(p, false);
                         is_failed = true;
                         LOG("Failed to start receiving answer on pin %u\n", p->pin);
                     }
@@ -456,7 +450,6 @@ static void fsm_data_handshake(void)
                 {
                     LOG("- Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
-                    dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN;
                 }
             }
@@ -472,7 +465,6 @@ static void fsm_data_handshake(void)
                 if (!handle_request_receive_complete(p->pin, p))
                 {
                     // Failed to handle request properly
-                    dhandshake_set_failed_handshake(p, true);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                     LOG("Failed to handle request on pin %u\n", p->pin);
                 }
@@ -485,7 +477,6 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
-                dhandshake_set_failed_handshake(p, true);
                 LOG("Failed to receive request on pin %u\n", p->pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
@@ -499,7 +490,6 @@ static void fsm_data_handshake(void)
             {
                 if (!handle_answer_complete(p->pin, p))
                 {
-                    dhandshake_set_failed_handshake(p, false);
                     LOG("Failed to handle answer on pin %u\n", p->pin);
                 }
                 else
@@ -512,7 +502,6 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p->manchester_instance_index))
             {
-                dhandshake_set_failed_handshake(p, false);
                 LOG("Failed to receive answer on pin %u\n", p->pin);
                 reschedule_request(p, counter);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
@@ -620,14 +609,12 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
         global_datahandshake_pindata[idx] = (DataHandshakeData){
             .pin = pindata[pin_index].pin,
-            .status = 0,
+            .role = 0,
             .current_job = JOB_LISTEN,
             .number_of_successful_tries = 0,
             .receiving_counter = 0,
             .time_until_next_send = 0,
             .last_send_job_order = 0,
-            .request_packet = NULL,
-            .answer_packet = NULL,
             .data_buffer = pin_data_buffer,   // Single buffer for both request and answer
             .manchester_instance_index = 255, // Initialize as invalid
         };
@@ -635,14 +622,15 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         // Set role based on masks
         if (initiator_mask & (1ULL << pin_index))
         {
-            dhandshake_set_role(&global_datahandshake_pindata[idx], false); // Initiator
             // If the pin is initiator, the device will send requests on this pin
-            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt * 0.5f);
+            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt * 0.6f);
+            global_datahandshake_pindata[idx].role = DHANDSHAKE_ROLE_INITIATOR;
             initiator_cnt++;
         }
         else if (responder_mask & (1ULL << pin_index))
         {
-            dhandshake_set_role(&global_datahandshake_pindata[idx], true); // Responder
+            // If the pin is responder, the device will only listen on this pin
+            global_datahandshake_pindata[idx].role = DHANDSHAKE_ROLE_RESPONDER;
         }
 
         uint8_t manchester_idx = parallel_manchester_add_instance(pindata[pin_index].pin, pin_data_buffer, max_packet_size);
@@ -681,6 +669,23 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     }
     LOG("Data handshake finished due to timeout\n");
     stop_send_data_timer();
+    if (global_datahandshake_pindata)
+    {
+        printf("Successful handshakes on pins:\n");
+        bool any_success = false;
+        for (uint8_t i = 0; i < number_of_pins; i++)
+        {
+            if (global_datahandshake_pindata[i].number_of_successful_tries > 0 || global_datahandshake_pindata[i].number_of_received_requests > 0)
+            {
+                printf(" - %u\n", global_datahandshake_pindata[i].pin);
+                any_success = true;
+            }
+        }
+        if (!any_success)
+        {
+            printf(" - none\n");
+        }
+    }
 
     // Cleanup
     if (global_datahandshake_pindata)
@@ -693,11 +698,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         global_datahandshake_pindata = NULL;
     }
     parallel_manchester_deinit();
-
-    printf("Data Handshake Results:\n");
-    // mutex:
-    printf("  Mutex Pin: %u\n", mutex_pin);
-    printf("  I am Mutex Owner: %s\n", i_am_mutex_owner ? "Yes" : "No");
 
     result.status = DATA_HANDSHAKE_SUCCESS;
     result.mutex_pin = mutex_pin;

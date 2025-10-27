@@ -9,26 +9,26 @@ static volatile uint8_t *const PxIE[] = {&P1IE, &P2IE, &P3IE, &P4IE, &P5IE, &P6I
 static volatile uint8_t *const PxIFG[] = {&P1IFG, &P2IFG, &P3IFG, &P4IFG, &P5IFG, &P6IFG, &P7IFG, &P8IFG};
 static volatile uint8_t *const PxIES[] = {&P1IES, &P2IES, &P3IES, &P4IES, &P5IES, &P6IES, &P7IES, &P8IES};
 
-// In this function we ignore port J
-// Port J is on this device used for special functions
+// Port 8 is not used for GPIO on this device
+// To use it we need to adjust the function accordingly
 static inline uintptr_t get_port_base_of_absolute_pin(uint8_t abs_pin)
 {
     if (abs_pin < 8)
-        return P1_BASE;
+        return PJ_BASE;
     else if (abs_pin < 16)
-        return P2_BASE;
+        return P1_BASE;
     else if (abs_pin < 24)
-        return P3_BASE;
+        return P2_BASE;
     else if (abs_pin < 32)
-        return P4_BASE;
+        return P3_BASE;
     else if (abs_pin < 40)
-        return P5_BASE;
+        return P4_BASE;
     else if (abs_pin < 48)
-        return P6_BASE;
+        return P5_BASE;
     else if (abs_pin < 56)
-        return P7_BASE;
+        return P6_BASE;
     else if (abs_pin < 64)
-        return P8_BASE;
+        return P7_BASE;
     return 0; // invalid pin
 }
 
@@ -44,7 +44,7 @@ static inline uint8_t abs_to_port(uint8_t abs_pin)
 
 void gpio_output_init(uint8_t abs_pin)
 {
-    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); 
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
     *(volatile uint8_t *)((uintptr_t)(base + PORT_DIR_OFFSET)) |= mask; // output
@@ -52,7 +52,7 @@ void gpio_output_init(uint8_t abs_pin)
 
 void gpio_set_pull(uint8_t abs_pin, gpio_pull_t pull)
 {
-    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); // ← uintptr_t statt uint16_t
+    uintptr_t base = get_port_base_of_absolute_pin(abs_pin); 
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
     switch (pull)

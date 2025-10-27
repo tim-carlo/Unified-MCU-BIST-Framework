@@ -47,6 +47,55 @@ void init_seeds(void)
     lfsr31 &= 0x7FFFFFFF;
 }
 
+static inline set_neutral_gpio()
+{
+    /* set all to neutral state: input */
+    PJOUT = 0u;
+    PJDIR = 0x00;
+    PJSEL0 = 0u;
+    PJSEL1 = 0u;
+
+    P1OUT = 0u;
+    P1DIR = 0x00;
+    P1SEL0 = 0u;
+    P1SEL1 = 0u;
+
+    P2OUT = 0u;
+    P2DIR = 0x00;
+    P2SEL0 = 0u;
+    P2SEL1 = 0u;
+
+    P3OUT = 0u;
+    P3DIR = 0x00;
+    P3SEL0 = 0u;
+    P3SEL1 = 0u;
+
+    P4OUT = 0u;
+    P4DIR = 0x00;
+    P4SEL0 = 0u;
+    P4SEL1 = 0u;
+
+    P5OUT = 0u;
+    P5DIR = 0x00;
+    P5SEL0 = 0u;
+    P5SEL1 = 0u;
+
+    P6OUT = 0u;
+    P6DIR = 0x00;
+    P6SEL0 = 0u;
+    P6SEL1 = 0u;
+
+    P7OUT = 0u;
+    P7DIR = 0x00;
+    P7SEL0 = 0u;
+    P7SEL1 = 0u;
+
+    P8OUT = 0u;
+    P8DIR = 0x00;
+    P8SEL0 = 0u;
+    P8SEL1 = 0u;
+}
+
 /**
  * @brief Initialize the I/O subsystem
  *
@@ -59,6 +108,7 @@ void mcu_init()
 
     // Unlock GPIO
     PM5CTL0 &= ~LOCKLPM5;
+    set_neutral_gpio(); // Set all GPIOs to neutral state
     // Configure clock to 16MHz
     // Using DCO at 16MHz
     FRCTL0 = FRCTLPW | NWAITS_1;
@@ -71,15 +121,15 @@ void mcu_init()
 #if DEV_KIT == 0
     P2SEL1 |= BIT5 | BIT6;
     P2SEL0 &= ~(BIT5 | BIT6);
-    UCA1CTLW0 = UCSWRST;        // Reset UART
-    UCA1CTLW0 |= UCSSEL__SMCLK; // SMCLK source (16MHz)
-    UCA1BR0 = 104;              // 16MHz/9600 = 1666.67
+    UCA1CTLW0 = UCSWRST;         // Reset UART
+    UCA1CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
+    UCA1BR0 = 104;               // 16MHz/9600 = 1666.67
     UCA1BR1 = 0;                 // High byte
     UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
     UCA1CTLW0 &= ~UCSWRST;       // Enable UART
 #else
-    P2SEL1 |= BIT0 | BIT1;    // Set UART function
-    P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
+    P2SEL1 |= BIT0 | BIT1;       // Set UART function
+    P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
     UCA0CTLW0 = UCSWRST;         // Reset UART
     UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
     UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
@@ -91,7 +141,7 @@ void mcu_init()
     // UCA1BR1 = 0;                 // High byte
     // UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
 
-    // 
+    //
 
     // #if DEV_KIT == 1
     //     // Configure UART pins

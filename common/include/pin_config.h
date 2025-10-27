@@ -6,7 +6,7 @@
 #include "nrf52840_helper.h"
 #endif
 
-#define DEV_KIT 1
+#define DEV_KIT 0
 
 #if (DEV_KIT == 0)
 
@@ -117,8 +117,6 @@
 
 #define DEBUG_PIN1 19
 #define DEBUG_PIN2 20
-#define DEBUG_PIN3 21
-#define DEBUG_PIN4 22
 
 #define GPIO0 0
 #define GPIO1 1
