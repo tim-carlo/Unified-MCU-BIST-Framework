@@ -312,7 +312,6 @@ static void fsm_data_handshake(void)
                 // Here we check if the low time matches a request signal
                 if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
                 {
-                    gpio_drive_high(DEBUG_PIN2);
                     if (!start_receiving_request(p))
                     {
                         LOG("Failed to start receiving request on pin %u\n", p->pin);
@@ -456,7 +455,6 @@ static void fsm_data_handshake(void)
         }
         case JOB_RECEIVING_REQUEST:
         {
-            gpio_drive_high(DEBUG_PIN2);
             if (parallel_manchester_receive_complete(p))
             {
 
@@ -479,7 +477,7 @@ static void fsm_data_handshake(void)
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             something_happened = true;
-            gpio_drive_low(DEBUG_PIN2);
+            
             break;
         }
         case JOB_RECEIVING_ANSWER:
@@ -530,7 +528,7 @@ static void send_data_isr(void)
 
 static void start_send_data_timer(void)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_100);
+    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_300);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -608,18 +606,18 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         {
             // If the pin is initiator, the device will send requests on this pin
             global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt);
-            global_datahandshake_pindata[idx].status |= STATUS_ROLE_INITIATOR;
+            dhd_set_role_initiator(&global_datahandshake_pindata[idx], true);
             initiator_cnt++;
         }
         else if (responder_mask & (1ULL << pin_index))
         {
             // If the pin is responder, the device will only listen on this pin
-            global_datahandshake_pindata[idx].status |= (STATUS_ROLE_INITIATOR | (1U << 0));
+            dhd_set_role_initiator(&global_datahandshake_pindata[idx], false);
         }
 
-        uint8_t manchester_idx = parallel_manchester_add_instance(&global_datahandshake_pindata[idx]);
+        bool manchester_create = parallel_manchester_add_instance(&global_datahandshake_pindata[idx]);
 
-        if (manchester_idx == 255)
+        if (!manchester_create)
         {
             LOG("Failed to create Manchester instance for pin %u\n", pindata[pin_index].pin);
         }
