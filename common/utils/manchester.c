@@ -182,7 +182,7 @@ void manchester_init(BaudRate rate)
     uint32_t sample_interval_us = get_sample_interval_us(rate);
 
     enum spooky_encoder_init_res enc_result = spooky_encoder_init(
-        &enc, encoder_buffer, ENCODER_BUFFER_SIZE, TX_RATE);
+        &enc, encoder_buffer, ENCODER_BUFFER_SIZE);
 
     enum spooky_decoder_init_res dec_result = spooky_decoder_init(
         &dec, decoder_buffer, DECODER_BUFFER_SIZE, rx_cb, NULL);

@@ -21,8 +21,7 @@
 
 #endif
 
-//#include "manchester.h"
-#include "paralell_manchester.h"
+#include "datahandshake_modulation.h"
 #include "printf.h"
 #include <stdint.h>
 #include <stdbool.h>
@@ -32,7 +31,6 @@
 #include "pindata.h"
 #include "bitmap_iterator.h"
 #include "random_utils.h"
-#include "datahandshake_pindata.h"
 #include "crc.h"
 #include "pin_config.h"
 

@@ -41,22 +41,20 @@ static enum spooky_encoder_step_res encode_bit(uint8_t bit, uint8_t index);
 
 /* Initialize an encoder. */
 enum spooky_encoder_init_res
-spooky_encoder_init(struct spooky_encoder *enc,
-                    uint8_t *buffer, uint8_t buffer_size, uint8_t tx_rate) {
+spooky_encoder_init(struct spooky_encoder *enc, uint8_t *buffer, uint8_t buffer_size) {
     if ((enc == NULL) || (buffer == NULL)) {
         return SPOOKY_ENCODER_INIT_ERROR_NULL;
     }
-    if ((buffer_size == 0) || (tx_rate == 0)) {
+    if (buffer_size == 0) {
         return SPOOKY_ENCODER_INIT_ERROR_BAD_ARGUMENT;
     }
 
     memset(enc, 0, sizeof(*enc));
     enc->buffer = buffer;
     enc->buffer_size = buffer_size;
-    enc->tx_rate = tx_rate;
     enc->mode = TX_NONE;
     LOG("initialized %p with buffer %p (%u bytes), rate %u\n",
-        (void*)enc, (void*)buffer, buffer_size, tx_rate);
+        (void*)enc, (void*)buffer, buffer_size, TX_RATE);
     return SPOOKY_ENCODER_INIT_OK;
 }
 
@@ -98,7 +96,7 @@ spooky_encoder_step(struct spooky_encoder *enc) {
     if (enc == NULL) return res;
 
     enc->ticks++;
-    if ((enc->ticks % enc->tx_rate) != 0)
+    if ((enc->ticks % TX_RATE) != 0)
         return SPOOKY_ENCODER_STEP_OK;
     enc->ticks = 0;
 
