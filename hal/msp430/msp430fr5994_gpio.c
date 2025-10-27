@@ -1,14 +1,6 @@
 #include <msp430.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-typedef enum
-{
-    GPIO_PULL_NONE = 0,
-    GPIO_PULL_UP,
-    GPIO_PULL_DOWN
-} gpio_pull_t;
-
 /**
  * @brief Map absolute pin number to port register group (0–7: PJ, 8–15: P1, etc.)
  */
@@ -152,7 +144,7 @@ void gpio_reset(uint8_t abs_pin)
 bool gpio_read(uint8_t abs_pin)
 {
     const uint8_t port = abs_to_port(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t mask = 1 << abs_to_pinidx(abs_pin);
     return (*get_port_in(port) & mask) != 0;
 }
 
@@ -173,7 +165,6 @@ uint64_t gpio_read_all_ports(void)
     return state;
 }
 
-// --- Open Drain Functions ---
 
 void gpio_od_init(uint8_t abs_pin)
 {
@@ -188,8 +179,8 @@ void gpio_od_hold_low(uint8_t abs_pin)
 
 void gpio_od_release(uint8_t abs_pin)
 {
-    uint8_t port = abs_to_port(abs_pin);
-    uint8_t mask = 1 << abs_to_pinidx(abs_pin);
+    const uint8_t port = abs_to_port(abs_pin);
+    const uint8_t mask = 1 << abs_to_pinidx(abs_pin);
 
     *get_port_dir(port) &= ~mask; // input
     *get_port_ren(port) |= mask;  // resistor enabled
