@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "printf.h"
+#include "pin_config.h"
 
 #include "spooky_decoder.h"
 #include "spooky_encoder.h"
@@ -104,6 +105,7 @@ typedef struct
     volatile uint8_t manchester_status;
     uint8_t manchester_last_decoder_mode;
     bool manchester_last_rx;
+    uint16_t manchester_rx_timeout_counter;
 } DataHandshakeData;
 
 // Status check functions
@@ -112,6 +114,8 @@ bool dhd_status_rx_complete(const DataHandshakeData *dhd);
 bool dhd_status_rx_error(const DataHandshakeData *dhd);
 bool dhd_status_data_received(const DataHandshakeData *dhd);
 bool dhd_status_role_initiator(const DataHandshakeData *dhd);
+void dhd_set_role_initiator(DataHandshakeData *dhd, bool is_initiator);
+
 bool dhd_status_handshake_success(const DataHandshakeData *dhd);
 ParallelManchesterMode dhd_get_manchester_mode(const DataHandshakeData *dhd);
 void dhd_set_manchester_mode(DataHandshakeData *dhd, ParallelManchesterMode mode);
