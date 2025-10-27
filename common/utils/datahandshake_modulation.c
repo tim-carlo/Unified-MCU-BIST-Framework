@@ -49,6 +49,17 @@ void dhd_set_manchester_mode(DataHandshakeData *dhd, ParallelManchesterMode mode
 {
     dhd->status = (dhd->status & ~STATUS_MANCHESTER_MASK) | ((mode & 0x03) << 4);
 }
+void dhd_set_role_initiator(DataHandshakeData *dhd, bool is_initiator)
+{
+    if (is_initiator)
+    {
+        dhd->status |= STATUS_ROLE_INITIATOR;
+    }
+    else
+    {
+        dhd->status &= ~STATUS_ROLE_INITIATOR;
+    }
+}
 
 static inline void pman_set_TX(const bool state, const uint8_t pin)
 {
@@ -123,23 +134,23 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
                 {
                     // Here a error occures
                 }
-                instance->receiving_counter = 0;
+                instance->manchester_rx_timeout_counter = 0;
             }
             else
             {
                 if (rx == instance->manchester_last_rx)
-                    instance->receiving_counter++;
+                    instance->manchester_rx_timeout_counter++;
                 else
-                    instance->receiving_counter = 0;
+                    instance->manchester_rx_timeout_counter = 0;
 
                 instance->manchester_last_rx = rx;
 
-                if (instance->receiving_counter > NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION)
+                if (instance->manchester_rx_timeout_counter > NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION)
                 {
                     dhd_set_manchester_mode(instance, PMAN_IDLE);
 
                     instance->status |= STATUS_RX_ERROR;
-                    instance->receiving_counter = 0;
+                    instance->manchester_rx_timeout_counter = 0;
                 }
             }
 
@@ -173,40 +184,6 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
     }
 }
 
-static void pman_setup_and_start_timer(uint16_t sample_interval_us)
-{
-    LOG("Setting up timer with sample interval: %u us\n", sample_interval_us);
-
-#if defined(NRF52840_XXAA)
-    // Use constant prescaler 4 (1MHz)
-    configure_timer(PMAN_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
-    set_timer_compare(PMAN_TIMER, 0, sample_interval_us, true, true);
-    PMAN_TIMER->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
-    set_timer_event_callback(PMAN_TIMER, pman_timer_isr);
-    start_timer(PMAN_TIMER);
-
-#elif defined(__MSP430FR5994__)
-    uint32_t ticks;
-    const uint16_t prescaler = choose_prescaler_and_ticks(sample_interval_us, SMCLK_HZ, &ticks);
-
-    configure_timer(PMAN_TIMER, prescaler, MC__UP);
-    set_timer_compare(PMAN_TIMER, 0, (uint16_t)(ticks - 1));
-    set_timer_compare_callback(PMAN_TIMER, pman_timer_isr);
-    start_timer_with_interrupt(PMAN_TIMER);
-#endif
-}
-
-static void pman_stop_timer()
-{
-#if defined(NRF52840_XXAA)
-    clear_timer_event_callback(PMAN_TIMER);
-    stop_timer(PMAN_TIMER);
-#elif defined(__MSP430FR5994__)
-    clear_timer_event_callback(PMAN_TIMER);
-    stop_timer(PMAN_TIMER);
-#endif
-}
-
 uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate)
 {
     uint32_t bit_time_us = 1000000UL / rate;
@@ -217,7 +194,7 @@ uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate r
 // Update rx_callback to use instance buffer directly
 static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 {
-    DataHandshakeData *instance = (uintptr_t)udata;
+    DataHandshakeData *instance = (DataHandshakeData *)(uintptr_t)udata;
 
     // Check for invalid data or wrong mode - no need for data_buffer check anymore
     if (!data || !data_size)
@@ -322,7 +299,7 @@ bool parallel_manchester_receive_background(DataHandshakeData *instance)
 
     // Start receiving - data will be written directly to instance buffer by spooky decoder
     dhd_set_manchester_mode(instance, PMAN_RECEIVE);
-    instance->receiving_counter = 0;
+    instance->manchester_rx_timeout_counter = 0;
     // Clear relevant status flags before starting reception
     instance->status &= ~(STATUS_TX_COMPLETE | STATUS_RX_COMPLETE | STATUS_RX_ERROR);
 
