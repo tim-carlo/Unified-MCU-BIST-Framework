@@ -43,6 +43,37 @@ static volatile uint8_t *get_port_out(uint8_t port)
     default: return 0;
     }
 }
+static volatile uint8_t *get_port_sel0(uint8_t port)
+{
+    switch (port)
+    {
+    case 0: return &PJSEL0;
+    case 1: return &P1SEL0;
+    case 2: return &P2SEL0;
+    case 3: return &P3SEL0;
+    case 4: return &P4SEL0;
+    case 5: return &P5SEL0;
+    case 6: return &P6SEL0;
+    case 7: return &P7SEL0;
+    default: return 0;
+    }
+}
+
+static volatile uint8_t *get_port_sel1(uint8_t port)
+{
+    switch (port)
+    {
+    case 0: return &PJSEL1;
+    case 1: return &P1SEL1;
+    case 2: return &P2SEL1;
+    case 3: return &P3SEL1;
+    case 4: return &P4SEL1;
+    case 5: return &P5SEL1;
+    case 6: return &P6SEL1;
+    case 7: return &P7SEL1;
+    default: return 0;
+    }
+}
 
 static volatile uint8_t *get_port_dir(uint8_t port)
 {
