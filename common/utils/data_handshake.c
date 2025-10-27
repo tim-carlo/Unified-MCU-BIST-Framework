@@ -100,10 +100,16 @@ static void analyze_pindata_events(PinData *pindata)
     }
 }
 
-static inline uint16_t get_listen_until_time(const float factor)
+static inline uint16_t get_listen_until_time(uint16_t factor)
 {
-    uint16_t random_offset = (uint16_t)(random32() % (MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES)) + 10; // between 10 and 500 ms
-    random_offset *= factor;
+    const uint32_t range = MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES;
+    const uint32_t rnd = random32(); // 0 .. 0xFFFFFFFF
+
+    const uint32_t scaled = (uint64_t)rnd * range >> 32;
+
+    uint16_t random_offset = (uint16_t)(MINMUM_REQUEST_CYCLES + scaled);
+    random_offset = (uint16_t)((uint32_t)random_offset * factor);
+
     return random_offset;
 }
 
@@ -152,8 +158,6 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->number_of_received_requests++;
 
-    uint8_t *restrict answer_buffer = p->data_buffer;
-
     // Determine mutex state before writing to buffer
     uint8_t mutex_allowed = 0;
     if (mutex_request == REQEST_MUTEX_ON_THIS_PIN && remote_uuid != uuid)
@@ -172,20 +176,21 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     }
 
     // Assemble the packet with a single write for the mutex field
-    answer_buffer[0] = ANSWER_IDENTIFIER;
-    memcpy(&answer_buffer[1], &remote_uuid_le, sizeof(remote_uuid_le));
-    answer_buffer[9] = remote_pin;
+    p->data_buffer[0] = ANSWER_IDENTIFIER;
+    memcpy(&p->data_buffer[1], &remote_uuid_le, sizeof(remote_uuid_le));
+    p->data_buffer[9] = remote_pin;
 
     const uint64_t le_own_uuid = htole64(uuid);
-    memcpy(&answer_buffer[10], &le_own_uuid, sizeof(le_own_uuid));
+    memcpy(&p->data_buffer[10], &le_own_uuid, sizeof(le_own_uuid));
 
-    answer_buffer[18] = pin;
-    answer_buffer[19] = mutex_allowed;
+    p->data_buffer[18] = pin;
+    p->data_buffer[19] = mutex_allowed;
 
     // Finalize packet with CRC
-    const uint32_t crc_value = crcFast(answer_buffer, 20);
+    const uint32_t crc_value = crcFast(p->data_buffer, 20);
     const uint32_t le_crc = htole32(crc_value);
-    memcpy(&answer_buffer[20], &le_crc, sizeof(le_crc));
+    
+    memcpy(&p->data_buffer[20], &le_crc, sizeof(le_crc));
 
     gpio_od_hold_low(pin);
     return true;
@@ -286,243 +291,243 @@ static volatile uint32_t counter = 0;
 static void fsm_data_handshake(void)
 {
     gpio_drive_high(DEBUG_PIN1);
-    counter++;
+    // counter++;
 
-    BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
-    uint8_t pin_index;
+    // BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
+    // uint8_t pin_index;
 
-    bool something_happened = false;
+    // bool something_happened = false;
 
-    while (bitmap_iterator_next(&it, &pin_index))
-    {
-        DataHandshakeData *p = &global_datahandshake_pindata[pin_index];
-        const uint32_t delta = counter - p->last_send_job_order;
+    // while (bitmap_iterator_next(&it, &pin_index))
+    // {
+    //     DataHandshakeData *p = &global_datahandshake_pindata[pin_index];
+    //     const uint32_t delta = counter - p->last_send_job_order;
 
-        switch (p->current_job)
-        {
-        case JOB_LISTEN:
-        {
-            const bool is_low = !gpio_read(p->pin);
-            if (is_low)
-            {
-                // Line is low, start counting
-                p->receiving_counter++;
-            }
-            else
-            {
-                const uint16_t receive_counter = p->receiving_counter;
-                // Here we check if the low time matches a request signal
-                if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
-                {
-                    gpio_drive_high(DEBUG_PIN2);
-                    if (!start_receiving_request(p))
-                    {
-                        LOG("Failed to start receiving request on pin %u\n", p->pin);
-                    }
-                    else
-                    {
-                        p->current_job = JOB_RECEIVING_REQUEST;
-                        p->last_send_job_order = counter; // Reset timeout counter on successful request handling
-                    }
-                    // LOG("Request received on pin %u\n", pin);
+    //     switch (p->current_job)
+    //     {
+    //     case JOB_LISTEN:
+    //     {
+    //         const bool is_low = !gpio_read(p->pin);
+    //         if (is_low)
+    //         {
+    //             // Line is low, start counting
+    //             p->receiving_counter++;
+    //         }
+    //         else
+    //         {
+    //             const uint16_t receive_counter = p->receiving_counter;
+    //             // Here we check if the low time matches a request signal
+    //             if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
+    //             {
+    //                 gpio_drive_high(DEBUG_PIN2);
+    //                 if (!start_receiving_request(p))
+    //                 {
+    //                     LOG("Failed to start receiving request on pin %u\n", p->pin);
+    //                 }
+    //                 else
+    //                 {
+    //                     p->current_job = JOB_RECEIVING_REQUEST;
+    //                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+    //                 }
+    //                 // LOG("Request received on pin %u\n", pin);
 
-                    p->receiving_counter = 0;
-                    gpio_drive_low(DEBUG_PIN2);
-                }
-                // If the signal was too short or too long, just reset the counter
-                else if (receive_counter > INITIAL_LOW_TIME_REQUEST_MAX_MS || receive_counter < INITIAL_LOW_TIME_REQUEST_MIN_MS)
-                {
-                    p->receiving_counter = 0;
-                }
+    //                 p->receiving_counter = 0;
+    //                 gpio_drive_low(DEBUG_PIN2);
+    //             }
+    //             // If the signal was too short or too long, just reset the counter
+    //             else if (receive_counter > INITIAL_LOW_TIME_REQUEST_MAX_MS || receive_counter < INITIAL_LOW_TIME_REQUEST_MIN_MS)
+    //             {
+    //                 p->receiving_counter = 0;
+    //             }
 
-                // Schedule the next send if we're the initiator
-                if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR && delta >= p->time_until_next_send)
-                {
+    //             // Schedule the next send if we're the initiator
+    //             if (dhandshake_get_role(p) == DHANDSHAKE_ROLE_INITIATOR && delta >= p->time_until_next_send)
+    //             {
 
-                    p->current_job = JOB_SEND_REQUEST;
-                    p->last_send_job_order = counter;
-                    gpio_od_hold_low(p->pin); // Start sending by pulling line low
-                }
-            }
-            break;
-        }
-        case JOB_SEND_REQUEST:
-        {
-            if (delta > INITIAL_LOW_TIME_REQUEST_MS)
-            {
-                if (!send_request_in_background(p->pin, p))
-                {
-                    reschedule_request(p, counter); // reschedule in any case to avoid immediate resend
-                    p->current_job = JOB_LISTEN;    // Go back to listening on failure
-                }
-                else
-                {
-                    p->current_job = JOB_TRANSMITTING_REQUEST;
-                }
-                p->last_send_job_order = counter; // Reset timeout counter on successful request handling
-            }
-            something_happened = true;
-            break;
-        }
-        case JOB_SEND_ANSWER:
-        {
-            if (delta > INITIAL_LOW_TIME_ANSWER_MS)
-            {
-                if (!send_answer_in_background(p->pin, p))
-                {
-                    p->current_job = JOB_LISTEN; // Go back to listening on failure
-                }
-                else
-                {
-                    p->current_job = JOB_TRANSMITTING_ANSWER;
-                }
-                p->last_send_job_order = counter; // Reset timeout counter on successful request handling
-            }
-            something_happened = true;
-            break;
-        }
-        case JOB_TRANSMITTING_REQUEST:
-        case JOB_TRANSMITTING_ANSWER:
-        {
-            bool is_complete = parallel_manchester_transmit_complete(p->manchester_instance_index);
+    //                 p->current_job = JOB_SEND_REQUEST;
+    //                 p->last_send_job_order = counter;
+    //                 gpio_od_hold_low(p->pin); // Start sending by pulling line low
+    //             }
+    //         }
+    //         break;
+    //     }
+    //     case JOB_SEND_REQUEST:
+    //     {
+    //         if (delta > INITIAL_LOW_TIME_REQUEST_MS)
+    //         {
+    //             if (!send_request_in_background(p->pin, p))
+    //             {
+    //                 reschedule_request(p, counter); // reschedule in any case to avoid immediate resend
+    //                 p->current_job = JOB_LISTEN;    // Go back to listening on failure
+    //             }
+    //             else
+    //             {
+    //                 p->current_job = JOB_TRANSMITTING_REQUEST;
+    //             }
+    //             p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+    //         }
+    //         something_happened = true;
+    //         break;
+    //     }
+    //     case JOB_SEND_ANSWER:
+    //     {
+    //         if (delta > INITIAL_LOW_TIME_ANSWER_MS)
+    //         {
+    //             if (!send_answer_in_background(p->pin, p))
+    //             {
+    //                 p->current_job = JOB_LISTEN; // Go back to listening on failure
+    //             }
+    //             else
+    //             {
+    //                 p->current_job = JOB_TRANSMITTING_ANSWER;
+    //             }
+    //             p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+    //         }
+    //         something_happened = true;
+    //         break;
+    //     }
+    //     case JOB_TRANSMITTING_REQUEST:
+    //     case JOB_TRANSMITTING_ANSWER:
+    //     {
+    //         const bool is_complete = parallel_manchester_transmit_complete(p->manchester_instance_index);
 
-            if (is_complete)
-            {
-                // Transmission completed, update job state
-                if (p->current_job == JOB_TRANSMITTING_REQUEST)
-                {
-                    p->current_job = JOB_WAIT_FOR_ANSWER;
-                }
-                else
-                {
-                    p->current_job = JOB_LISTEN;
-                }
-            }
-            // Timeout for transmission if complete signal not received
-            else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
-            {
-                // Timeout occurred during transmission
-                reschedule_request(p, counter);
-                p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            }
-            else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
-            {
-                // Timeout occurred during transmission
-                p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            }
-            something_happened = true;
-            break;
-        }
-        case JOB_WAIT_FOR_ANSWER:
-        {
-            const bool is_low = !gpio_read(p->pin);
-            if (is_low)
-            {
-                // Line is low, start counting
-                p->receiving_counter++;
-            }
-            else
-            {
-                const uint16_t receive_counter = p->receiving_counter;
-                bool is_failed = false;
+    //         if (is_complete)
+    //         {
+    //             // Transmission completed, update job state
+    //             if (p->current_job == JOB_TRANSMITTING_REQUEST)
+    //             {
+    //                 p->current_job = JOB_WAIT_FOR_ANSWER;
+    //             }
+    //             else
+    //             {
+    //                 p->current_job = JOB_LISTEN;
+    //             }
+    //         }
+    //         // Timeout for transmission if complete signal not received
+    //         else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
+    //         {
+    //             // Timeout occurred during transmission
+    //             reschedule_request(p, counter);
+    //             p->current_job = JOB_LISTEN; // Go back to listening on timeout
+    //         }
+    //         else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+    //         {
+    //             // Timeout occurred during transmission
+    //             p->current_job = JOB_LISTEN; // Go back to listening on timeout
+    //         }
+    //         something_happened = true;
+    //         break;
+    //     }
+    //     case JOB_WAIT_FOR_ANSWER:
+    //     {
+    //         const bool is_low = !gpio_read(p->pin);
+    //         if (is_low)
+    //         {
+    //             // Line is low, start counting
+    //             p->receiving_counter++;
+    //         }
+    //         else
+    //         {
+    //             const uint16_t receive_counter = p->receiving_counter;
+    //             bool is_failed = false;
 
-                if (receive_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && receive_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
-                {
-                    p->receiving_counter = 0;
-                    if (!start_receiving_answer(p))
-                    {
-                        is_failed = true;
-                        LOG("Failed to start receiving answer on pin %u\n", p->pin);
-                    }
-                    else
-                    {
-                        p->current_job = JOB_RECEIVING_ANSWER;
-                        p->last_send_job_order = counter; // Reset timeout counter on successful answer handling
-                    }
-                }
-                // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
-                // and reschedule the request
-                else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
-                {
-                    is_failed = true;
-                }
-                if (is_failed)
-                {
-                    LOG("- Failed to receive answer on pin %u\n", p->pin);
-                    reschedule_request(p, counter);
-                    p->current_job = JOB_LISTEN;
-                }
-            }
-            something_happened = true;
-            break;
-        }
-        case JOB_RECEIVING_REQUEST:
-        {
-            gpio_drive_high(DEBUG_PIN2);
-            if (parallel_manchester_receive_complete(p->manchester_instance_index))
-            {
+    //             if (receive_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && receive_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
+    //             {
+    //                 p->receiving_counter = 0;
+    //                 if (!start_receiving_answer(p))
+    //                 {
+    //                     is_failed = true;
+    //                     LOG("Failed to start receiving answer on pin %u\n", p->pin);
+    //                 }
+    //                 else
+    //                 {
+    //                     p->current_job = JOB_RECEIVING_ANSWER;
+    //                     p->last_send_job_order = counter; // Reset timeout counter on successful answer handling
+    //                 }
+    //             }
+    //             // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
+    //             // and reschedule the request
+    //             else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
+    //             {
+    //                 is_failed = true;
+    //             }
+    //             if (is_failed)
+    //             {
+    //                 LOG("- Failed to receive answer on pin %u\n", p->pin);
+    //                 reschedule_request(p, counter);
+    //                 p->current_job = JOB_LISTEN;
+    //             }
+    //         }
+    //         something_happened = true;
+    //         break;
+    //     }
+    //     case JOB_RECEIVING_REQUEST:
+    //     {
+    //         gpio_drive_high(DEBUG_PIN2);
+    //         if (parallel_manchester_receive_complete(p->manchester_instance_index))
+    //         {
 
-                if (!handle_request_receive_complete(p->pin, p))
-                {
-                    // Failed to handle request properly
-                    p->current_job = JOB_LISTEN; // Go back to listening on failure
-                    LOG("Failed to handle request on pin %u\n", p->pin);
-                }
-                else
-                {
-                    // Successfully received request and prepared to send answer
-                    p->current_job = JOB_SEND_ANSWER;
-                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
-                }
-            }
-            else if (parallel_manchester_receive_error(p->manchester_instance_index))
-            {
-                LOG("Failed to receive request on pin %u\n", p->pin);
-                p->current_job = JOB_LISTEN; // Go back to listening on failure
-            }
-            something_happened = true;
-            gpio_drive_low(DEBUG_PIN2);
-            break;
-        }
-        case JOB_RECEIVING_ANSWER:
-        {
-            if (parallel_manchester_receive_complete(p->manchester_instance_index))
-            {
-                if (!handle_answer_complete(p->pin, p))
-                {
-                    LOG("Failed to handle answer on pin %u\n", p->pin);
-                }
-                else
-                {
-                    // Successfully received answer
-                    // blacklist this pin for further requests to avoid flooding
-                    internal_valid_pins &= ~(1ULL << pin_index);
-                }
-                p->current_job = JOB_LISTEN; // Go back to listening after handling answer
-            }
-            else if (parallel_manchester_receive_error(p->manchester_instance_index))
-            {
-                LOG("Failed to receive answer on pin %u\n", p->pin);
-                reschedule_request(p, counter);
-                p->current_job = JOB_LISTEN; // Go back to listening on failure
-            }
-            something_happened = true;
-            break;
-        }
-        default:
-            break;
-        }
-    }
+    //             if (!handle_request_receive_complete(p->pin, p))
+    //             {
+    //                 // Failed to handle request properly
+    //                 p->current_job = JOB_LISTEN; // Go back to listening on failure
+    //                 LOG("Failed to handle request on pin %u\n", p->pin);
+    //             }
+    //             else
+    //             {
+    //                 // Successfully received request and prepared to send answer
+    //                 p->current_job = JOB_SEND_ANSWER;
+    //                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+    //             }
+    //         }
+    //         else if (parallel_manchester_receive_error(p->manchester_instance_index))
+    //         {
+    //             LOG("Failed to receive request on pin %u\n", p->pin);
+    //             p->current_job = JOB_LISTEN; // Go back to listening on failure
+    //         }
+    //         something_happened = true;
+    //         gpio_drive_low(DEBUG_PIN2);
+    //         break;
+    //     }
+    //     case JOB_RECEIVING_ANSWER:
+    //     {
+    //         if (parallel_manchester_receive_complete(p->manchester_instance_index))
+    //         {
+    //             if (!handle_answer_complete(p->pin, p))
+    //             {
+    //                 LOG("Failed to handle answer on pin %u\n", p->pin);
+    //             }
+    //             else
+    //             {
+    //                 // Successfully received answer
+    //                 // blacklist this pin for further requests to avoid flooding
+    //                 internal_valid_pins &= ~(1ULL << pin_index);
+    //             }
+    //             p->current_job = JOB_LISTEN; // Go back to listening after handling answer
+    //         }
+    //         else if (parallel_manchester_receive_error(p->manchester_instance_index))
+    //         {
+    //             LOG("Failed to receive answer on pin %u\n", p->pin);
+    //             reschedule_request(p, counter);
+    //             p->current_job = JOB_LISTEN; // Go back to listening on failure
+    //         }
+    //         something_happened = true;
+    //         break;
+    //     }
+    //     default:
+    //         break;
+    //     }
+    // }
     gpio_drive_low(DEBUG_PIN1);
 
-    if (!something_happened)
-    {
-        global_last_worker++;
-    }
-    else
-    {
-        global_last_worker = 0;
-    }
+    // if (!something_happened)
+    // {
+    //     global_last_worker++;
+    // }
+    // else
+    // {
+    //     global_last_worker = 0;
+    // }
 }
 static volatile uint8_t isr_counter = 0;
 static void send_data_isr(void)
@@ -532,7 +537,7 @@ static void send_data_isr(void)
 
 static void start_send_data_timer(void)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_300);
+    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_100);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -596,17 +601,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
     while (bitmap_iterator_next(&it, &pin_index))
     {
-        uint8_t *pin_data_buffer = calloc(max_packet_size, sizeof(uint8_t));
-        if (!pin_data_buffer)
-        {
-            // Cleanup and exit on allocation failure
-            for (uint8_t i = 0; i < idx; i++)
-                free(global_datahandshake_pindata[i].data_buffer);
-            free(global_datahandshake_pindata);
-            global_datahandshake_pindata = NULL;
-            return result;
-        }
-
         global_datahandshake_pindata[idx] = (DataHandshakeData){
             .pin = pindata[pin_index].pin,
             .role = 0,
@@ -615,7 +609,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
             .receiving_counter = 0,
             .time_until_next_send = 0,
             .last_send_job_order = 0,
-            .data_buffer = pin_data_buffer,   // Single buffer for both request and answer
             .manchester_instance_index = 255, // Initialize as invalid
         };
 
@@ -623,7 +616,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         if (initiator_mask & (1ULL << pin_index))
         {
             // If the pin is initiator, the device will send requests on this pin
-            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt * 0.6f);
+            global_datahandshake_pindata[idx].time_until_next_send = get_listen_until_time(initiator_cnt);
             global_datahandshake_pindata[idx].role = DHANDSHAKE_ROLE_INITIATOR;
             initiator_cnt++;
         }
@@ -633,7 +626,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
             global_datahandshake_pindata[idx].role = DHANDSHAKE_ROLE_RESPONDER;
         }
 
-        uint8_t manchester_idx = parallel_manchester_add_instance(pindata[pin_index].pin, pin_data_buffer, max_packet_size);
+        uint8_t manchester_idx = parallel_manchester_add_instance(pindata[pin_index].pin, global_datahandshake_pindata[idx].data_buffer, max_packet_size);
 
         if (manchester_idx == 255)
         {
@@ -651,7 +644,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     }
 
     internal_valid_pins = valid_pins_for_fsm_mask;
-    LOG("Data handshake initialized \n");
+    printf("Data handshake initialized \n");
 
     start_send_data_timer();
     while (global_last_worker < MAXIMUM_IDLE_TIME)
@@ -690,10 +683,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     // Cleanup
     if (global_datahandshake_pindata)
     {
-        for (uint8_t i = 0; i < number_of_pins; i++)
-        {
-            free(global_datahandshake_pindata[i].data_buffer);
-        }
         free(global_datahandshake_pindata);
         global_datahandshake_pindata = NULL;
     }

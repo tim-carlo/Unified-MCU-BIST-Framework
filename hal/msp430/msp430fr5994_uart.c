@@ -1,5 +1,4 @@
-#include "msp430fr5994_uart.h"
-#include "msp430fr5994_gpio.h"
+
 #include <string.h>
 #include "endian.h"
 #include "msp430fr5994_helper.h"

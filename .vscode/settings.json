@@ -47,6 +47,7 @@
         "stdlib.h": "c",
         "nrf52840_uart.h": "c",
         "endian.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "msp430fr5994_uart.h": "c"
     }
 }

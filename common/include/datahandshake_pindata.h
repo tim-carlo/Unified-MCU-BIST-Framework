@@ -5,44 +5,28 @@
 #include <stdint.h>
 #include "crc.h"
 
-// Packet format: [8 bytes UUID][1 byte Pin][1 byte Mutex Request][4 bytes CRC32]
-typedef struct
-{
-    uint64_t uuid;
-    uint8_t pin;
-    uint8_t mutex_request; // Mutex request field (0x55 = request, 0x00 = no request)
-    uint32_t crc_value;    // Changed from crc to uint32_t to avoid type conflicts
-} RequestDataPacket;
-
-// Packet format: [8 bytes Received UUID][1 byte received Pin][8 bytes own UUID][1 byte sending Pin][4 bytes CRC32]
-typedef struct
-{
-    uint64_t received_uuid;
-    uint8_t received_pin;
-    uint64_t own_uuid;
-    uint8_t sending_pin;
-    uint32_t crc_value; // Changed from crc to uint32_t to avoid type conflicts
-    uint8_t mutex_allowed;
-} AnswerDataPacket;
-
-typedef enum
+typedef uint8_t CurrentJobType;
+enum
 {
     JOB_LISTEN = 0,
-    JOB_SEND_REQUEST = 1,
-    JOB_SEND_ANSWER = 2,
-    JOB_WAIT_FOR_ANSWER = 3,
-    JOB_TRANSMITTING_ANSWER = 4,
-    JOB_TRANSMITTING_REQUEST = 5,
-    JOB_RECEIVING_ANSWER = 6,
-    JOB_RECEIVING_REQUEST = 7,
-} CurrentJobType;
+    JOB_SEND_REQUEST,
+    JOB_SEND_ANSWER,
+    JOB_WAIT_FOR_ANSWER,
+    JOB_TRANSMITTING_ANSWER,
+    JOB_TRANSMITTING_REQUEST,
+    JOB_RECEIVING_ANSWER,
+    JOB_RECEIVING_REQUEST
+};
 
-typedef enum
+typedef uint8_t DataHandshakeRoleType;
+enum
 {
     DHANDSHAKE_ROLE_INITIATOR = 0,
-    DHANDSHAKE_ROLE_RESPONDER = 1,
-    DHANDSHAKE_ROLE_UNCLEAR = 2
-} DataHandshakeRoleType;
+    DHANDSHAKE_ROLE_RESPONDER,
+    DHANDSHAKE_ROLE_UNCLEAR
+};
+// Max buffer size for data handshake per pin
+#define ANSWER_PACKSIZE 25
 typedef struct
 {
     uint8_t pin;
@@ -53,8 +37,7 @@ typedef struct
     uint16_t receiving_counter;
     uint16_t time_until_next_send;
     uint32_t last_send_job_order;
-
-    uint8_t *data_buffer;
+    uint8_t data_buffer[ANSWER_PACKSIZE];
     uint8_t manchester_instance_index;
 } DataHandshakeData;
 

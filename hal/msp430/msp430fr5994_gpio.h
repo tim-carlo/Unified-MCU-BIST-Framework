@@ -4,8 +4,6 @@
 #include <msp430fr5994.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "printf.h"
-#include "stack.h"
 
 
 #ifdef __cplusplus
@@ -21,21 +19,8 @@ extern "C" {
 
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
-// Register offsets from port base
-#define PORT_IN_OFFSET  0x00
-#define PORT_OUT_OFFSET 0x02
-#define PORT_DIR_OFFSET 0x04
-#define PORT_REN_OFFSET 0x06
-#define PORT_SEL0_OFFSET 0x0A
-#define PORT_SEL1_OFFSET 0x0C
 
-// Clock definitions
-#define SMCLK_HZ        16000000UL  // SMCLK frequency: 16 MHz
 
-// Timer configuration
-#define TIMER_DIVIDER       8
-#define TIMER_FREQ_HZ       (SMCLK_HZ / TIMER_DIVIDER) // 16MHz / 8 = 2MHz
-#define TICKS_PER_OVERFLOW  65536UL  // 16-bit Timer overflow (2^16)
 
 #define INVALID_PIN 255 // Invalid pin number
 

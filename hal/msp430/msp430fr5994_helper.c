@@ -108,9 +108,12 @@ void mcu_init()
 
     // Unlock GPIO
     PM5CTL0 &= ~LOCKLPM5;
-    set_neutral_gpio(); // Set all GPIOs to neutral state
+    // Set all GPIOs to neutral state
+    set_neutral_gpio();
+
     // Configure clock to 16MHz
     // Using DCO at 16MHz
+    // We need the maximum speed for the handshakes
     FRCTL0 = FRCTLPW | NWAITS_1;
     CSCTL0_H = CSKEY_H;
     CSCTL1 = DCOFSEL_4 | DCORSEL;
@@ -137,20 +140,6 @@ void mcu_init()
     UCA0MCTLW = UCOS16 | 0x4900; //
     UCA0CTLW0 &= ~UCSWRST;       // Enable UART
 #endif
-
-    // UCA1BR1 = 0;                 // High byte
-    // UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
-
-    //
-
-    // #if DEV_KIT == 1
-    //     // Configure UART pins
-    //     P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
-    //     P2SEL1 |= BIT0 | BIT1;    // Set UART function
-    // #else
-    //     P2SEL0 |= BIT5 | BIT6;
-    //     P2SEL1 &= ~(BIT5 | BIT6);
-    // #endif
 
     // Configure all timers with ID__8 (divide by 8)
     // configure_timer((volatile uint16_t *)&TA1CTL, ID__8); // Configure Timer A1

@@ -118,7 +118,7 @@ spooky_encoder_step(struct spooky_encoder *enc) {
         break;
     case TX_LONG:
     {
-        uint8_t bit = 0x55 & (1 << (7 - (enc->index/2)));
+        const uint8_t bit = 0x55 & (1 << (7 - (enc->index >> 2))); // replace /4 with >>2
         res = encode_bit(bit, enc->index);
         enc->index++;
         if (enc->index == 4*HEADER_LONG_TRANSITIONS) {
