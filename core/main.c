@@ -1,3 +1,4 @@
+#include "msp430fr5994_gpio.h"
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_gpio.h"
@@ -57,29 +58,40 @@ volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
 
 DataHandshakeResult data_handshake_result_test;
 
-void set_standart_blacklist_pins(volatile uint64_t *mask) // ← volatile hinzufügen
+void set_standart_blacklist_pins(volatile uint64_t *mask)
 {
     *mask = 0xFFFFFFFFFFFFFFFFULL;
 
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
     *mask &= ~(1ULL << 11); // Pin 11
+    *mask &= ~(1ULL << 13); // Pin 13
+    *mask &= ~(1ULL << 14); // Pin 14
+    *mask &= ~(1ULL << 15); // Pin 15
+    *mask &= ~(1ULL << 16); // Pin 16
+    *mask &= ~(1ULL << 17); // Pin 17
+    *mask &= ~(1ULL << 18); // Pin 18
     data_handshake_result_test.mutex_pin = 12;
     data_handshake_result_test.i_am_mutex_owner = true;
 
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
-    data_handshake_result_test.mutex_pin = ABS_PIN(3, 7);
-    data_handshake_result_test.i_am_mutex_owner = false;
+    *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
+    *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
+    *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
+    *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
+    *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
+    *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
 #endif
 }
 
 #if DEV_KIT == 0
 
-const uint32_t all[] = {
-    GPIO0,
-    /*GPIO1,*/ GPIO2,
+const uint8_t all[] = {
+    //GPIO0,
+    /*GPIO1,*/ 
+    GPIO2,
     GPIO3,
     GPIO4,
     GPIO5,
@@ -93,22 +105,22 @@ const uint32_t all[] = {
     GPIO13,
     GPIO14,
     GPIO15,
-    PWRGDL,
-    PWRGDH,
-    PIN_LED0,
-    PIN_LED2,
-    I2C_SCL,
-    I2C_SDA,
-    /*RTC_INT,*/ MAX_INT,
-    C2C_CLK,
-    C2C_CoPi,
-    C2C_CiPo,
-    C2C_PSel,
-    C2C_GPIO,
-    THRCTRL_H0,
-    THRCTRL_H1,
-    THRCTRL_L0,
-    THRCTRL_L1,
+    // PWRGDL,
+    // PWRGDH,
+    // PIN_LED0,
+    // PIN_LED2,
+    // I2C_SCL,
+    // I2C_SDA,
+    // /*RTC_INT,*/ MAX_INT,
+    // C2C_CLK,
+    // C2C_CoPi,
+    // C2C_CiPo,
+    // C2C_PSel,
+    // C2C_GPIO,
+    // THRCTRL_H0,
+    // THRCTRL_H1,
+    // THRCTRL_L0,
+    // THRCTRL_L1,
 };
 #endif
 void set_shepherd_pins()
@@ -124,29 +136,30 @@ void set_shepherd_pins()
     initial_state_mask &= ~(1ULL << GPIO9);
     initial_state_mask &= ~(1ULL << GPIO10);
     initial_state_mask &= ~(1ULL << GPIO11);
-    // initial_state_mask &= ~(1ULL << GPIO12);
-    // initial_state_mask &= ~(1ULL << GPIO13);
-    // initial_state_mask &= ~(1ULL << GPIO14);
-    // initial_state_mask &= ~(1ULL << GPIO15);
+    initial_state_mask &= ~(1ULL << GPIO12);
+    initial_state_mask &= ~(1ULL << GPIO13);
+    initial_state_mask &= ~(1ULL << GPIO14);
+    initial_state_mask &= ~(1ULL << GPIO15);
 }
 
 void set_pins_test_env_pins()
 {
     initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
-    //initial_state_mask &= ~(1ULL << GPIO0);
-    //initial_state_mask &= ~(1ULL << GPIO1);
-    //initial_state_mask &= ~(1ULL << GPIO2);
-    //initial_state_mask &= ~(1ULL << GPIO3);
-    // initial_state_mask &= ~(1ULL << GPIO6);
-    // initial_state_mask &= ~(1ULL << GPIO7);
-    // initial_state_mask &= ~(1ULL << GPIO8);
-    // initial_state_mask &= ~(1ULL << GPIO9);
-    // initial_state_mask &= ~(1ULL << GPIO10);
-       initial_state_mask &= ~(1ULL << GPIO11);
-       initial_state_mask &= ~(1ULL << GPIO12);
-    // initial_state_mask &= ~(1ULL << GPIO13);
-    // initial_state_mask &= ~(1ULL << GPIO14);
-    // initial_state_mask &= ~(1ULL << GPIO15);
+
+    // initial_state_mask &= ~(1ULL << GPIO0);
+    // initial_state_mask &= ~(1ULL << GPIO1);
+    // initial_state_mask &= ~(1ULL << GPIO2);
+    // initial_state_mask &= ~(1ULL << GPIO3);
+    //  initial_state_mask &= ~(1ULL << GPIO6);
+    //  initial_state_mask &= ~(1ULL << GPIO7);
+    //  initial_state_mask &= ~(1ULL << GPIO8);
+    //  initial_state_mask &= ~(1ULL << GPIO9);
+    //  initial_state_mask &= ~(1ULL << GPIO10);
+    //   initial_state_mask &= ~(1ULL << GPIO11);
+    //    initial_state_mask &= ~(1ULL << GPIO12);
+    //  initial_state_mask &= ~(1ULL << GPIO13);
+    //  initial_state_mask &= ~(1ULL << GPIO14);
+    //  initial_state_mask &= ~(1ULL << GPIO15);
 }
 
 void led0_show_error()
@@ -242,11 +255,94 @@ int main(void)
     led0_show_error();
 #elif defined(NRF52840_XXAA)
     led2_show_error();
+
+    // Configure all GPIO pins as inputs (with pull) and stop
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        gpio_input_init(pin, GPIO_NO_PULL);
+    }
+    while (1)
+    {
+        // idle forever with all pins configured as inputs
+    }
+
 #endif
 #else
     // set_standart_blacklist_pins(&initial_state_mask);
     set_standart_blacklist_pins(&initial_state_mask);
 #endif
+
+#if DEV_KIT == 0
+    size_t all_count = sizeof(all) / sizeof(all[0]);
+
+    // // configure as open-drain for each pin in all[]
+    // for (size_t i = 0; i < all_count; ++i)
+    // {
+    //     uint32_t pin = all[i];
+    //     gpio_od_init((uint8_t)pin);
+    // }
+    // delay_ms(50);
+
+    // // briefly drive low each pin in all[]
+    // for (size_t i = 0; i < all_count; ++i)
+    // {
+    //     uint32_t pin = all[i];
+    //     LOG("DEBUG: OD test pin %u\n", (unsigned)pin);
+    //     gpio_od_hold_low((uint8_t)pin);
+    //     delay_ms(10);
+    //     gpio_od_release((uint8_t)pin);
+    // }
+    // delay_ms(50);
+
+    /* set array to output */
+    for (uint8_t count = 0; count < 14; count++)
+    {
+        gpio_output_init(all[count]);
+    }
+    delay_ms(100);
+    /* switch each pin on in array */
+    for (uint8_t count = 0; count < 14; count++)
+    {
+        gpio_drive_high(all[count]);
+        delay_ms(10*count);
+        gpio_drive_low(all[count]);
+    }
+    /* set pins to INPUT */
+    delay_ms(100);
+    for (uint8_t count = 0; count < 14; count++)
+    {
+        gpio_reset(all[count]);
+    }
+#else
+    // fallback: operate on the full pin range
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (initial_state_mask & (1ULL << pin))
+            continue; // skip blacklisted pins
+
+        gpio_od_init(pin); // configure as open-drain
+    }
+    delay_ms(50);
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (initial_state_mask & (1ULL << pin))
+            continue; // skip blacklisted pins
+
+        LOG("DEBUG: OD test pin %u\n", pin);
+        gpio_od_hold_low(pin); // drive low briefly
+        delay_ms(10);
+        gpio_od_release(pin);
+    }
+    delay_ms(50);
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
+    {
+        if (initial_state_mask & (1ULL << pin))
+            continue; // skip blacklisted pins
+
+        gpio_reset(pin);
+    }
+#endif
+
     LOG("DEBUG: Starting handshake process\n");
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
@@ -287,13 +383,13 @@ int main(void)
         return 0; // No mutex pin assigned, exit program
     }
     mutex_handeler_init(&data_handshake_result);
-    mutex_handler_request_mutex();
+    mutex_handler_request_mutex(initial_state_mask);
     LOG("DEBUG: now having mutex\n");
 
     perfom_mutex_operations();
 
     // TODO Handle different error codes
-    mutex_handler_release_mutex();
+    mutex_handler_release_mutex(initial_state_mask);
     LOG("DEBUG: released mutex\n");
     return 0;
 }
