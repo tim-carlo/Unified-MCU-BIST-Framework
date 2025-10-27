@@ -351,7 +351,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         {
             if (print_pin != pin && counter[print_pin] > 0)
             {
-                add_pin_connection(pindata, pin, print_pin, get_own_device_id());
+                add_pin_connection(pindata, pin, print_pin, MY_DEVICE_ID_INDEX);
                 add_pin_event(pindata, pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
             }
         }
