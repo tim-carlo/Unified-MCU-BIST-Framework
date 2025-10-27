@@ -72,19 +72,6 @@ void gpio_od_init(uint8_t abs_pin);
 void gpio_od_hold_low(uint8_t abs_pin);
 void gpio_od_release(uint8_t abs_pin);
 
-// Interrupt Handling
-void gpio_listen_on_all_pins_interrupt(
-    uint64_t blacklist_mask,
-    gpio_interrupt_handler_t falling_handler,
-    gpio_interrupt_handler_t rising_handler);
-
-void gpio_disable_all_interrupts(uint64_t blacklist_mask);
-
-// Stack Operations for GPIO pins
-void push_active_pins_except_blacklist_to_stack(
-    Stack* stack,
-    bool expected_level,
-    uint64_t blacklist_mask);
 
 #ifdef __cplusplus
 }

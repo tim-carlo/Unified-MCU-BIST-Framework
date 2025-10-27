@@ -1,6 +1,3 @@
-#include <msp430.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include "msp430fr5994_gpio.h"
 /**
  * @brief Map absolute pin number to port register group (0–7: PJ, 8–15: P1, etc.)
