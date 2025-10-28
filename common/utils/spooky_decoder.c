@@ -52,8 +52,8 @@ static char *st_names[] = {
  * Returns whether the entire message payload is complete. */
 typedef int(byte_cb)(struct spooky_decoder *dec);
 
-static int sink_bit(struct spooky_decoder *dec, bool bit);
-static uint8_t checksum(uint8_t *buf, size_t size);
+static inline bool sink_bit(struct spooky_decoder *dec, bool bit);
+static uint8_t checksum(const uint8_t *buf, size_t size);
 static void append_to_ring_buffer(struct spooky_decoder *dec,
                                   uint8_t offset);
 
@@ -102,50 +102,25 @@ static step_state step_payload;
 /* Step the decoder, with a new bit of input.
  * If a complete message has been received, the callback
  * passed to spooky_decoder_init will be called with it. */
-enum spooky_decoder_step_res
-spooky_decoder_step(struct spooky_decoder *dec, bool bit)
+typedef int (*decoder_state_func)(struct spooky_decoder *, bool);
+static const decoder_state_func state_table[] = {
+    step_header,
+    step_length,
+    step_chksum,
+    step_payload
+};
+
+enum spooky_decoder_step_res spooky_decoder_step(struct spooky_decoder *dec, bool bit)
 {
-    enum spooky_decoder_step_res res = SPOOKY_DECODER_STEP_ERROR_NULL;
-    if (dec == NULL)
-    {
-        LOG("step error: NULL decoder\n");
-        return res;
-    }
-    LOG("dec mode %s, index %d = %20d\n",
-        st_names[dec->mode], dec->index, bit);
     dec->ticks++;
-
-    switch (dec->mode)
-    {
-    case RX_HEADER:
-        (void)step_header(dec, bit);
-        break;
-    case RX_LENGTH:
-        (void)step_length(dec, bit);
-        break;
-    case RX_CHKSUM:
-        (void)step_chksum(dec, bit);
-        break;
-    case RX_PAYLOAD:
-        if (step_payload(dec, bit))
-            return SPOOKY_DECODER_STEP_DONE;
-        break;
-    }
-
-    return SPOOKY_DECODER_STEP_OK;
+    return state_table[dec->mode](dec, bit) ? SPOOKY_DECODER_STEP_DONE : SPOOKY_DECODER_STEP_OK;
 }
 
 /* Is a == (b +/- b/4)? */
-static bool approx_eq(int a, int b)
+static inline bool approx_eq(uint16_t a, uint16_t b)
 {
-    /* This is pretty tolerant, but checksumming will also filter. */
-    int tol = (b < 4 ? 1 : b / 4);
-    if (DEBUG > 1)
-    {
-        LOG("%u >= %u and %u <= %u (tol %u, b %u)\n",
-            a, b - tol, a, b + tol, tol, b);
-    }
-    return abs(a - b) <= tol;
+    uint16_t tol = (b < 4) ? 1 : (b >> 2); // b/4 
+    return (a > b - tol) && (a < b + tol);
 }
 
 static void dump_ring_buffer(struct spooky_decoder *dec)
@@ -164,17 +139,11 @@ static void dump_ring_buffer(struct spooky_decoder *dec)
 }
 
 /* Save the most recent tick count in the ring buffer. */
-static void append_to_ring_buffer(struct spooky_decoder *dec,
-                                  uint8_t offset)
+static inline void append_to_ring_buffer(struct spooky_decoder *dec, uint8_t offset)
 {
     uint8_t *buf = dec->buffer;
-
-    /* First edge is preceeded by max possible delay. */
-    buf[dec->index & RING_BUF_MASK] = (dec->index == 0
-                                           ? MAX_POSSIBLE_DELAY
-                                           : dec->ticks - offset);
-    if (DEBUG)
-        dump_ring_buffer(dec);
+    uint8_t idx = dec->index & RING_BUF_MASK;
+    buf[idx] = (dec->index == 0) ? MAX_POSSIBLE_DELAY : (dec->ticks - offset);
     dec->index++;
 }
 
@@ -233,18 +202,14 @@ STATE(step_header)
     return 0;
 }
 
-static bool longer_than_tolerance_allows(uint16_t t, uint16_t i)
+static inline bool longer_than_tolerance_allows(uint16_t t, uint16_t i)
 {
     uint16_t max = i + (i >> 2); /* i + i/4 */
-    if (DEBUG > 1)
-    {
-        LOG("? %u > %u (%u)\n", t, max, i);
-    }
     return t > max;
 }
 
 /* Sink a bit, and call the callback if appropriate. */
-static int sink_bit_with_cb(struct spooky_decoder *dec, bool bit,
+static inline int sink_bit_with_cb(struct spooky_decoder *dec, bool bit,
                             byte_cb *cb, bool save_ticks)
 {
     int res = 0;
@@ -380,33 +345,25 @@ void reset_decoder(struct spooky_decoder *dec)
 
 /* Sink a bit into the accumulator.
  * Returns whether a byte was completed. */
-static int sink_bit(struct spooky_decoder *dec, bool bit)
+static inline bool sink_bit(struct spooky_decoder *dec, bool bit)
 {
-    if (bit == 0)
-    {
-        ; // no-op
-    }
-    else if (bit == 1)
-    {
-        dec->bit_accum |= dec->bit_index;
-    }
+    dec->bit_accum |= (-bit) & dec->bit_index;
 
     dec->bit_index >>= 1;
-    if (dec->bit_index == 0x00)
+    if (!dec->bit_index)
     {
         dec->bit_index = 0x80;
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 /* 8-bit sum-and-invert checksum */
-static uint8_t checksum(uint8_t *buf, size_t size)
+static inline uint8_t checksum(const uint8_t *buf, size_t size)
 {
-    uint8_t res = 0;
-    for (int i = 0; i < size; i++)
-    {
-        res += buf[i];
-    }
-    return ~res;
+    uint8_t sum = 0;
+    const uint8_t *end = buf + size;
+    while (buf < end)
+        sum += *buf++;
+    return ~sum;
 }
