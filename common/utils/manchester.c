@@ -141,6 +141,7 @@ static void manchester_stop_timer()
 
 static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
 {
+    printf("rx_cb called with data_size: %u\n", data_size);
     if (data_size < 1)
         return;
     if (receive_buffer != NULL)

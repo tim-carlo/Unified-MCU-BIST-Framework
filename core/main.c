@@ -65,24 +65,24 @@ void set_standart_blacklist_pins(volatile uint64_t *mask)
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
     *mask &= ~(1ULL << 11); // Pin 11
-    *mask &= ~(1ULL << 13); // Pin 13
-    *mask &= ~(1ULL << 14); // Pin 14
-    *mask &= ~(1ULL << 15); // Pin 15
-    *mask &= ~(1ULL << 16); // Pin 16
-    *mask &= ~(1ULL << 17); // Pin 17
-    *mask &= ~(1ULL << 18); // Pin 18
+  //  *mask &= ~(1ULL << 13); // Pin 13
+  //  *mask &= ~(1ULL << 14); // Pin 14
+  //  *mask &= ~(1ULL << 15); // Pin 15
+  //  *mask &= ~(1ULL << 16); // Pin 16
+ //  *mask &= ~(1ULL << 17); // Pin 17
+ //   *mask &= ~(1ULL << 18); // Pin 18
     data_handshake_result_test.mutex_pin = 12;
     data_handshake_result_test.i_am_mutex_owner = true;
 
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
-    *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
-    *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
-    *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
-    *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
-    *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
-    *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
+   // *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
+   // *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
+  //  *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
+   // *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
+  //  *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
+   // *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
 #endif
 }
 

@@ -56,4 +56,7 @@ spooky_decoder_init(struct spooky_decoder *dec,
 enum spooky_decoder_step_res
 spooky_decoder_step(struct spooky_decoder *dec, bool bit);
 
+/* Reset the decoder to initial state. */
+void reset_decoder(struct spooky_decoder *dec);
+
 #endif

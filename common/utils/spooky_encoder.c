@@ -41,11 +41,12 @@ static enum spooky_encoder_step_res encode_bit(uint8_t bit, uint8_t index);
 
 /* Initialize an encoder. */
 enum spooky_encoder_init_res
-spooky_encoder_init(struct spooky_encoder *enc, uint8_t *buffer, uint8_t buffer_size) {
+spooky_encoder_init(struct spooky_encoder *enc,
+                    uint8_t *buffer, uint8_t buffer_size) {
     if ((enc == NULL) || (buffer == NULL)) {
         return SPOOKY_ENCODER_INIT_ERROR_NULL;
     }
-    if (buffer_size == 0) {
+    if ((buffer_size == 0)) {
         return SPOOKY_ENCODER_INIT_ERROR_BAD_ARGUMENT;
     }
 
@@ -54,7 +55,7 @@ spooky_encoder_init(struct spooky_encoder *enc, uint8_t *buffer, uint8_t buffer_
     enc->buffer_size = buffer_size;
     enc->mode = TX_NONE;
     LOG("initialized %p with buffer %p (%u bytes), rate %u\n",
-        (void*)enc, (void*)buffer, buffer_size, TX_RATE);
+        (void*)enc, (void*)buffer, buffer_size, tx_rate);
     return SPOOKY_ENCODER_INIT_OK;
 }
 
@@ -116,7 +117,7 @@ spooky_encoder_step(struct spooky_encoder *enc) {
         break;
     case TX_LONG:
     {
-        const uint8_t bit = 0x55 & (1 << (7 - (enc->index >> 2))); // replace /4 with >>2
+        uint8_t bit = 0x55 & (1 << (7 - (enc->index/2)));
         res = encode_bit(bit, enc->index);
         enc->index++;
         if (enc->index == 4*HEADER_LONG_TRANSITIONS) {

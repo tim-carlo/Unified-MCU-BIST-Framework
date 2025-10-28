@@ -16,7 +16,6 @@
 
 #include <string.h>
 #include "spooky_decoder.h"
-#include "printf.h"
 
 typedef enum
 {
@@ -53,7 +52,6 @@ static char *st_names[] = {
  * Returns whether the entire message payload is complete. */
 typedef int(byte_cb)(struct spooky_decoder *dec);
 
-static void reset_decoder(struct spooky_decoder *dec);
 static int sink_bit(struct spooky_decoder *dec, bool bit);
 static uint8_t checksum(uint8_t *buf, size_t size);
 static void append_to_ring_buffer(struct spooky_decoder *dec,
@@ -141,7 +139,7 @@ spooky_decoder_step(struct spooky_decoder *dec, bool bit)
 static bool approx_eq(int a, int b)
 {
     /* This is pretty tolerant, but checksumming will also filter. */
-    int tol = (b < 4 ? 1 : (b >> 2)); // b/4
+    int tol = (b < 4 ? 1 : b / 4);
     if (DEBUG > 1)
     {
         LOG("%u >= %u and %u <= %u (tol %u, b %u)\n",
@@ -237,7 +235,7 @@ STATE(step_header)
 
 static bool longer_than_tolerance_allows(uint16_t t, uint16_t i)
 {
-    const uint16_t max = i + (i >> 2); /* i + i/4 */
+    uint16_t max = i + (i >> 2); /* i + i/4 */
     if (DEBUG > 1)
     {
         LOG("? %u > %u (%u)\n", t, max, i);
@@ -367,7 +365,7 @@ STATE(step_chksum) { return sink_bit_with_cb(dec, bit, chksum_byte_cb, true); }
 /* Read the data payload. */
 STATE(step_payload) { return sink_bit_with_cb(dec, bit, payload_byte_cb, false); }
 
-static void reset_decoder(struct spooky_decoder *dec)
+void reset_decoder(struct spooky_decoder *dec)
 {
     dec->mode = RX_HEADER;
     dec->ticks = 0;

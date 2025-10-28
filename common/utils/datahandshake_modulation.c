@@ -119,7 +119,7 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
 
         case PMAN_RECEIVE:
         {
-            // gpio_drive_high(DEBUG_PIN_ABS);
+            gpio_drive_high(DEBUG_PIN2);
             const uint8_t pin = instance->pin;
             const bool rx = (all_ports_state >> pin) & 0x1ULL;
 
@@ -174,7 +174,7 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
             default:
                 break;
             }
-            // gpio_drive_low(DEBUG_PIN_ABS);
+            gpio_drive_low(DEBUG_PIN2);
             break;
         }
 
@@ -194,15 +194,7 @@ uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate r
 // Update rx_callback to use instance buffer directly
 static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
 {
-    DataHandshakeData *instance = (DataHandshakeData *)(uintptr_t)udata;
-
-    // Check for invalid data or wrong mode - no need for data_buffer check anymore
-    if (!data || !data_size)
-        return;
-
-    // Copy data directly to instance buffer (data is already there from spooky decoder)
-    // The spooky decoder already wrote to instance->buffer, so we just set the flag
-    instance->status |= STATUS_DATA_RECEIVED;
+    // not used
 }
 
 void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
@@ -234,7 +226,13 @@ bool parallel_manchester_add_instance(DataHandshakeData *instance)
 
     // Decoder: will write received bytes directly into the same buffer and call pman_rx_callback.
     // Pass instance pointer as user data (cast via uintptr_t).
-    enum spooky_encoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE, pman_rx_callback, (void *)(uintptr_t)instance);
+    uint8_t newindex = 0;
+
+    enum spooky_encoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec,
+                                                               instance->data_buffer,
+                                                               BUFFER_SIZE,
+                                                               pman_rx_callback,
+                                                               (void *)(uintptr_t)newindex);
 
     if (dec_res != SPOOKY_DECODER_INIT_OK)
     {
@@ -289,13 +287,15 @@ bool parallel_manchester_receive_background(DataHandshakeData *instance)
 
     // Clear instance buffer
     memset(instance->data_buffer, 0, BUFFER_SIZE);
+    // Clear decoder state
+    reset_decoder(&instance->manchester_dec);
 
     // reinitialize decoder to reset internal state
-    if (spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE, pman_rx_callback, (void *)(uintptr_t)index) != 0)
-    {
-        printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
-        return false; // Invalid index
-    }
+    // if (spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE, pman_rx_callback, instance->) != 0)
+    // {
+    //     printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
+    //     return false; // Invalid index
+    // }
 
     // Start receiving - data will be written directly to instance buffer by spooky decoder
     dhd_set_manchester_mode(instance, PMAN_RECEIVE);
@@ -341,47 +341,3 @@ bool parallel_manchester_data_received(DataHandshakeData *instance)
     }
     return false;
 }
-/* 
-// Check if instance is idle
-bool parallel_manchester_is_idle(uint8_t index)
-{
-    return pman_instances[index].mode == PMAN_IDLE;
-}
-
-// Check if instance is transmitting
-bool parallel_manchester_is_transmitting(uint8_t index)
-{
-    return pman_instances[index].mode == PMAN_SEND;
-}
-
-// Check if instance is receiving
-bool parallel_manchester_is_receiving(uint8_t index)
-{
-    return pman_instances[index].mode == PMAN_RECEIVE;
-}
-
-// Helper function to get buffer pointer
-uint8_t *parallel_manchester_get_received_data(uint8_t index)
-{
-    if (index >= pman_instance_count)
-        return NULL;
-    return pman_instances[index].buffer;
-}
-
-// Add deinit function for cleanup
-void parallel_manchester_deinit()
-{
-    // Stop timer
-    pman_stop_timer();
-
-    // Clean up instances (buffers are owned by caller, don't free them)
-    if (pman_instances)
-    {
-        free(pman_instances);
-        pman_instances = NULL;
-    }
-    pman_instance_count = 0;
-
-    LOG("Manchester deinitialized\n");
-}
- */
