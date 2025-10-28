@@ -102,15 +102,20 @@ static void analyze_pindata_events(PinData *pindata)
 
 static inline uint16_t get_listen_until_time(uint16_t factor)
 {
-    const uint32_t range = MAXIMUM_REQUEST_CYCLES - MINMUM_REQUEST_CYCLES;
-    const uint32_t rnd = random32(); // 0 .. 0xFFFFFFFF
+    uint32_t rnd = random32();
+    const uint16_t jitter_range = (MAXIMUM_REQUEST_CYCLES >> 3); // MAX / 8 for 500 = 62
+    
+    uint16_t rnd16 = (uint16_t)(rnd >> 16);
+    uint16_t jitter = (uint16_t)(((uint32_t)rnd16 * jitter_range) >> 16);
 
-    const uint32_t scaled = (uint64_t)rnd * range >> 32;
+    // The factor scales the base time and the jitter is added on to
+    uint32_t base = (uint32_t)factor * (uint32_t)MINMUM_REQUEST_CYCLES;
+    uint32_t total = base + jitter;
 
-    uint16_t random_offset = (uint16_t)(MINMUM_REQUEST_CYCLES + scaled);
-    random_offset = (uint16_t)((uint32_t)random_offset * factor);
+    if (total > (uint32_t)MAXIMUM_REQUEST_CYCLES)
+        total -= (uint32_t)MAXIMUM_REQUEST_CYCLES;
 
-    return random_offset;
+    return (uint16_t)total;
 }
 
 static inline bool start_receiving_request(DataHandshakeData *p)
@@ -581,7 +586,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     if (!global_datahandshake_pindata)
         return result;
 
-    parallel_manchester_init(PMAN_BAUD_300);
 
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
