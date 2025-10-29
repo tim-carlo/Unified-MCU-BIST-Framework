@@ -28,7 +28,6 @@
 #include <msp430.h>
 #endif
 
-#define PMAN_TXRX_RATE 4 // Number of samples per bit (must match encoder/decoder settings)
 
 typedef enum
 {
@@ -121,8 +120,6 @@ ParallelManchesterMode dhd_get_manchester_mode(const DataHandshakeData *dhd);
 void dhd_set_manchester_mode(DataHandshakeData *dhd, ParallelManchesterMode mode);
 
 void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count);
-// The baudrate must be set equally for all, since the ISR is shared
-void parallel_manchester_init(ParallelManchesterBaudRate tx_rate);
 uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
 
 // Instance management - now accepts buffer per instance

@@ -54,6 +54,7 @@ typedef enum
 typedef enum
 {
     DATA_HANDSHAKE_INITIALIZING_FAILURE,
+    DATA_HANDSHAKE_ISR_TO_LONG, // This failure is triggered when the ISR takes too long
     DATA_HANDSHAKE_HANDSHAKE_FAILURE,
     DATA_HANDSHAKE_SUCCESS
 } DataHandshakeStatus;

@@ -31,6 +31,7 @@ struct spooky_decoder {
     spooky_decoder_cb *cb;      /* callback for successful data RX */
     void *cb_udata;             /* void * userdata for callback */
 };
+// Structs packed
 
 enum spooky_decoder_init_res {
     SPOOKY_DECODER_INIT_OK = 0,

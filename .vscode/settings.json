@@ -49,5 +49,5 @@
         "endian.h": "c",
         "string.h": "c",
         "msp430fr5994_uart.h": "c"
-    }
+    },
 }

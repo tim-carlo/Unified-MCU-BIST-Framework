@@ -6,7 +6,7 @@
 #include "nrf52840_helper.h"
 #endif
 
-#define DEV_KIT 1
+#define DEV_KIT 0
 
 #if (DEV_KIT == 0)
 

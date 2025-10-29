@@ -172,7 +172,6 @@ void led0_show_error()
         gpio_drive_low(PIN_LED0);
         delay_ms(200);
     }
-    gpio_reset(PIN_LED0);
 }
 void led2_show_error()
 {
@@ -184,7 +183,6 @@ void led2_show_error()
         gpio_drive_low(PIN_LED2);
         delay_ms(200);
     }
-    gpio_reset(PIN_LED2);
 }
 
 void perfom_mutex_operations()
@@ -348,6 +346,9 @@ int main(void)
         data_handshake_result.i_am_mutex_owner);
     if (data_handshake_result.status != DATA_HANDSHAKE_SUCCESS)
     {
+        // Reason data handshake failed
+        LOG("DEBUG: Data handshake failed with status %u\n", data_handshake_result.status);
+        
         perfom_mutex_operations();
         return 1; // Handshake failed, exit program
     }

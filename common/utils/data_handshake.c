@@ -12,23 +12,20 @@
 #define LOG(fmt, ...) // Uncomment this line to disable LOGging
 #define OUTPUT_DEBUG_LOGS(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
-static const uint16_t SEND_INACCURACY = 10;
+static const uint16_t SEND_INACCURACY = 5;
 
 static const uint16_t INITIAL_LOW_SETTLE_TIME = 1; // Excaly one cycle
 
-static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = 30;
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = 10;
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MS_AFTER_SETTLE = INITIAL_LOW_TIME_REQUEST_MS + INITIAL_LOW_SETTLE_TIME;
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MIN_MS = INITIAL_LOW_TIME_REQUEST_MS - SEND_INACCURACY;
 static const uint16_t INITIAL_LOW_TIME_REQUEST_MAX_MS = INITIAL_LOW_TIME_REQUEST_MS + SEND_INACCURACY;
 
-static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = 60;
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = 20;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE = INITIAL_LOW_TIME_ANSWER_MS + INITIAL_LOW_SETTLE_TIME;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
 
-static const uint16_t TIMEOUT_CYCLES_SENDING_REQUEST = 1000;
-static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = 2000;
-static const uint16_t MINMUM_REQUEST_CYCLES = 10;
 
 static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50;
 static const uint16_t MAXIMUM_REQUEST_CYCLES = 700;
@@ -150,13 +147,13 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     if (received_data[0] != REQUEST_IDENTIFIER)
         return false;
 
-    uint32_t received_crc_le;
-    memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
-    if (crcFast(received_data, 11) != le32toh(received_crc_le))
-    {
-        LOG("Request CRC error\n");
-        return false;
-    }
+ //   uint32_t received_crc_le;
+ //   memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
+ //   if (crcFast(received_data, 11) != le32toh(received_crc_le))
+ //   {
+ //       LOG("Request CRC error\n");
+ //       return false;
+ //   }
 
     uint64_t remote_uuid_le;
     memcpy(&remote_uuid_le, &received_data[1], sizeof(remote_uuid_le));
@@ -186,6 +183,8 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
         }
     }
 
+    // Clear data buffer before assembling answer
+    memset(p->data_buffer, 0, ANSWER_PACKSIZE);
     // Assemble the packet with a single write for the mutex field
     p->data_buffer[0] = ANSWER_IDENTIFIER;
     memcpy(&p->data_buffer[1], &remote_uuid_le, sizeof(remote_uuid_le));
@@ -256,7 +255,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 }
 static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    gpio_od_release(pin);
+    //gpio_od_release(pin);
 
     // Small delay to ensure line is released before transmitting
     // delay_us(1000);
@@ -281,12 +280,7 @@ static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 
 static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    gpio_od_release(pin);
-    // Small delay to ensure line is released before transmitting
-    // delay_us(1000);
-
-    const bool result = parallel_manchester_transmit_background(p, ANSWER_PACKSIZE);
-    return result;
+    return parallel_manchester_transmit_background(p, ANSWER_PACKSIZE);
 }
 
 static inline void reschedule_request(DataHandshakeData *p, uint32_t counter)
@@ -421,18 +415,18 @@ static void fsm_data_handshake(void)
                     p->current_job = JOB_LISTEN;
                 }
             }
-            // Timeout for transmission if complete signal not received
-            else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
-            {
-                // Timeout occurred during transmission
-                reschedule_request(p, counter);
-                p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            }
-            else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
-            {
-                // Timeout occurred during transmission
-                p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            }
+            // // Timeout for transmission if complete signal not received
+            // else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
+            // {
+            //     // Timeout occurred during transmission
+            //     reschedule_request(p, counter);
+            //     p->current_job = JOB_LISTEN; // Go back to listening on timeout
+            // }
+            // else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
+            // {
+            //     // Timeout occurred during transmission
+            //     p->current_job = JOB_LISTEN; // Go back to listening on timeout
+            // }
             something_happened = true;
             break;
         }
@@ -534,6 +528,7 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p))
             {
+                gpio_drive_high(DEBUG_PIN2);
                 LOG("Failed to receive answer on pin %u\n", p->pin);
                 reschedule_request(p, counter);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure

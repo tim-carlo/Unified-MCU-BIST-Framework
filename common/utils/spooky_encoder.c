@@ -76,6 +76,19 @@ spooky_encoder_enqueue(struct spooky_encoder *enc,
     return SPOOKY_ENCODER_ENQUEUE_OK;
 }
 
+enum spooky_encoder_enqueue_res spooky_encoder_enqueue_no_copy(struct spooky_encoder *enc,
+                                  uint8_t input_size) {
+    if (enc->mode != TX_NONE) return SPOOKY_ENCODER_ENQUEUE_ERROR_FULL;
+    enc->mode = TX_SHARP;
+    if (input_size > enc->buffer_size) {
+        return SPOOKY_ENCODER_ENQUEUE_ERROR_SIZE;
+    }
+    enc->input_size = input_size;
+    enc->index = 0;
+    LOG("enqueued no-copy buffer (%d bytes)\n", input_size);
+    return SPOOKY_ENCODER_ENQUEUE_OK;
+}
+
 enum spooky_encoder_clear_res
 spooky_encoder_clear(struct spooky_encoder *enc) {
     if (enc == NULL) return SPOOKY_ENCODER_CLEAR_ERROR_NULL;

@@ -60,7 +60,7 @@ INC_DIRS := \
 INCLUDES := $(foreach dir,$(INC_DIRS),-I$(dir))
 
 # Compiler flags
-CFLAGS += -Os -g3 -flto -Wall -mlarge -mmcu=$(DEVICE) $(INCLUDES)
+CFLAGS += -Os -g3 -mlarge -flto -ffunction-sections -fdata-sections -mdata-region=lower -Wall -mmcu=$(DEVICE) $(INCLUDES)
 CFLAGS += -MMD -MP  # Generate dependencies
 
 # Linker flags

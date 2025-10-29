@@ -1,4 +1,5 @@
 #include "datahandshake_modulation.h"
+#include "bitmap_iterator.h"
 #include "printf.h"
 #include <stdlib.h>
 #include <string.h>
@@ -72,10 +73,28 @@ static inline void pman_set_TX(const bool state, const uint8_t pin)
         gpio_od_hold_low(pin);
     }
 }
+static uint64_t set_one_mask = 0;
+static uint64_t set_zero_mask = 0;
 
-void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count)
+inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count)
 {
     const uint8_t count = pman_instance_count;
+    // Apply all pin changes at once for better timing accuracy
+    // bit mapiteration
+    uint8_t pin;
+    BitmapIterator set_one_iter = bitmap_iterator_create(set_one_mask);
+    while (bitmap_iterator_next(&set_one_iter, &pin))
+    {
+        pman_set_TX(true, pin);
+        set_one_mask &= ~(1ULL << pin);
+    }
+
+    BitmapIterator set_zero_iter = bitmap_iterator_create(set_zero_mask);
+    while (bitmap_iterator_next(&set_zero_iter, &pin))
+    {
+        pman_set_TX(false, pin);
+        set_zero_mask &= ~(1ULL << pin);
+    }
     const uint64_t all_ports_state = gpio_read_all_ports(); // Read once to save time
 
     for (uint8_t i = 0; i < count; i++)
@@ -84,6 +103,9 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
 
         switch (dhd_get_manchester_mode(instance))
         {
+        case PMAN_IDLE:
+            // Do nothing
+            break;
         case PMAN_SEND:
         {
             const enum spooky_encoder_step_res step = spooky_encoder_step(&instance->manchester_enc);
@@ -92,25 +114,25 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
             switch (step)
             {
             case SPOOKY_ENCODER_STEP_OK_LOW:
-                pman_set_TX(false, pin);
+                set_zero_mask |= (1ULL << pin);
                 break;
 
             case SPOOKY_ENCODER_STEP_OK_HIGH:
-                pman_set_TX(true, pin);
+                set_one_mask |= (1ULL << pin);
                 break;
 
             case SPOOKY_ENCODER_STEP_OK_DONE:
-                pman_set_TX(true, pin);
-                instance->status |= STATUS_TX_COMPLETE;
 
+                instance->status |= STATUS_TX_COMPLETE;
+                gpio_od_release(pin);
                 dhd_set_manchester_mode(instance, PMAN_IDLE);
                 break;
 
             case SPOOKY_ENCODER_STEP_OK:
+                // Signal remains unchanged
                 break;
-
             default:
-                pman_set_TX(true, pin);
+                // pman_set_TX(true, pin);
                 dhd_set_manchester_mode(instance, PMAN_IDLE);
                 break;
             }
@@ -119,7 +141,7 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
 
         case PMAN_RECEIVE:
         {
-            gpio_drive_high(DEBUG_PIN2);
+            // gpio_drive_high(DEBUG_PIN2);
             const uint8_t pin = instance->pin;
             const bool rx = (all_ports_state >> pin) & 0x1ULL;
 
@@ -133,6 +155,8 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
                 if (current_mode < last_mode && last_mode != 3)
                 {
                     // Here a error occures
+                    // dhd_set_manchester_mode(instance, PMAN_IDLE);
+                    //   instance->status |= STATUS_RX_ERROR;
                 }
                 instance->manchester_rx_timeout_counter = 0;
             }
@@ -174,7 +198,7 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
             default:
                 break;
             }
-            gpio_drive_low(DEBUG_PIN2);
+            // gpio_drive_low(DEBUG_PIN2);
             break;
         }
 
@@ -184,11 +208,10 @@ void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_coun
     }
 }
 
-uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate)
+inline uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate)
 {
     uint32_t bit_time_us = 1000000UL / rate;
-    return bit_time_us / PMAN_TXRX_RATE;
-    // PMAN_TXRX_RATE runter setzen dann hat man mehr entstpannung für den MSP
+    return bit_time_us / TX_RATE;
 }
 
 // Update rx_callback to use instance buffer directly
@@ -197,18 +220,8 @@ static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
     // not used
 }
 
-void parallel_manchester_init(ParallelManchesterBaudRate tx_rate)
-{
-    //  uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(tx_rate);
-
-    gpio_output_init(DEBUG_PIN_ABS);
-    //  pman_setup_and_start_timer(sample_interval_us);
-
-    LOG("Manchester initialized\n");
-}
-
 // Update add_instance to remove data_buffer and data_size fields
-bool parallel_manchester_add_instance(DataHandshakeData *instance)
+inline bool parallel_manchester_add_instance(DataHandshakeData *instance)
 {
 
     instance->manchester_last_rx = false;
@@ -225,7 +238,7 @@ bool parallel_manchester_add_instance(DataHandshakeData *instance)
     }
 
     // Decoder: will write received bytes directly into the same buffer and call pman_rx_callback.
-    // Pass instance pointer as user data (cast via uintptr_t).
+    // Workaround since uudata in callback cannot be used to pass instance pointer.
     uint8_t newindex = 0;
 
     enum spooky_encoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec,
@@ -242,17 +255,12 @@ bool parallel_manchester_add_instance(DataHandshakeData *instance)
     return true; // Success
 }
 // Non-blocking transmission function
-bool parallel_manchester_transmit_background(DataHandshakeData *instance, uint8_t size)
+inline bool parallel_manchester_transmit_background(DataHandshakeData *instance, uint8_t size)
 {
-
-    if (dhd_get_manchester_mode(instance) != PMAN_IDLE)
-    {
-        return false; // Instance busy
-    }
 
     // Clear encoder and enqueue data from instance buffer
     spooky_encoder_clear(&instance->manchester_enc);
-    if (spooky_encoder_enqueue(&instance->manchester_enc, instance->data_buffer, size) != SPOOKY_ENCODER_ENQUEUE_OK)
+    if (spooky_encoder_enqueue_no_copy(&instance->manchester_enc, size) != SPOOKY_ENCODER_ENQUEUE_OK)
     {
         return false;
     }
@@ -265,7 +273,7 @@ bool parallel_manchester_transmit_background(DataHandshakeData *instance, uint8_
 }
 
 // Check if transmission is complete
-bool parallel_manchester_transmit_complete(DataHandshakeData *instance)
+inline bool parallel_manchester_transmit_complete(DataHandshakeData *instance)
 {
     const bool complete = instance->status & STATUS_TX_COMPLETE;
     if (complete)
@@ -277,15 +285,8 @@ bool parallel_manchester_transmit_complete(DataHandshakeData *instance)
 }
 
 // Non-blocking receive function
-bool parallel_manchester_receive_background(DataHandshakeData *instance)
+inline bool parallel_manchester_receive_background(DataHandshakeData *instance)
 {
-
-    if (dhd_get_manchester_mode(instance) != PMAN_IDLE)
-    {
-        return false; // Instance busy
-    }
-
-    // Clear instance buffer
     memset(instance->data_buffer, 0, BUFFER_SIZE);
     // Clear decoder state
     reset_decoder(&instance->manchester_dec);
@@ -307,7 +308,7 @@ bool parallel_manchester_receive_background(DataHandshakeData *instance)
 }
 
 // Check if receive is complete
-bool parallel_manchester_receive_complete(DataHandshakeData *instance)
+inline bool parallel_manchester_receive_complete(DataHandshakeData *instance)
 {
     const bool complete = instance->status & STATUS_RX_COMPLETE;
     if (complete)
@@ -319,7 +320,7 @@ bool parallel_manchester_receive_complete(DataHandshakeData *instance)
 }
 
 // Check if receive had an error
-bool parallel_manchester_receive_error(DataHandshakeData *instance)
+inline bool parallel_manchester_receive_error(DataHandshakeData *instance)
 {
     const bool error = instance->status & STATUS_RX_ERROR;
     if (error)
@@ -331,7 +332,7 @@ bool parallel_manchester_receive_error(DataHandshakeData *instance)
 }
 
 // Check if data has been received
-bool parallel_manchester_data_received(DataHandshakeData *instance)
+inline bool parallel_manchester_data_received(DataHandshakeData *instance)
 {
     const bool received = instance->status & STATUS_DATA_RECEIVED;
     if (received)

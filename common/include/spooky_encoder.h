@@ -61,6 +61,9 @@ enum spooky_encoder_enqueue_res
 spooky_encoder_enqueue(struct spooky_encoder *enc,
                        uint8_t *input, uint8_t input_size);
 
+enum spooky_encoder_enqueue_res spooky_encoder_enqueue_no_copy(struct spooky_encoder *enc,
+                                                               uint8_t input_size);
+
 /* Abort and clear the current transmission. */
 enum spooky_encoder_clear_res
 spooky_encoder_clear(struct spooky_encoder *enc);
