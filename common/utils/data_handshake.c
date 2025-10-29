@@ -12,36 +12,45 @@
 #define LOG(fmt, ...) // Uncomment this line to disable LOGging
 #define OUTPUT_DEBUG_LOGS(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
-static const uint16_t SEND_INACCURACY = (30 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = (50 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t INITIAL_LOW_TIME_REQUEST_MIN_MS = ((50 - 30) / DATA_TIMER_INTERVAL_MS);
-static const uint16_t INITIAL_LOW_TIME_REQUEST_MAX_MS = ((50 + 30) / DATA_TIMER_INTERVAL_MS);
+static const uint16_t SEND_INACCURACY = 10;
 
-static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = (100 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = ((100 - 30) / DATA_TIMER_INTERVAL_MS);
-static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = ((100 + 30) / DATA_TIMER_INTERVAL_MS);
-static const uint16_t TIMEOUT_CYCLES = (10000 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t TIMEOUT_CYCLES_SENDING_REQUEST = (10000 / DATA_TIMER_INTERVAL_MS);
-static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = (20000 / DATA_TIMER_INTERVAL_MS);
+static const uint16_t INITIAL_LOW_SETTLE_TIME = 1; // Excaly one cycle
+
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MS = 30;
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MS_AFTER_SETTLE = INITIAL_LOW_TIME_REQUEST_MS + INITIAL_LOW_SETTLE_TIME;
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MIN_MS = INITIAL_LOW_TIME_REQUEST_MS - SEND_INACCURACY;
+static const uint16_t INITIAL_LOW_TIME_REQUEST_MAX_MS = INITIAL_LOW_TIME_REQUEST_MS + SEND_INACCURACY;
+
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = 60;
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE = INITIAL_LOW_TIME_ANSWER_MS + INITIAL_LOW_SETTLE_TIME;
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY;
+static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
+
+static const uint16_t TIMEOUT_CYCLES_SENDING_REQUEST = 1000;
+static const uint16_t TIMEOUT_CYCLES_SENDING_ANSWER = 2000;
 static const uint16_t MINMUM_REQUEST_CYCLES = 10;
-static const uint16_t MAXIMUM_REQUEST_CYCLES = 500;
-static const uint16_t MAXIMUM_IDLE_TIME = 600; // This needs to be higher than the maximum request time
+
+static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50;
+static const uint16_t MAXIMUM_REQUEST_CYCLES = 700;
+static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This needs to be higher than the maximum request time
 
 static const uint8_t ANSWER_IDENTIFIER = 0x55;
 static const uint8_t REQUEST_IDENTIFIER = 0xAA;
 
 // Global variables
-PinData *global_pindata;
+static PinData *global_pindata;
 static DataHandshakeData *global_datahandshake_pindata = NULL; // Global pointer to DataHandshakeData array
+static DataHandshakeResult handshake_result;
 
 static uint64_t internal_blacklist_mask = 0;
 static uint64_t internal_valid_pins = ~0ULL; // Assume 64-bit max
 static uint64_t responder_mask = 0;
 static uint64_t initiator_mask = 0;
 static uint64_t uuid = 0;
-static uint32_t global_last_worker = 0;
-static volatile bool interrupt_cont = false;
+static uint32_t last_change_in_isr = 0;
+static volatile bool interrupt_flag = false;
 
+// Used for mutex handling
 static uint8_t mutex_pin = 255;       // Pin currently holding the mutex (255 = none)
 static bool i_am_mutex_owner = false; // Whether this device currently owns the mutex
 static uint8_t number_of_pins = 0;
@@ -103,17 +112,20 @@ static void analyze_pindata_events(PinData *pindata)
 static inline uint16_t get_listen_until_time(uint16_t factor)
 {
     uint32_t rnd = random32();
-    const uint16_t jitter_range = (MAXIMUM_REQUEST_CYCLES >> 3); // MAX / 8 for 500 = 62
-    
+    const uint16_t jitter_range = (MAXIMUM_REQUEST_CYCLES >> 2); // MAX / 4
+
     uint16_t rnd16 = (uint16_t)(rnd >> 16);
     uint16_t jitter = (uint16_t)(((uint32_t)rnd16 * jitter_range) >> 16);
 
     // The factor scales the base time and the jitter is added on to
-    uint32_t base = (uint32_t)factor * (uint32_t)MINMUM_REQUEST_CYCLES;
+    uint32_t base = (uint32_t)factor * (uint32_t)REQEST_CYCLES_FACTOR_INFLUENCE;
     uint32_t total = base + jitter;
 
-    if (total > (uint32_t)MAXIMUM_REQUEST_CYCLES)
+    // Ensure total is wrapped under MAXIMUM_REQUEST_CYCLES (handle multiples)
+    while (total > (uint32_t)MAXIMUM_REQUEST_CYCLES)
+    {
         total -= (uint32_t)MAXIMUM_REQUEST_CYCLES;
+    }
 
     return (uint16_t)total;
 }
@@ -188,7 +200,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     // Finalize packet with CRC
     const uint32_t crc_value = crcFast(p->data_buffer, 20);
     const uint32_t le_crc = htole32(crc_value);
-    
+
     memcpy(&p->data_buffer[20], &le_crc, sizeof(le_crc));
 
     gpio_od_hold_low(pin);
@@ -288,7 +300,7 @@ static volatile uint32_t counter = 0;
 
 static void fsm_data_handshake(void)
 {
-    gpio_drive_high(DEBUG_PIN1);
+
     counter++;
 
     BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
@@ -350,7 +362,11 @@ static void fsm_data_handshake(void)
         }
         case JOB_SEND_REQUEST:
         {
-            if (delta > INITIAL_LOW_TIME_REQUEST_MS)
+            if (delta > INITIAL_LOW_TIME_REQUEST_MS && delta <= INITIAL_LOW_TIME_REQUEST_MS_AFTER_SETTLE)
+            {
+                gpio_od_release(p->pin);
+            }
+            else if (delta > INITIAL_LOW_TIME_REQUEST_MS_AFTER_SETTLE)
             {
                 if (!send_request_in_background(p->pin, p))
                 {
@@ -368,7 +384,11 @@ static void fsm_data_handshake(void)
         }
         case JOB_SEND_ANSWER:
         {
-            if (delta > INITIAL_LOW_TIME_ANSWER_MS)
+            if (delta > INITIAL_LOW_TIME_ANSWER_MS && delta <= INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE)
+            {
+                gpio_od_release(p->pin);
+            }
+            else if (delta > INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE)
             {
                 if (!send_answer_in_background(p->pin, p))
                 {
@@ -380,6 +400,7 @@ static void fsm_data_handshake(void)
                 }
                 p->last_send_job_order = counter; // Reset timeout counter on successful request handling
             }
+
             something_happened = true;
             break;
         }
@@ -444,7 +465,7 @@ static void fsm_data_handshake(void)
                 }
                 // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
                 // and reschedule the request
-                else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS || delta > TIMEOUT_CYCLES)
+                else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS)
                 {
                     is_failed = true;
                 }
@@ -460,6 +481,11 @@ static void fsm_data_handshake(void)
         }
         case JOB_RECEIVING_REQUEST:
         {
+#if defined(__MSP430FR5994__)
+            gpio_drive_high(PIN_LED0);
+#elif defined(NRF52840_XXAA)
+            gpio_drive_high(PIN_LED2);
+#endif
             if (parallel_manchester_receive_complete(p))
             {
 
@@ -478,11 +504,16 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p))
             {
+                gpio_drive_high(DEBUG_PIN2);
                 LOG("Failed to receive request on pin %u\n", p->pin);
                 p->current_job = JOB_LISTEN; // Go back to listening on failure
             }
             something_happened = true;
-            
+#if defined(__MSP430FR5994__)
+            gpio_drive_low(PIN_LED0);
+#elif defined(NRF52840_XXAA)
+            gpio_drive_low(PIN_LED2);
+#endif
             break;
         }
         case JOB_RECEIVING_ANSWER:
@@ -514,26 +545,48 @@ static void fsm_data_handshake(void)
             break;
         }
     }
-    gpio_drive_low(DEBUG_PIN1);
 
     if (!something_happened)
     {
-        global_last_worker++;
+        last_change_in_isr++;
     }
     else
     {
-        global_last_worker = 0;
+        last_change_in_isr = 0;
     }
+    gpio_drive_low(DEBUG_PIN2);
 }
+static void stop_send_data_timer(void)
+{
+#if defined(NRF52840_XXAA)
+    clear_timer_event_callback(DATA_TIMER);
+    stop_timer(DATA_TIMER);
+
+#elif defined(__MSP430FR5994__)
+    stop_timer(DATA_TIMER);
+    clear_timer_event_callback(DATA_TIMER);
+#endif
+}
+
 static volatile uint8_t isr_counter = 0;
+static volatile bool isr_done = true; // must be initialized to true at start
 static void send_data_isr(void)
 {
-    interrupt_cont = true;
+    interrupt_flag = true;
+    if (!isr_done)
+    {
+        // In this case, the previous ISR is not done yet
+        // ISR overrun detected!
+        handshake_result.status = DATA_HANDSHAKE_ISR_TO_LONG;
+        // Force exit
+        stop_send_data_timer();
+        last_change_in_isr = MAXIMUM_IDLE_TIME;
+    }
 }
 
 static void start_send_data_timer(void)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_300);
+    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_100);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -550,18 +603,6 @@ static void start_send_data_timer(void)
 #endif
 }
 
-static void stop_send_data_timer(void)
-{
-#if defined(NRF52840_XXAA)
-    clear_timer_event_callback(DATA_TIMER);
-    stop_timer(DATA_TIMER);
-
-#elif defined(__MSP430FR5994__)
-    stop_timer(DATA_TIMER);
-    clear_timer_event_callback(DATA_TIMER);
-#endif
-}
-
 /**
  * @brief Main data handshake function
  * @param pindata Pointer to PinData array
@@ -571,21 +612,19 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 {
     internal_blacklist_mask = blacklist_mask;
     global_pindata = pindata;
-    DataHandshakeResult result;
-    result.status = DATA_HANDSHAKE_INITIALIZING_FAILURE;
+    handshake_result.status = DATA_HANDSHAKE_INITIALIZING_FAILURE;
 
     analyze_pindata_events(pindata);
 
     if (number_of_pins == 0)
-        return result; // No valid pins to use
+        return handshake_result; // No valid pins to use
 
     uint64_t valid_pins_mask = ~internal_blacklist_mask & ~0ULL;
 
     // Allocate and initialize
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
     if (!global_datahandshake_pindata)
-        return result;
-
+        return handshake_result;
 
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
@@ -602,8 +641,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
             .current_job = JOB_LISTEN,
             .receiving_counter = 0,
             .time_until_next_send = 0,
-            .last_send_job_order = 0
-        };
+            .last_send_job_order = 0};
 
         // Set role based on masks
         if (initiator_mask & (1ULL << pin_index))
@@ -637,11 +675,14 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     printf("Data handshake initialized \n");
 
     start_send_data_timer();
-    while (global_last_worker < MAXIMUM_IDLE_TIME)
+
+    while (last_change_in_isr < MAXIMUM_IDLE_TIME)
     {
-        while (!interrupt_cont)
+        while (!interrupt_flag)
             ;
-        interrupt_cont = false;
+        gpio_drive_high(DEBUG_PIN1);
+        interrupt_flag = false;
+        isr_done = false;
         pman_timer_isr(global_datahandshake_pindata, number_of_pins);
         if (isr_counter > 10)
         {
@@ -649,7 +690,20 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
             fsm_data_handshake();
         }
         isr_counter++;
+        isr_done = true;
+        gpio_drive_low(DEBUG_PIN1);
     }
+    if (handshake_result.status == DATA_HANDSHAKE_ISR_TO_LONG)
+    {
+        if (global_datahandshake_pindata)
+        {
+            free(global_datahandshake_pindata);
+            global_datahandshake_pindata = NULL;
+        }
+        // Early exit due to ISR taking too long
+        return handshake_result;
+    }
+
     LOG("Data handshake finished due to timeout\n");
     stop_send_data_timer();
     if (global_datahandshake_pindata)
@@ -677,8 +731,8 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         global_datahandshake_pindata = NULL;
     }
 
-    result.status = DATA_HANDSHAKE_SUCCESS;
-    result.mutex_pin = mutex_pin;
-    result.i_am_mutex_owner = i_am_mutex_owner;
-    return result;
+    handshake_result.status = DATA_HANDSHAKE_SUCCESS;
+    handshake_result.mutex_pin = mutex_pin;
+    handshake_result.i_am_mutex_owner = i_am_mutex_owner;
+    return handshake_result;
 }
