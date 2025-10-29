@@ -14,11 +14,11 @@ uint64_t get_unique_id(void)
 /**
  * @brief Get the unique device ID as a string
  *
- * @return const char* Pointer to a static buffer containing the hex string
+ * @return const uint8_t* Pointer to a static buffer containing the hex string
  */
-const char *get_unique_id_str(void)
+const uint8_t *get_unique_id_str(void)
 {
-    static char buf[9];
+    static uint8_t buf[9];
     uint32_t id = get_unique_id();
     // Forat as 8-digit hexadecimal string
     snprintf(buf, sizeof(buf), "%08lX", (unsigned long)id);
@@ -60,9 +60,9 @@ uint32_t random32(void)
 /**
  * @brief Get the family name of the chip
  *
- * @return const char* Chin family name
+ * @return const uint8_t* Chin family name
  */
-const char *get_chip_family_name(void)
+const uint8_t *get_chip_family_name(void)
 {
     return "MSP430FR5994";
 }

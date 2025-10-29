@@ -8,7 +8,6 @@
 #include "msp430fr5994_utils.h"
 #define DATA_TIMER TIMER_B0
 
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
 #elif defined(NRF52840_XXAA)
 #include "nrf52840_helper.h"
@@ -17,7 +16,6 @@
 #include "nrf52840_utils.h"
 #define DATA_TIMER NRF_TIMER2
 
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
 
 #endif
 

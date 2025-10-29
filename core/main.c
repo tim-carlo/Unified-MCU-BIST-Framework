@@ -9,7 +9,6 @@
 #include "crc.h"
 #include <stdbool.h>
 #include <stdint.h>
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -20,7 +19,6 @@
 #include "nrf52840_gpio.h"
 #include "nrf52840_uart.h"
 #include "printf.h"
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_PINS
 
 #endif
 
@@ -321,7 +319,10 @@ int main(void)
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
     gpio_output_init(DEBUG_PIN1);
+
+#if defined(__NRF52840_XXAA__)
     gpio_output_init(DEBUG_PIN2);
+#endif
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))

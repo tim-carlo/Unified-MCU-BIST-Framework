@@ -12,7 +12,6 @@
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_utils.h"
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #define EVENT_BUFFER_SIZE 10

@@ -303,7 +303,6 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
         gpio_od_release(handshake_state->global_timing_pindata[i].pin);
     }
 
-    LOG("Handshake time elapsed: %u ms\n", handshake_state->handshake_time);
     stop_handshake_timer();
 
     it = bitmap_iterator_create(valid_pins_mask);

@@ -17,6 +17,7 @@ extern "C"
 #define BV_BY_VALUE(field, value) (((value) << field##_Pos) & field##_Msk)
 
 #define NRF52_NUM_ABS_PINS 48U // Number of absolute GPIO pins available on NRF52840
+#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
 #define ABS_TO_PORT(abs) ((uint32_t)((abs) < 32 ? 0 : 1))
 #define ABS_TO_PINIDX(abs) ((uint32_t)((abs) & 31U))
 #define ABS_BIT(abs) (1ULL << (uint64_t)(abs))

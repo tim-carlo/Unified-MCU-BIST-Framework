@@ -12,7 +12,7 @@
 #include "printf.h"
 #include "nrf52840_uart.h"
 
-#define NUMBER_OF_GPIO_PINS 48
+
 
 #define DEBOUNCE_SAMPLES 5
 #define DEBOUNCE_DELAY_US 20

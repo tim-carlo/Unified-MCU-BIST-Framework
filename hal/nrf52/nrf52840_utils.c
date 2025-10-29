@@ -66,13 +66,13 @@ uint64_t get_unique_id(void)
 /**
  * @brief Get the unique id as a string
  *
- * @return const char*
+ * @return const uint8_t*
  */
-const char *get_unique_id_str(void)
+const uint8_t *get_unique_id_str(void)
 {
-    static char unique_id_str[17];
+    static uint8_t unique_id_str[17];
     uint64_t unique_id = get_unique_id();
-    const char hex[] = "0123456789ABCDEF";
+    const uint8_t hex[] = "0123456789ABCDEF";
     for (int i = 0; i < 8; i++)
     {
         uint8_t byte = (unique_id >> (56 - i * 8)) & 0xFF;
@@ -86,9 +86,9 @@ const char *get_unique_id_str(void)
 /**
  * @brief Get the chip family name
  *
- * @return const char*
+ * @return const uint8_t*
  */
-const char *get_chip_family_name(void)
+const uint8_t *get_chip_family_name(void)
 {
     return "NRF52840";
 }

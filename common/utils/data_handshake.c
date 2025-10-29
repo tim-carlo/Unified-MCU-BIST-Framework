@@ -82,7 +82,7 @@ static void analyze_pindata_events(PinData *pindata)
         bool experted_to_work_in_one_direction = check_if_pinevent_exists(pindata, pin, EXPECTS_TO_WORK_IN_ONE_DIRECTION);
 
         // Apply LOGic for mask assignment and blacklist update
-        if (has_initiator && !has_responder || experted_to_work_in_one_direction)
+        if ((has_initiator && !has_responder) || experted_to_work_in_one_direction)
         {
             initiator_mask |= (1ULL << pin);
             number_of_pins++;
@@ -506,7 +506,7 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
-                    gpio_drive_high(DEBUG_PIN2);
+                   // gpio_drive_high(DEBUG_PIN2);
                     LOG("Failed to receive request on pin %u\n", p->pin);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
@@ -547,7 +547,7 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
-                    gpio_drive_high(DEBUG_PIN2);
+                    //gpio_drive_high(DEBUG_PIN2);
                     LOG("Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure

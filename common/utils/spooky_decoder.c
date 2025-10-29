@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "spooky_decoder.h"
+#include "printf.h"
 
 typedef enum
 {
@@ -34,7 +35,7 @@ typedef enum
 
 #define MAX_POSSIBLE_DELAY ((uint8_t)-1)
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define LOG(...) printf("d: " __VA_ARGS__)
@@ -111,8 +112,8 @@ spooky_decoder_step(struct spooky_decoder *dec, bool bit)
         LOG("step error: NULL decoder\n");
         return res;
     }
-    LOG("dec mode %s, index %d = %20d\n",
-        st_names[dec->mode], dec->index, bit);
+   // LOG("dec mode %s, index %d = %20d\n",
+   //     st_names[dec->mode], dec->index, bit);
     dec->ticks++;
 
     switch (dec->mode)
@@ -144,17 +145,17 @@ static inline bool approx_eq(uint16_t a, uint16_t b)
 
 static void dump_ring_buffer(struct spooky_decoder *dec)
 {
-#if DEBUG
-    printf("[");
-    uint8_t *buf = dec->buffer;
-    for (int i = 0; i < RING_BUF_SZ; i++)
-    {
-        if (i == (dec->index & RING_BUF_MASK))
-            printf("*(%d) ", i);
-        printf("%d%s, ", buf[i], (i == (dec->index & RING_BUF_MASK)) ? "*" : "");
-    }
-    printf("]\n");
-#endif
+// #if DEBUG
+//     printf("[");
+//     uint8_t *buf = dec->buffer;
+//     for (int i = 0; i < RING_BUF_SZ; i++)
+//     {
+//         if (i == (dec->index & RING_BUF_MASK))
+//             printf("*(%d) ", i);
+//         printf("%d%s, ", buf[i], (i == (dec->index & RING_BUF_MASK)) ? "*" : "");
+//     }
+//     printf("]\n");
+// #endif
 }
 
 /* Save the most recent tick count in the ring buffer. */
@@ -212,11 +213,11 @@ STATE(step_header)
             }
         }
 
-        LOG(" ====> count %d, avg %d\n", long_count, avg);
+       // LOG(" ====> count %d, avg %d\n", long_count, avg);
         if (long_count == 8)
         {
-            LOG("\n\n");
-            LOG("Switching to LENGTH state, avg %u\n", avg);
+          //  LOG("\n\n");
+        //    LOG("Switching to LENGTH state, avg %u\n", avg);
             dec->mode = RX_LENGTH;
             dec->ticks = 0;
             dec->interval = avg;
@@ -231,7 +232,7 @@ static bool longer_than_tolerance_allows(uint16_t t, uint16_t i)
     uint16_t max = i + (i >> 2); /* i + i/4 */
     if (DEBUG > 1)
     {
-        LOG("? %u > %u (%u)\n", t, max, i);
+       // LOG("? %u > %u (%u)\n", t, max, i);
     }
     return t > max;
 }
@@ -241,8 +242,8 @@ static int sink_bit_with_cb(struct spooky_decoder *dec, bool bit,
                             byte_cb *cb, bool save_ticks)
 {
     int res = 0;
-    LOG("sink_bit, interval %u, ticks %u, bit %u, pre_ticks %u, last %d, accum 0x%02x\n",
-        dec->interval, dec->ticks, bit, dec->pre_ticks, dec->last, dec->bit_accum);
+    //LOG("sink_bit, interval %u, ticks %u, bit %u, pre_ticks %u, last %d, accum 0x%02x\n",
+    //    dec->interval, dec->ticks, bit, dec->pre_ticks, dec->last, dec->bit_accum);
 
     if (bit == dec->last)
     {
@@ -259,7 +260,7 @@ static int sink_bit_with_cb(struct spooky_decoder *dec, bool bit,
     }
     if (DEBUG > 1)
     {
-        LOG("TRANSITION, %d => %d\n", dec->last, bit);
+       // LOG("TRANSITION, %d => %d\n", dec->last, bit);
     }
     dec->last = bit;
 
@@ -291,7 +292,7 @@ static int sink_bit_with_cb(struct spooky_decoder *dec, bool bit,
 static int length_byte_cb(struct spooky_decoder *dec)
 {
     dec->payload_length = dec->bit_accum;
-    LOG("got length of 0x%02x\n", dec->payload_length);
+   // LOG("got length of 0x%02x\n", dec->payload_length);
     if (dec->payload_length > dec->buffer_size)
     {
         LOG("input too large for buffer, aborting\n");
@@ -312,7 +313,7 @@ static int length_byte_cb(struct spooky_decoder *dec)
 static int chksum_byte_cb(struct spooky_decoder *dec)
 {
     dec->chksum = dec->bit_accum;
-    LOG("got checksum of 0x%02x\n", dec->chksum);
+   // LOG("got checksum of 0x%02x\n", dec->chksum);
     dec->index = 0;
     dec->mode = RX_PAYLOAD;
     return 0;
@@ -321,17 +322,17 @@ static int chksum_byte_cb(struct spooky_decoder *dec)
 static int payload_byte_cb(struct spooky_decoder *dec)
 {
     uint8_t byte = dec->bit_accum;
-    LOG("got byte: 0x%02x\n", byte);
-    dec->buffer[dec->index] = byte;
+  //  LOG("got byte: 0x%02x\n", byte);
+  //  dec->buffer[dec->index] = byte;
     dec->index++;
-    LOG("index: %u of %u\n", dec->index, dec->payload_length);
+   // LOG("index: %u of %u\n", dec->index, dec->payload_length);
     if (dec->index == dec->payload_length)
     {
         uint8_t cs = checksum(dec->buffer, dec->payload_length);
-        LOG("expected 0x%02x, got 0x%02x\n", cs, dec->chksum);
+       // LOG("expected 0x%02x, got 0x%02x\n", cs, dec->chksum);
         if (cs == dec->chksum)
         {
-            LOG("success! got %d bytes\n", dec->index);
+          //  LOG("success! got %d bytes\n", dec->index);
             dec->cb(dec->buffer, dec->index, dec->cb_udata);
         }
         else

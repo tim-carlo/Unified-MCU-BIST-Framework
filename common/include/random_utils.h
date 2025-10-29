@@ -12,7 +12,6 @@
 #include "msp430fr5994_utils.h"
 #include "msp430fr5994_gpio.h"
 
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 
 #elif defined(NRF52840_XXAA)
 #include "nrf.h"

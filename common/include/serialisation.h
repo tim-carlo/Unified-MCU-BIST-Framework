@@ -18,7 +18,6 @@
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_utils.h"
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
 #endif
 
 #ifdef __cplusplus
@@ -41,10 +40,6 @@ typedef struct
 
 
 // Serialization constants
-#ifndef NUMBER_OF_GPIO_PINS
-#define NUMBER_OF_GPIO_PINS 32
-#endif
-
 extern SerializedChunk *current_chunk;
 extern uint8_t current_pin_data_index;
 extern uint8_t current_chunk_id;

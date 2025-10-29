@@ -165,7 +165,7 @@ SerializationResult serialize_next_chunk()
 
     // Calculate CRC32 for integrity over CBOR data
     uint16_t cbor_data_size = write_ptr - cbor_buffer;
-    current_hash = crcFast((unsigned char const *)cbor_buffer, cbor_data_size);
+    current_hash = crcFast((uint8_t const *)cbor_buffer, cbor_data_size);
 
     // Create final packet: [1 BYTE PACKET_ID][2 BYTE LENGTH][CBOR BYTES][4 BYTE CRC32]
     uint16_t total_packet_size = 1 + 2 + cbor_data_size + 4; // Packet ID + Length + CBOR + CRC32
@@ -223,7 +223,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
 
     // Get device information
     uint64_t device_uuid = get_unique_id();
-    const char *device_family = get_chip_family_name();
+    const uint8_t *device_family = get_chip_family_name();
     uint8_t family_name_len = strlen(device_family);
 
     // Count active pins
@@ -302,7 +302,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
     write_ptr += bytes_written;
     
-    if (seen_devices_count > 0 && seen_devices != NULL)
+    if (seen_devices_count > 0)
     {
         for (uint8_t i = 0; i < seen_devices_count; i++)
         {

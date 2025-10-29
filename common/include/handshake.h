@@ -9,18 +9,13 @@
 #include "printf.h"
 #include <stdbool.h>
 #include <stdint.h>
-#ifndef NUMBER_OF_GPIO_PINS
-#define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
-#endif
+
 #elif defined(NRF52840_XXAA)
 #include "nrf52840.h"
 #include "nrf52840_helper.h"
 #include "nrf52840_utils.h"
 #include "nrf52840_gpio.h"
 #include "nrf52840_time.h"
-#ifndef NUMBER_OF_GPIO_PINS
-#define NUMBER_OF_GPIO_PINS NRF52_NUM_ABS_PINS
-#endif
 
 
 #endif

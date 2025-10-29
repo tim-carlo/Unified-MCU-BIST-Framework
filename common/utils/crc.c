@@ -25,7 +25,7 @@
 
 #if (REFLECT_DATA == TRUE)
 #undef REFLECT_DATA
-#define REFLECT_DATA(X) ((unsigned char)reflect((X), 8))
+#define REFLECT_DATA(X) ((uint8_t)reflect((X), 8))
 #else
 #undef REFLECT_DATA
 #define REFLECT_DATA(X) (X)
