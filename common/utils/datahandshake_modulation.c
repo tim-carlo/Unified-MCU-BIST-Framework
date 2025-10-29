@@ -80,6 +80,7 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
 {
     const uint8_t count = pman_instance_count;
     // Apply all pin changes at once for better timing accuracy
+    // So that it does not matter how long spooky takes per instance
     // bit mapiteration
     uint8_t pin;
     BitmapIterator set_one_iter = bitmap_iterator_create(set_one_mask);
@@ -95,6 +96,8 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
         pman_set_TX(false, pin);
         set_zero_mask &= ~(1ULL << pin);
     }
+
+    // Its also important to read it afterwars to have the most recent value
     const uint64_t all_ports_state = gpio_read_all_ports(); // Read once to save time
 
     for (uint8_t i = 0; i < count; i++)
@@ -155,8 +158,8 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
                 if (current_mode < last_mode && last_mode != 3)
                 {
                     // Here a error occures
-                    // dhd_set_manchester_mode(instance, PMAN_IDLE);
-                    //   instance->status |= STATUS_RX_ERROR;
+                    dhd_set_manchester_mode(instance, PMAN_IDLE);
+                    instance->status |= STATUS_RX_ERROR;
                 }
                 instance->manchester_rx_timeout_counter = 0;
             }
@@ -172,7 +175,6 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
                 if (instance->manchester_rx_timeout_counter > NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION)
                 {
                     dhd_set_manchester_mode(instance, PMAN_IDLE);
-
                     instance->status |= STATUS_RX_ERROR;
                     instance->manchester_rx_timeout_counter = 0;
                 }

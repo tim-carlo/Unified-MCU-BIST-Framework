@@ -26,7 +26,6 @@ static const uint16_t INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE = INITIAL_LOW_TIME
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
 
-
 static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50;
 static const uint16_t MAXIMUM_REQUEST_CYCLES = 700;
 static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This needs to be higher than the maximum request time
@@ -147,13 +146,13 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     if (received_data[0] != REQUEST_IDENTIFIER)
         return false;
 
- //   uint32_t received_crc_le;
- //   memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
- //   if (crcFast(received_data, 11) != le32toh(received_crc_le))
- //   {
- //       LOG("Request CRC error\n");
- //       return false;
- //   }
+    //   uint32_t received_crc_le;
+    //   memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
+    //   if (crcFast(received_data, 11) != le32toh(received_crc_le))
+    //   {
+    //       LOG("Request CRC error\n");
+    //       return false;
+    //   }
 
     uint64_t remote_uuid_le;
     memcpy(&remote_uuid_le, &received_data[1], sizeof(remote_uuid_le));
@@ -255,7 +254,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 }
 static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    //gpio_od_release(pin);
+    // gpio_od_release(pin);
 
     // Small delay to ensure line is released before transmitting
     // delay_us(1000);
@@ -498,9 +497,19 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p))
             {
-                gpio_drive_high(DEBUG_PIN2);
-                LOG("Failed to receive request on pin %u\n", p->pin);
-                p->current_job = JOB_LISTEN; // Go back to listening on failure
+                // Check if data in buffer can still be processed
+                if (handle_request_receive_complete(p->pin, p))
+                {
+                    // Successfully received request and prepared to send answer
+                    p->current_job = JOB_SEND_ANSWER;
+                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
+                }
+                else
+                {
+                    gpio_drive_high(DEBUG_PIN2);
+                    LOG("Failed to receive request on pin %u\n", p->pin);
+                    p->current_job = JOB_LISTEN; // Go back to listening on failure
+                }
             }
             something_happened = true;
 #if defined(__MSP430FR5994__)
@@ -528,10 +537,21 @@ static void fsm_data_handshake(void)
             }
             else if (parallel_manchester_receive_error(p))
             {
-                gpio_drive_high(DEBUG_PIN2);
-                LOG("Failed to receive answer on pin %u\n", p->pin);
-                reschedule_request(p, counter);
-                p->current_job = JOB_LISTEN; // Go back to listening on failure
+                // Check if data in buffer can still be processed
+                if (handle_answer_complete(p->pin, p))
+                {
+                    // Successfully received answer
+                    // blacklist this pin for further requests to avoid flooding
+                    internal_valid_pins &= ~(1ULL << pin_index);
+                    p->current_job = JOB_LISTEN; // Go back to listening after handling answer
+                }
+                else
+                {
+                    gpio_drive_high(DEBUG_PIN2);
+                    LOG("Failed to receive answer on pin %u\n", p->pin);
+                    reschedule_request(p, counter);
+                    p->current_job = JOB_LISTEN; // Go back to listening on failure
+                }
             }
             something_happened = true;
             break;
