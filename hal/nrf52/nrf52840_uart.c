@@ -134,13 +134,13 @@ uint8_t uart_read(uart_instance_t uart) {
  * @param delimiter Delimiter string
  * @param attempts Number of attempts (255 for infinite)
  */
-void uart_read_text(uart_instance_t uart, uint8_t *output, uint8_t *delimiter, uint8_t attempts) {
+void uart_read_text(uart_instance_t uart, char *output, char *delimiter, uint8_t attempts) {
     if (uart == NULL || output == NULL || delimiter == NULL) return;
     
-    uint8_t received_char;
-    uint8_t *output_ptr = output;
-    uint8_t delimiter_len = strlen(delimiter);
-    uint8_t match_count = 0;
+    char received_char;
+    char *output_ptr = output;
+    size_t delimiter_len = strlen(delimiter);
+    size_t match_count = 0;
     uint8_t attempt_count = 0;
     
     *output_ptr = '\0'; // Initialize output as empty string
@@ -177,7 +177,7 @@ void uart_read_text(uart_instance_t uart, uint8_t *output, uint8_t *delimiter, u
  * @param uart UART instance
  * @param data_ Byte to send
  */
-void uart_write(uart_instance_t uart, uint8_t data_) {
+void uart_write(uart_instance_t uart, char data_) {
     if (uart == NULL) return;
     
     // Write the character into the TXD register.
@@ -202,7 +202,7 @@ void uart_write(uart_instance_t uart, uint8_t data_) {
  * @param uart UART instance
  * @param uart_text Null-terminated string to send
  */
-void uart_write_text(uart_instance_t uart, uint8_t *uart_text) {
+void uart_write_text(uart_instance_t uart, char *uart_text) {
     if (uart == NULL || uart_text == NULL) return;
     
     while (*uart_text) {

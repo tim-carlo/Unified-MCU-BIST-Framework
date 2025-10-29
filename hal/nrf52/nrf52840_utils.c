@@ -88,7 +88,7 @@ const uint8_t *get_unique_id_str(void)
  *
  * @return const uint8_t*
  */
-const uint8_t *get_chip_family_name(void)
+const char *get_chip_family_name(void)
 {
     return "NRF52840";
 }

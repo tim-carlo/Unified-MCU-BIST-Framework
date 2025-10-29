@@ -39,7 +39,6 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask)
     }
     if (iam_mutex_owner && !currently_having_mutex)
     {
-        uint8_t request = MUTEX_REQEST;
         uint8_t tries = 0;
         while (!currently_having_mutex)
         {

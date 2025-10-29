@@ -68,7 +68,7 @@ SerializationResult serialize_next_chunk()
     uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
     write_ptr += bytes_written;
 
-    // ADD: ACK_REQUIRED field (Key 8) 
+    // ADD: ACK_REQUIRED field (Key 8)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ack_required ? 1 : 0);
@@ -130,28 +130,25 @@ SerializationResult serialize_next_chunk()
             write_ptr += bytes_written;
 
             // Write connection data inside the array
-            if (pin_data->connections != NULL)
+            for (uint8_t j = 0; j < pin_data->connection_index; j++)
             {
-                for (uint8_t j = 0; j < pin_data->connection_index; j++)
-                {
-                    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
-                    write_ptr += bytes_written;
+                bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
+                write_ptr += bytes_written;
 
-                    bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
-                    write_ptr += bytes_written;
-                    bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].other_pin);
-                    write_ptr += bytes_written;
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
+                write_ptr += bytes_written;
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].other_pin);
+                write_ptr += bytes_written;
 
-                    bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_DEVICE_ID);
-                    write_ptr += bytes_written;
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_DEVICE_ID);
+                write_ptr += bytes_written;
 
-                    // only write device index for compactness
-                    // This must be sorted if the framework should work with multiple devices
-                    // Only send the index to make the chucks compaireable
-                    uint8_t device_idx = pin_data->connections[j].device_index;
-                    bytes_written = cb0r_write(write_ptr, CB0R_INT, device_idx);
-                    write_ptr += bytes_written;
-                }
+                // only write device index for compactness
+                // This must be sorted if the framework should work with multiple devices
+                // Only send the index to make the chucks compaireable
+                uint8_t device_idx = pin_data->connections[j].device_index;
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, device_idx);
+                write_ptr += bytes_written;
             }
         }
         else
@@ -204,7 +201,6 @@ SerializationResult serialize_next_chunk()
     return SERIALIZATION_OK;
 }
 
-
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested)
 {
     if (output_chunk == NULL || pindata == NULL)
@@ -252,7 +248,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_MAP, 7);
     write_ptr += bytes_written;
 
-    // 1. ACK REQUESTED (Key 8) 
+    // 1. ACK REQUESTED (Key 8)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ack_requested ? 1 : 0);
@@ -301,7 +297,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
     write_ptr += bytes_written;
-    
+
     if (seen_devices_count > 0)
     {
         for (uint8_t i = 0; i < seen_devices_count; i++)

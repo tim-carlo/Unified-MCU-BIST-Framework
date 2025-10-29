@@ -642,7 +642,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         return handshake_result;
 
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
-    uint8_t pin_index, idx = 0, max_packet_size = (REQUEST_PACKSIZE > ANSWER_PACKSIZE) ? REQUEST_PACKSIZE : ANSWER_PACKSIZE;
+    uint8_t pin_index, idx = 0;
     uint64_t valid_pins_for_fsm_mask = 0;
 
     uint8_t initiator_cnt = 1;

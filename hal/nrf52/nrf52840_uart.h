@@ -20,9 +20,9 @@ void uart_init(uart_instance_t uart, const unsigned long baud_rate, const uart_p
 bool uart_data_ready(uart_instance_t uart);
 bool uart_tx_idle(uart_instance_t uart);
 uint8_t uart_read(uart_instance_t uart);
-void uart_read_text(uart_instance_t uart, uint8_t *output, uint8_t *delimiter, uint8_t attempts);
-void uart_write(uart_instance_t uart, uint8_t data_);
-void uart_write_text(uart_instance_t uart, uint8_t *uart_text);
+void uart_read_text(uart_instance_t uart, char *output, char *delimiter, uint8_t attempts);
+void uart_write(uart_instance_t uart, char data_);
+void uart_write_text(uart_instance_t uart, char *uart_text);
 void uart_write_bytes(uart_instance_t uart, const uint8_t* data, size_t length);
 void uart_write_uint32(uart_instance_t uart, uint32_t value);
 

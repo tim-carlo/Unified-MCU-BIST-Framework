@@ -212,7 +212,7 @@ bool uart_tx_idle(uart_instance_t *uart)
  * @param uart UART instance
  * @return received byte
  */
-uint8_t uart_read(uart_instance_t *uart)
+char uart_read(uart_instance_t *uart)
 {
     if (uart == NULL)
         return 0;
@@ -261,16 +261,16 @@ uint8_t uart_read(uart_instance_t *uart)
  * @param delimiter Delimiter string
  * @param attempts Number of attempts (255 for infinite)
  */
-void uart_read_text(uart_instance_t *uart, uint8_t *output, uint8_t *delimiter, uint8_t attempts)
+void uart_read_text(uart_instance_t *uart, char *output, char *delimiter, u_int8_t attempts)
 {
     if (uart == NULL || output == NULL || delimiter == NULL)
         return;
 
-    uint8_t received_char;
-    uint8_t *output_ptr = output;
-    uint8_t delimiter_len = strlen(delimiter);
-    uint8_t match_count = 0;
-    uint8_t attempt_count = 0;
+    char received_char;
+    char *output_ptr = output;
+    char delimiter_len = strlen(delimiter);
+    char match_count = 0;
+    char attempt_count = 0;
 
     *output_ptr = '\0'; // Initialize output as empty string
 
@@ -312,7 +312,7 @@ void uart_read_text(uart_instance_t *uart, uint8_t *output, uint8_t *delimiter, 
  * @param uart UART instance
  * @param data_ Byte to send
  */
-void uart_write(uart_instance_t *uart, uint8_t data_)
+void uart_write(uart_instance_t *uart, char data_)
 {
     if (uart == NULL)
         return;
@@ -333,7 +333,7 @@ void uart_write(uart_instance_t *uart, uint8_t data_)
  * @param uart UART instance
  * @param uart_text Null-terminated string to send
  */
-void uart_write_text(uart_instance_t *uart, uint8_t *uart_text)
+void uart_write_text(uart_instance_t *uart, char *uart_text)
 {
     if (uart == NULL || uart_text == NULL)
         return;
@@ -373,8 +373,7 @@ void uart_write_uint32(uart_instance_t *uart, uint32_t value)
     if (uart == NULL)
         return;
 
-    // CHANGED: Use htole32 instead of htobe32 for little-endian
-    uint32_t value_le = htole32(value);
+        uint32_t value_le = htole32(value);
     uart_write_bytes(uart, (const uint8_t *)&value_le, sizeof(uint32_t));
 }
 
@@ -424,7 +423,7 @@ void uart_set_receive_mode(uart_instance_t *uart, bool enable)
  * @param data Pointer to store received byte
  * @return true if data was read, false if no data available
  */
-bool uart_read_nonblocking(uart_instance_t *uart, uint8_t *data)
+bool uart_read_nonblocking(uart_instance_t *uart, char *data)
 {
     if (uart == NULL || data == NULL)
         return false;
@@ -442,7 +441,7 @@ bool uart_read_nonblocking(uart_instance_t *uart, uint8_t *data)
             return false;
         }
 
-        *data = (uint8_t)(*(uart->RXBUF) & 0xFF);
+        *data = (char)(*(uart->RXBUF) & 0xFF);
         return true;
     }
 
