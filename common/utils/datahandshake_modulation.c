@@ -15,7 +15,6 @@
 #define DEBUG_PIN_ABS ABS_PIN(3, 0)
 #endif
 
-static uint8_t pman_baud_rate = 0;
 
 bool dhd_status_tx_complete(const DataHandshakeData *dhd)
 {
@@ -243,7 +242,7 @@ inline bool parallel_manchester_add_instance(DataHandshakeData *instance)
     // Workaround since uudata in callback cannot be used to pass instance pointer.
     uint8_t newindex = 0;
 
-    enum spooky_encoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec,
+    enum spooky_decoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec,
                                                                instance->data_buffer,
                                                                BUFFER_SIZE,
                                                                pman_rx_callback,
