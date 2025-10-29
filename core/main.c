@@ -63,24 +63,24 @@ void set_standart_blacklist_pins(volatile uint64_t *mask)
 #if defined(NRF52840_XXAA)
     *mask &= ~(1ULL << 12); // Pin 12
     *mask &= ~(1ULL << 11); // Pin 11
-  //  *mask &= ~(1ULL << 13); // Pin 13
-  //  *mask &= ~(1ULL << 14); // Pin 14
-  //  *mask &= ~(1ULL << 15); // Pin 15
-  //  *mask &= ~(1ULL << 16); // Pin 16
- //  *mask &= ~(1ULL << 17); // Pin 17
- //   *mask &= ~(1ULL << 18); // Pin 18
+                            //  *mask &= ~(1ULL << 13); // Pin 13
+                            //  *mask &= ~(1ULL << 14); // Pin 14
+                            //  *mask &= ~(1ULL << 15); // Pin 15
+                            //  *mask &= ~(1ULL << 16); // Pin 16
+                            //  *mask &= ~(1ULL << 17); // Pin 17
+                            //   *mask &= ~(1ULL << 18); // Pin 18
     data_handshake_result_test.mutex_pin = 12;
     data_handshake_result_test.i_am_mutex_owner = true;
 
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
-   // *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
-   // *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
-  //  *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
-   // *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
-  //  *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
-   // *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
+                                       // *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
+                                       // *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
+                                       //  *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
+                                       // *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
+                                       //  *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
+                                       // *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
 #endif
 }
 
@@ -101,8 +101,8 @@ const uint8_t array[] = {
     GPIO11,
     GPIO12,
     GPIO13,
-  //  GPIO14,
-   // GPIO15,
+    //  GPIO14,
+    // GPIO15,
     // PWRGDL,
     // PWRGDH,
     // PIN_LED0,
@@ -134,10 +134,10 @@ void set_shepherd_pins()
     initial_state_mask &= ~(1ULL << GPIO9);
     initial_state_mask &= ~(1ULL << GPIO10);
     initial_state_mask &= ~(1ULL << GPIO11);
-  //  initial_state_mask &= ~(1ULL << GPIO12);
-  //  initial_state_mask &= ~(1ULL << GPIO13);
-   // initial_state_mask &= ~(1ULL << GPIO14);
-   // initial_state_mask &= ~(1ULL << GPIO15);
+    //  initial_state_mask &= ~(1ULL << GPIO12);
+    //  initial_state_mask &= ~(1ULL << GPIO13);
+    // initial_state_mask &= ~(1ULL << GPIO14);
+    // initial_state_mask &= ~(1ULL << GPIO15);
 }
 
 void set_pins_test_env_pins()
@@ -314,6 +314,7 @@ int main(void)
     //     gpio_reset(array[count]);
     // }
 
+
     LOG("DEBUG: Starting handshake process\n");
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
@@ -349,7 +350,7 @@ int main(void)
     {
         // Reason data handshake failed
         LOG("DEBUG: Data handshake failed with status %u\n", data_handshake_result.status);
-        
+
         perfom_mutex_operations();
         return 1; // Handshake failed, exit program
     }

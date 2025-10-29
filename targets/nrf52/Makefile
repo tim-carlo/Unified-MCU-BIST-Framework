@@ -46,14 +46,15 @@ ASMFLAGS := $(filter-out -std=gnu99,$(CFLAGS))
 LDFLAGS += $(OPT)
 LDFLAGS += -T$(LINKER_SCRIPT)
 LDFLAGS += -Wl,--gc-sections,-Map=${OUTPUT_DIR}/build.map
-LDFLAGS += --specs=nosys.specs --specs=nano.specs  
 LDFLAGS += -Wl,--entry=Reset_Handler 
 LDFLAGS += -Wl,--no-warn-rwx-segments  
 LDFLAGS += -mthumb -mabi=aapcs -mcpu=cortex-m4
 LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+LDFLAGS += --specs=nosys.specs
+
 
 # Minimal required libraries
-LIBRARIES := -lc_nano -lm -lnosys
+LIBRARIES := -lc -lm 
 
 # Debug: Show found source files
 $(info === Found C source files ===)
