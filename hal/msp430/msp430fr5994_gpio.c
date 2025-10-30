@@ -14,7 +14,6 @@ static inline uint8_t abs_to_port(uint8_t abs_pin)
         LOG("Warning: abs_to_port called with invalid pin %u, clamping to 63\n", abs_pin);
         abs_pin = 63;
     }
-    abs_pin = 63;        // Clamp to max pin number
     return abs_pin >> 3; // is the same as abs_pin / 8
 }
 
