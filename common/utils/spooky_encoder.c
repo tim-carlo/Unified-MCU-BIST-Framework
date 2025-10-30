@@ -1,10 +1,10 @@
-/* 
+/*
  * Copyright (c) 2014 Scott Vokes <vokes.s@gmail.com>
- *  
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
- *  
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -17,13 +17,14 @@
 #include <string.h>
 #include "spooky_encoder.h"
 
-typedef enum {
-    TX_NONE,                    /* no message */
-    TX_SHARP,                   /* header: sharp transitions */
-    TX_LONG,                    /* header: slow transitions */
-    TX_LENGTH,                  /* header: length */
-    TX_CHKSUM,                  /* header: checksum */
-    TX_PAYLOAD,                 /* message */
+typedef enum
+{
+    TX_NONE,    /* no message */
+    TX_SHARP,   /* header: sharp transitions */
+    TX_LONG,    /* header: slow transitions */
+    TX_LENGTH,  /* header: length */
+    TX_CHKSUM,  /* header: checksum */
+    TX_PAYLOAD, /* message */
 } tx_mode;
 
 #define HEADER_SHARP_TRANSITIONS 8
@@ -42,11 +43,14 @@ static enum spooky_encoder_step_res encode_bit(uint8_t bit, uint8_t index);
 /* Initialize an encoder. */
 enum spooky_encoder_init_res
 spooky_encoder_init(struct spooky_encoder *enc,
-                    uint8_t *buffer, uint8_t buffer_size) {
-    if ((enc == NULL) || (buffer == NULL)) {
+                    uint8_t *buffer, uint8_t buffer_size)
+{
+    if ((enc == NULL) || (buffer == NULL))
+    {
         return SPOOKY_ENCODER_INIT_ERROR_NULL;
     }
-    if ((buffer_size == 0)) {
+    if ((buffer_size == 0))
+    {
         return SPOOKY_ENCODER_INIT_ERROR_BAD_ARGUMENT;
     }
 
@@ -55,7 +59,7 @@ spooky_encoder_init(struct spooky_encoder *enc,
     enc->buffer_size = buffer_size;
     enc->mode = TX_NONE;
     LOG("initialized %p with buffer %p (%u bytes), rate %u\n",
-        (void*)enc, (void*)buffer, buffer_size, tx_rate);
+        (void *)enc, (void *)buffer, buffer_size, tx_rate);
     return SPOOKY_ENCODER_INIT_OK;
 }
 
@@ -63,10 +67,13 @@ spooky_encoder_init(struct spooky_encoder *enc,
  * encoder's internal buffer. */
 enum spooky_encoder_enqueue_res
 spooky_encoder_enqueue(struct spooky_encoder *enc,
-                       uint8_t *input, uint8_t input_size) {
-    if (enc->mode != TX_NONE) return SPOOKY_ENCODER_ENQUEUE_ERROR_FULL;
+                       uint8_t *input, uint8_t input_size)
+{
+    if (enc->mode != TX_NONE)
+        return SPOOKY_ENCODER_ENQUEUE_ERROR_FULL;
     enc->mode = TX_SHARP;
-    if (input_size > enc->buffer_size) {
+    if (input_size > enc->buffer_size)
+    {
         return SPOOKY_ENCODER_ENQUEUE_ERROR_SIZE;
     }
     memcpy(enc->buffer, input, input_size);
@@ -77,10 +84,13 @@ spooky_encoder_enqueue(struct spooky_encoder *enc,
 }
 
 enum spooky_encoder_enqueue_res spooky_encoder_enqueue_no_copy(struct spooky_encoder *enc,
-                                  uint8_t input_size) {
-    if (enc->mode != TX_NONE) return SPOOKY_ENCODER_ENQUEUE_ERROR_FULL;
+                                                               uint8_t input_size)
+{
+    if (enc->mode != TX_NONE)
+        return SPOOKY_ENCODER_ENQUEUE_ERROR_FULL;
     enc->mode = TX_SHARP;
-    if (input_size > enc->buffer_size) {
+    if (input_size > enc->buffer_size)
+    {
         return SPOOKY_ENCODER_ENQUEUE_ERROR_SIZE;
     }
     enc->input_size = input_size;
@@ -90,9 +100,12 @@ enum spooky_encoder_enqueue_res spooky_encoder_enqueue_no_copy(struct spooky_enc
 }
 
 enum spooky_encoder_clear_res
-spooky_encoder_clear(struct spooky_encoder *enc) {
-    if (enc == NULL) return SPOOKY_ENCODER_CLEAR_ERROR_NULL;
-    if (enc->mode != TX_NONE) {
+spooky_encoder_clear(struct spooky_encoder *enc)
+{
+    if (enc == NULL)
+        return SPOOKY_ENCODER_CLEAR_ERROR_NULL;
+    if (enc->mode != TX_NONE)
+    {
         enc->mode = TX_NONE;
     }
     return SPOOKY_ENCODER_CLEAR_OK;
@@ -105,9 +118,11 @@ spooky_encoder_clear(struct spooky_encoder *enc) {
  * Returns whether the signal should stay as-is (OK),
  * transition low or high (OK_LOW, OK_HIGH), or if the TX is complete. */
 enum spooky_encoder_step_res
-spooky_encoder_step(struct spooky_encoder *enc) {
+spooky_encoder_step(struct spooky_encoder *enc)
+{
     enum spooky_encoder_step_res res = SPOOKY_ENCODER_STEP_ERROR_NULL;
-    if (enc == NULL) return res;
+    if (enc == NULL)
+        return res;
 
     enc->ticks++;
     if ((enc->ticks % TX_RATE) != 0)
@@ -116,24 +131,27 @@ spooky_encoder_step(struct spooky_encoder *enc) {
 
     LOG("step, mod %u\n", enc->mode);
 
-    switch (enc->mode) {
+    switch (enc->mode)
+    {
     case TX_NONE:
         res = SPOOKY_ENCODER_STEP_OK_DONE;
         break;
-    case TX_SHARP:                 /* send sharp transitions */
+    case TX_SHARP: /* send sharp transitions */
         res = encode_bit(0x01, enc->index);
         enc->index++;
-        if (enc->index == 2*HEADER_SHARP_TRANSITIONS) {
+        if (enc->index == 2 * HEADER_SHARP_TRANSITIONS)
+        {
             enc->mode = TX_LONG;
             enc->index = 0;
         }
         break;
     case TX_LONG:
     {
-        uint8_t bit = 0x55 & (1 << (7 - (enc->index/2)));
+        uint8_t bit = 0x55 & (1 << (7 - (enc->index / 2)));
         res = encode_bit(bit, enc->index);
         enc->index++;
-        if (enc->index == 4*HEADER_LONG_TRANSITIONS) {
+        if (enc->index == 4 * HEADER_LONG_TRANSITIONS)
+        {
             enc->mode = TX_LENGTH;
             enc->index = 0;
             LOG("length is 0x%02x\n", enc->input_size);
@@ -145,7 +163,8 @@ spooky_encoder_step(struct spooky_encoder *enc) {
         uint8_t bit = enc->input_size & (1 << (7 - (enc->index / 2)));
         res = encode_bit(bit, enc->index);
         enc->index++;
-        if (enc->index == 2*8) {
+        if (enc->index == 2 * 8)
+        {
             enc->mode = TX_CHKSUM;
             enc->index = 0;
             enc->chksum = calc_chksum(enc->buffer, enc->input_size);
@@ -155,10 +174,11 @@ spooky_encoder_step(struct spooky_encoder *enc) {
     }
     case TX_CHKSUM:
     {
-        uint8_t bit = enc->chksum & (1 << (7 - (enc->index/2)));
+        uint8_t bit = enc->chksum & (1 << (7 - (enc->index / 2)));
         res = encode_bit(bit, enc->index);
         enc->index++;
-        if (enc->index == 2*8) {
+        if (enc->index == 2 * 8)
+        {
             enc->mode = TX_PAYLOAD;
             enc->index = 0;
         }
@@ -173,7 +193,8 @@ spooky_encoder_step(struct spooky_encoder *enc) {
         uint8_t bit = byte & (1 << (7 - (bit_idx)));
         res = encode_bit(bit, enc->index);
         enc->index++;
-        if (enc->index == 8*2*enc->input_size) {
+        if (enc->index == 8 * 2 * enc->input_size)
+        {
             LOG("msg done!\n");
             enc->mode = TX_NONE;
         }
@@ -183,16 +204,22 @@ spooky_encoder_step(struct spooky_encoder *enc) {
     return res;
 }
 
-static uint8_t calc_chksum(uint8_t *buf, size_t length) {
+static uint8_t calc_chksum(uint8_t *buf, size_t length)
+{
     uint8_t res = 0;
-    for (int i=0; i<length; i++) res += buf[i];
+    for (uint8_t i = 0; i < length; i++)
+        res += buf[i];
     return ~res;
 }
 
-static enum spooky_encoder_step_res encode_bit(uint8_t bit, uint8_t index) {
-    if ((index & 0x01) == 0) {  /* prepare for bit edge */
+static enum spooky_encoder_step_res encode_bit(uint8_t bit, uint8_t index)
+{
+    if ((index & 0x01) == 0)
+    { /* prepare for bit edge */
         return bit ? LOW : HIGH;
-    } else {                    /* actual bit edge */
+    }
+    else
+    { /* actual bit edge */
         return bit ? HIGH : LOW;
     }
 }
