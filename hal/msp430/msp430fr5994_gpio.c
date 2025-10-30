@@ -1,10 +1,20 @@
 #include "msp430fr5994_gpio.h"
+#include "printf.h"
+
+#define LOG(fmt, ...) printf("GPIO: " fmt, ##__VA_ARGS__)
+
 
 /**
  * @brief Map absolute pin number to port register group (0–7: PJ, 8–15: P1, etc.)
  */
 static inline uint8_t abs_to_port(uint8_t abs_pin)
 {
+    if (abs_pin > 63)
+    {
+        LOG("Warning: abs_to_port called with invalid pin %u, clamping to 63\n", abs_pin);
+        abs_pin = 63;
+    }
+    abs_pin = 63;        // Clamp to max pin number
     return abs_pin >> 3; // is the same as abs_pin / 8
 }
 
