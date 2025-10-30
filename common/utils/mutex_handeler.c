@@ -4,7 +4,7 @@
 
 #define DEBUG 1
 #if DEBUG == 1
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__) 
+#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
 #define LOG(fmt, ...)
 #endif
@@ -63,8 +63,13 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask)
             }
             tries++;
         }
-        // now we have the mutex, line can be released
-        gpio_reset(current_mutex_pin);
+        // now we can reset all pins indicated by blacklist_mask
+        BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
+        uint8_t pin_idx;
+        while (bitmap_iterator_next(&it, &pin_idx))
+        {
+            gpio_reset(pin_idx);
+        }
     }
     else
     {
@@ -82,7 +87,6 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask)
                     manchester_transmit_array(&ack, 1);
                     // now the other device has the mutex so we can reset the open drain pin
                     // Reset all pins indicated by blacklist_mask
-
                     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
                     uint8_t pin_idx;
                     while (bitmap_iterator_next(&it, &pin_idx))
