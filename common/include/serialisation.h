@@ -44,31 +44,31 @@ extern SerializedChunk *current_chunk;
 extern uint8_t current_pin_data_index;
 extern uint8_t current_chunk_id;
 
-#define KEY_CHUNK_ID 0
-#define KEY_NUM_ENTRIES 1
-#define KEY_PINS 2
-#define KEY_CRC 3
-#define KEY_PIN 4
-#define KEY_EVENTS 5
-#define KEY_CONNECTIONS 6
-#define KEY_OTHER_PIN 7
-#define KEY_DEVICE_ID 8
+#define KEY_CHUNK_ID (0)
+#define KEY_NUM_ENTRIES (1)
+#define KEY_PINS (2)
+#define KEY_CRC (3)
+#define KEY_PIN (4)
+#define KEY_EVENTS (5)
+#define KEY_CONNECTIONS (6)
+#define KEY_OTHER_PIN (7)
+#define KEY_DEVICE_ID (8)
 
 
-#define HEADER_KEY_DEVICE_UUID 0
-#define HEADER_KEY_DEVICE_FAMILY 1
-#define HEADER_KEY_TOTAL_CHUNKS 2
-#define HEADER_KEY_TOTAL_PINS 3
-#define HEADER_KEY_ACTIVE_PINS 4
-#define HEADER_KEY_HEADER_HASH 5
-#define HEADER_KEY_NUMBER_SEEN_DEVICES 6
-#define HEADER_KEY_SEEN_DEVICE_IDS 7
-#define ACK_REQUESTED 8 // Key to indicate if ACK was requested, so if the sender requires an ACK
+#define HEADER_KEY_DEVICE_UUID (0)
+#define HEADER_KEY_DEVICE_FAMILY (1)
+#define HEADER_KEY_TOTAL_CHUNKS (2)
+#define HEADER_KEY_TOTAL_PINS (3)
+#define HEADER_KEY_ACTIVE_PINS (4)
+#define HEADER_KEY_HEADER_HASH (5)
+#define HEADER_KEY_NUMBER_SEEN_DEVICES (6)
+#define HEADER_KEY_SEEN_DEVICE_IDS (7)
+#define ACK_REQUESTED (8) // Key to indicate if ACK was requested, so if the sender requires an ACK
 
-#define HEADER_VERSION 1
-#define HEADER_BUFFER_SIZE 64
-#define CHUNK_BUFFER_SIZE 128
-#define NUMBER_OF_ENTRIES_PER_CHUNK 5
+#define HEADER_VERSION (1)
+#define HEADER_BUFFER_SIZE (64)
+#define CHUNK_BUFFER_SIZE (128)
+#define NUMBER_OF_ENTRIES_PER_CHUNK (5)
 
 // Error codes for serialization operations
 typedef enum {
