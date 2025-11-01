@@ -22,7 +22,6 @@ static const uint8_t MAX_RELEASE_TRIES = 4;
 static const uint8_t MAX_REQUEST_TRIES = 4;
 static volatile bool interrupt_flag = false;
 
-/* --- Static helper functions --- */
 
 static void mutex_timer_interrupt(void)
 {
@@ -161,7 +160,16 @@ static bool mutex_send_signal(MutexHandler *handler, uint8_t data)
     return true;
 }
 
-/* --- Public API --- */
+static void reset_all_pins_to_input(uint64_t blacklist_mask)
+{
+    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
+    uint8_t pin;
+
+    while (bitmap_iterator_next(&it, &pin))
+    {
+        gpio_reset(pin);
+    }
+}
 
 void mutex_handler_init(DataHandshakeResult *result, MutexHandler *handler)
 {
@@ -213,8 +221,6 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
             uint8_t request = MUTEX_REQEST;
             if (!mutex_send_signal(handler, request))
                 continue;
-            LOG("Sent mutex request\n");
-
             WaitForResult res = mutex_wait_for_signal(handler);
             if (res == ACKNOWLEDGED)
             {
@@ -223,11 +229,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 break;
             }
         }
-
-        BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-        uint8_t pin_idx;
-        while (bitmap_iterator_next(&it, &pin_idx))
-            gpio_reset(pin_idx);
+        reset_all_pins_to_input(blacklist_mask);
     }
     else if (!handler->iam_mutex_owner)
     {
@@ -246,12 +248,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
 
-                BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-                uint8_t pin_idx;
-                while (bitmap_iterator_next(&it, &pin_idx))
-                    gpio_reset(pin_idx);
-
-                gpio_input_init(handler->current_mutex_pin, GPIO_PULL_NONE);
+                reset_all_pins_to_input(blacklist_mask);
             }
             else if (wf == RELEASED)
             {
@@ -260,6 +257,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 uint8_t ack = MUTEX_ACK;
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
+                reset_all_pins_to_input(blacklist_mask);
                 break;
             }
         }
@@ -295,10 +293,7 @@ void mutex_handler_release_mutex(uint64_t blacklist_mask, MutexHandler *handler)
         }
     }
 
-    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-    uint8_t pin_idx;
-    while (bitmap_iterator_next(&it, &pin_idx))
-        gpio_reset(pin_idx);
+    reset_all_pins_to_input(blacklist_mask);
 }
 
 void mutex_handler_deinit(MutexHandler *handler)
