@@ -155,8 +155,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t mutex_request = received_data[10];
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, remote_uuid);
-    add_pin_event(&global_pindata, pin, DATA_HANDSHAKE_OK);
-    add_pin_event(&global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
+    add_pin_event(global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
@@ -240,8 +239,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t mutex_allowed = received_data[19];
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, other_device_uuid);
-    add_pin_event(&global_pindata, pin, DATA_HANDSHAKE_OK);
-    add_pin_event(&global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
+    add_pin_event(global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
     if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
@@ -711,19 +709,24 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     stop_send_data_timer();
     if (global_datahandshake_pindata)
     {
-        printf("Successful handshakes on pins:\n");
+        LOG("Successful handshakes on pins:\n");
         bool any_success = false;
         for (uint8_t i = 0; i < number_of_pins; i++)
         {
             if (dhd_status_handshake_success(&global_datahandshake_pindata[i]))
             {
-                printf(" - %u\n", global_datahandshake_pindata[i].pin);
+                LOG(" - %u\n", global_datahandshake_pindata[i].pin);
+                add_pin_event(global_pindata, global_datahandshake_pindata[i].pin, DATA_HANDSHAKE_OK);
                 any_success = true;
+            } else 
+            {
+                // add failure
+                add_pin_event(global_pindata, global_datahandshake_pindata[i].pin, DATA_HANDSHAKE_FAILURE);
             }
         }
         if (!any_success)
         {
-            printf(" - none\n");
+            LOG(" - none\n");
         }
     }
 
