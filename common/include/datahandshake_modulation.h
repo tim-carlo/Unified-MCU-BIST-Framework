@@ -82,7 +82,8 @@ enum
 #define STATUS_ROLE_INITIATOR (1 << 6)
 #define STATUS_HANDSHAKE_SUCCESS (1 << 7)
 
-#define ANSWER_PACKSIZE 25
+#define ANSWER_PACKSIZE (25)
+#define REQUEST_PACKSIZE (15)
 #define BUFFER_SIZE ANSWER_PACKSIZE
 typedef struct
 {
