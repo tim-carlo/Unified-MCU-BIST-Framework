@@ -1,58 +1,57 @@
-
 #include <string.h>
 #include "endian.h"
 #include "msp430fr5994_helper.h"
 
 // Predefined UART instance definitions
 uart_instance_t msp430_uart0_instance = {
-    .CTLW0 = &UCA0CTLW0,
-    .BR0 = &UCA0BR0,
-    .BR1 = &UCA0BR1,
-    .MCTLW = &UCA0MCTLW,
-    .STATW = &UCA0STATW,
-    .RXBUF = &UCA0RXBUF,
-    .TXBUF = &UCA0TXBUF,
-    .IFG = &UCA0IFG,
-    .IE = &UCA0IE,
+    .CTLW0 = (volatile uint16_t *)&UCA0CTLW0,
+    .BR0 = (volatile uint16_t *)&UCA0BR0,
+    .BR1 = (volatile uint16_t *)&UCA0BR1,
+    .MCTLW = (volatile uint16_t *)&UCA0MCTLW,
+    .STATW = (volatile uint16_t *)&UCA0STATW,
+    .RXBUF = (volatile uint16_t *)&UCA0RXBUF,
+    .TXBUF = (volatile uint16_t *)&UCA0TXBUF,
+    .IFG = (volatile uint16_t *)&UCA0IFG,
+    .IE = (volatile uint16_t *)&UCA0IE,
     .rx_flag_bit = UCRXIFG,
     .tx_flag_bit = UCTXIFG};
 
 uart_instance_t msp430_uart1_instance = {
-    .CTLW0 = &UCA1CTLW0,
-    .BR0 = &UCA1BR0,
-    .BR1 = &UCA1BR1,
-    .MCTLW = &UCA1MCTLW,
-    .STATW = &UCA1STATW,
-    .RXBUF = &UCA1RXBUF,
-    .TXBUF = &UCA1TXBUF,
-    .IFG = &UCA1IFG,
-    .IE = &UCA1IE,
+    .CTLW0 = (volatile uint16_t *)&UCA1CTLW0,
+    .BR0 = (volatile uint16_t *)&UCA1BR0,
+    .BR1 = (volatile uint16_t *)&UCA1BR1,
+    .MCTLW = (volatile uint16_t *)&UCA1MCTLW,
+    .STATW = (volatile uint16_t *)&UCA1STATW,
+    .RXBUF = (volatile uint16_t *)&UCA1RXBUF,
+    .TXBUF = (volatile uint16_t *)&UCA1TXBUF,
+    .IFG = (volatile uint16_t *)&UCA1IFG,
+    .IE = (volatile uint16_t *)&UCA1IE,
     .rx_flag_bit = UCRXIFG,
     .tx_flag_bit = UCTXIFG};
 
 uart_instance_t msp430_uart2_instance = {
-    .CTLW0 = &UCA2CTLW0,
-    .BR0 = &UCA2BR0,
-    .BR1 = &UCA2BR1,
-    .MCTLW = &UCA2MCTLW,
-    .STATW = &UCA2STATW,
-    .RXBUF = &UCA2RXBUF,
-    .TXBUF = &UCA2TXBUF,
-    .IFG = &UCA2IFG,
-    .IE = &UCA2IE,
+    .CTLW0 = (volatile uint16_t *)&UCA2CTLW0,
+    .BR0 = (volatile uint16_t *)&UCA2BR0,
+    .BR1 = (volatile uint16_t *)&UCA2BR1,
+    .MCTLW = (volatile uint16_t *)&UCA2MCTLW,
+    .STATW = (volatile uint16_t *)&UCA2STATW,
+    .RXBUF = (volatile uint16_t *)&UCA2RXBUF,
+    .TXBUF = (volatile uint16_t *)&UCA2TXBUF,
+    .IFG = (volatile uint16_t *)&UCA2IFG,
+    .IE = (volatile uint16_t *)&UCA2IE,
     .rx_flag_bit = UCRXIFG,
     .tx_flag_bit = UCTXIFG};
 
 uart_instance_t msp430_uart3_instance = {
-    .CTLW0 = &UCA3CTLW0,
-    .BR0 = &UCA3BR0,
-    .BR1 = &UCA3BR1,
-    .MCTLW = &UCA3MCTLW,
-    .STATW = &UCA3STATW,
-    .RXBUF = &UCA3RXBUF,
-    .TXBUF = &UCA3TXBUF,
-    .IFG = &UCA3IFG,
-    .IE = &UCA3IE,
+    .CTLW0 = (volatile uint16_t *)&UCA3CTLW0,
+    .BR0 = (volatile uint16_t *)&UCA3BR0,
+    .BR1 = (volatile uint16_t *)&UCA3BR1,
+    .MCTLW = (volatile uint16_t *)&UCA3MCTLW,
+    .STATW = (volatile uint16_t *)&UCA3STATW,
+    .RXBUF = (volatile uint16_t *)&UCA3RXBUF,
+    .TXBUF = (volatile uint16_t *)&UCA3TXBUF,
+    .IFG = (volatile uint16_t *)&UCA3IFG,
+    .IE = (volatile uint16_t *)&UCA3IE,
     .rx_flag_bit = UCRXIFG,
     .tx_flag_bit = UCTXIFG};
 
@@ -124,43 +123,27 @@ static void calculate_baud_rate(uint16_t baud_rate, uint16_t *br0, uint16_t *br1
  * @brief Initialize UART peripheral according to TI recommended sequence
  *
  * @param uart UART instance
- * @param baud_rate Baud rate
- * @param pins Pin configuration structure
+ * @param baud_rate Baud rate (unused, hardcoded to 9600)
+ * @param pins Pin configuration structure (unused, using P2.0/P2.1)
  */
 void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_t *pins)
 {
-    if (uart == NULL || pins == NULL)
+    (void)baud_rate;  // Unused parameter
+    (void)pins;       // Unused parameter
+    
+    if (uart == NULL)
         return;
 
-    // Configure ports (Step 3)
-    // volatile uint8_t *port_sel0 = (volatile uint8_t *)pins->port_sel0;
-    // volatile uint8_t *port_sel1 = (volatile uint8_t *)pins->port_sel1;
-    // uint8_t tx_mask = pins->tx_pin_mask;
-    // uint8_t rx_mask = pins->rx_pin_mask;
-    // if (port_sel0 && port_sel1)
-    // {
-    //     // Set pins to UART function (secondary function)
-    //     *port_sel0 &= ~(tx_mask | rx_mask); // Clear PxSEL0
-    //     *port_sel1 |= (tx_mask | rx_mask);  // Set PxSEL1
-    // }
     UCA0CTLW0 = UCSWRST;         // Reset UART
     UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
     UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
     UCA0BR1 = 0;                 // High byte
     UCA0MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
 
-    P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
-    P2SEL1 |= BIT0 | BIT1;
-    // Step 4: Clear UCSWRST through software (BIC.B #UCSWRST,&UCAxCTL1)
-
-    // Enable glitch suppression for better receive reliability
-    //*(uart->CTLW0) &= ~UCSWRST; // Release from reset
-
-    // Step 5: Enable interrupts (optional) through UCRXxIE and/or UCTXxIE
-    // This is done later in uart_set_receive_mode if needed
-
-    // Clear any pending flags
-    //*(uart->IFG) &= ~(uart->rx_flag_bit | uart->tx_flag_bit);
+    P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
+    P2SEL1 |= BIT0 | BIT1;       // Set UART function
+    
+    UCA0CTLW0 &= ~UCSWRST;       // Release from reset
 }
 
 /**
@@ -212,7 +195,7 @@ bool uart_tx_idle(uart_instance_t *uart)
  * @param uart UART instance
  * @return received byte
  */
-char uart_read(uart_instance_t *uart)
+uint8_t uart_read(uart_instance_t *uart)
 {
     if (uart == NULL)
         return 0;
@@ -261,16 +244,16 @@ char uart_read(uart_instance_t *uart)
  * @param delimiter Delimiter string
  * @param attempts Number of attempts (255 for infinite)
  */
-void uart_read_text(uart_instance_t *uart, char *output, char *delimiter, u_int8_t attempts)
+void uart_read_text(uart_instance_t *uart, char *output, char *delimiter, uint8_t attempts)
 {
     if (uart == NULL || output == NULL || delimiter == NULL)
         return;
 
-    char received_char;
+    uint8_t received_char;
     char *output_ptr = output;
-    char delimiter_len = strlen(delimiter);
-    char match_count = 0;
-    char attempt_count = 0;
+    size_t delimiter_len = strlen(delimiter);
+    size_t match_count = 0;
+    uint8_t attempt_count = 0;
 
     *output_ptr = '\0'; // Initialize output as empty string
 
@@ -279,10 +262,10 @@ void uart_read_text(uart_instance_t *uart, char *output, char *delimiter, u_int8
         if (uart_data_ready(uart))
         {
             received_char = uart_read(uart);
-            *output_ptr++ = received_char;
+            *output_ptr++ = (char)received_char;
 
             // Check for delimiter match
-            if (received_char == delimiter[match_count])
+            if ((char)received_char == delimiter[match_count])
             {
                 match_count++;
                 if (match_count == delimiter_len)
@@ -358,7 +341,7 @@ void uart_write_bytes(uart_instance_t *uart, const uint8_t *data, size_t length)
 
     for (size_t i = 0; i < length; i++)
     {
-        uart_write(uart, data[i]);
+        uart_write(uart, (char)data[i]);
     }
 }
 
@@ -373,7 +356,7 @@ void uart_write_uint32(uart_instance_t *uart, uint32_t value)
     if (uart == NULL)
         return;
 
-        uint32_t value_le = htole32(value);
+    uint32_t value_le = htole32(value);
     uart_write_bytes(uart, (const uint8_t *)&value_le, sizeof(uint32_t));
 }
 
@@ -508,13 +491,13 @@ uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
     uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
     uint8_t rx_idx  = ABS_TO_PINIDX(abs_rx_pin);
 
-    pins.tx_sel0 = (volatile uint16_t *)(0x0200 + tx_port*0x20 + PORT_SEL0_OFFSET);
-    pins.tx_sel1 = (volatile uint16_t *)(0x0200 + tx_port*0x20 + PORT_SEL1_OFFSET);
-    pins.tx_mask = BV(tx_idx);
+    pins.tx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port*0x20 + PORT_SEL0_OFFSET);
+    pins.tx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port*0x20 + PORT_SEL1_OFFSET);
+    pins.tx_mask = (uint8_t)(1U << tx_idx);
 
-    pins.rx_sel0 = (volatile uint16_t *)(0x0200 + rx_port*0x20 + PORT_SEL0_OFFSET);
-    pins.rx_sel1 = (volatile uint16_t *)(0x0200 + rx_port*0x20 + PORT_SEL1_OFFSET);
-    pins.rx_mask = BV(rx_idx);
+    pins.rx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port*0x20 + PORT_SEL0_OFFSET);
+    pins.rx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port*0x20 + PORT_SEL1_OFFSET);
+    pins.rx_mask = (uint8_t)(1U << rx_idx);
 
     return pins;
 }
