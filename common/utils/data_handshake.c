@@ -155,6 +155,8 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t mutex_request = received_data[10];
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, remote_uuid);
+    add_pin_event(&global_pindata, pin, DATA_HANDSHAKE_OK);
+    add_pin_event(&global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
@@ -238,6 +240,8 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t mutex_allowed = received_data[19];
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, other_device_uuid);
+    add_pin_event(&global_pindata, pin, DATA_HANDSHAKE_OK);
+    add_pin_event(&global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
     if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
