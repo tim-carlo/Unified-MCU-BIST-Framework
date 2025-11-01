@@ -33,6 +33,8 @@ static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This 
 static const uint8_t ANSWER_IDENTIFIER = 0x55;
 static const uint8_t REQUEST_IDENTIFIER = 0xAA;
 
+static const uint8_t REQUEST_RENEWAL_TIME = 50;
+
 // Global variables
 static PinData *global_pindata;
 static DataHandshakeData *global_datahandshake_pindata = NULL; // Global pointer to DataHandshakeData array
@@ -62,6 +64,7 @@ static void analyze_pindata_events(PinData *pindata)
     // Reset masks and counters
     initiator_mask = 0;
     responder_mask = 0;
+
     number_of_pins = 0;
 
     // Calculate all pins mask at runtime - assume 64-bit max
@@ -126,15 +129,6 @@ static inline uint16_t get_listen_until_time(uint16_t factor)
     return (uint16_t)total;
 }
 
-static inline bool start_receiving_request(DataHandshakeData *p)
-{
-    return parallel_manchester_receive_background(p);
-}
-
-static inline bool start_receiving_answer(DataHandshakeData *p)
-{
-    return parallel_manchester_receive_background(p);
-}
 
 static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 {
@@ -166,7 +160,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
     // Determine mutex state before writing to buffer
-    uint8_t mutex_allowed = 0;
+    uint8_t mutex_allowed = DENYING_MUTEX_ON_THIS_PIN;
     if (mutex_request == REQEST_MUTEX_ON_THIS_PIN && remote_uuid != uuid)
     {
         if (mutex_pin == 255 || !i_am_mutex_owner)
@@ -241,7 +235,8 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 
     add_pin_connection(&global_pindata[pin], pin, remote_pin, other_device_uuid);
 
-    if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN)
+    // The secound argument is to prevent race conditions where two devices request the mutex at the same time
+    if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
@@ -254,12 +249,9 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 }
 static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
-    // gpio_od_release(pin);
 
-    // Small delay to ensure line is released before transmitting
-    // delay_us(1000);
-
-    const uint8_t mutex = (mutex_pin == 255) ? REQEST_MUTEX_ON_THIS_PIN : 0;
+    // Dont request mutex if we already own it
+    const uint8_t mutex = (mutex_pin == 255 && !i_am_mutex_owner) ? REQEST_MUTEX_ON_THIS_PIN : 0;
     p->data_buffer[0] = REQUEST_IDENTIFIER;
 
     const uint64_t le_uuid = htole64(uuid);
@@ -273,19 +265,21 @@ static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
     memcpy(&p->data_buffer[11], &le_crc, sizeof(le_crc));
 
     const bool result = parallel_manchester_transmit_background(p, REQUEST_PACKSIZE);
-
     return result;
 }
 
 static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
+    // The packet is already assembled in the buffer
+    // So just start transmission
+    // This little delay is needed to ensure the line is released before transmitting
     return parallel_manchester_transmit_background(p, ANSWER_PACKSIZE);
 }
 
 static inline void reschedule_request(DataHandshakeData *p, uint32_t counter)
 {
     // Schedule next send time to avoid immediate resend
-    p->time_until_next_send = get_listen_until_time(1);
+    p->time_until_next_send = REQUEST_RENEWAL_TIME;
     p->last_send_job_order = counter; // Reset to allow immediate sending when time is up
 }
 
@@ -293,7 +287,6 @@ static volatile uint32_t counter = 0;
 
 static void fsm_data_handshake(void)
 {
-
     counter++;
 
     BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
@@ -322,9 +315,11 @@ static void fsm_data_handshake(void)
                 // Here we check if the low time matches a request signal
                 if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
                 {
-                    if (!start_receiving_request(p))
+                    // This only happens when there is a problem with the initialization of the manchester decoder
+                    if (!parallel_manchester_receive_background(p))
                     {
                         LOG("Failed to start receiving request on pin %u\n", p->pin);
+                        // TODO: Handle ram failure properly
                     }
                     else
                     {
@@ -334,7 +329,6 @@ static void fsm_data_handshake(void)
                     // LOG("Request received on pin %u\n", pin);
 
                     p->receiving_counter = 0;
-                    gpio_drive_low(DEBUG_PIN2);
                 }
                 // If the signal was too short or too long, just reset the counter
                 else if (receive_counter > INITIAL_LOW_TIME_REQUEST_MAX_MS || receive_counter < INITIAL_LOW_TIME_REQUEST_MIN_MS)
@@ -414,18 +408,7 @@ static void fsm_data_handshake(void)
                     p->current_job = JOB_LISTEN;
                 }
             }
-            // // Timeout for transmission if complete signal not received
-            // else if (p->current_job == JOB_TRANSMITTING_REQUEST && delta > TIMEOUT_CYCLES_SENDING_REQUEST)
-            // {
-            //     // Timeout occurred during transmission
-            //     reschedule_request(p, counter);
-            //     p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            // }
-            // else if (p->current_job == JOB_TRANSMITTING_ANSWER && delta > TIMEOUT_CYCLES_SENDING_ANSWER)
-            // {
-            //     // Timeout occurred during transmission
-            //     p->current_job = JOB_LISTEN; // Go back to listening on timeout
-            // }
+            // Here is no timeout needed since the sender will always finish sending 
             something_happened = true;
             break;
         }
@@ -445,7 +428,7 @@ static void fsm_data_handshake(void)
                 if (receive_counter >= INITIAL_LOW_TIME_ANSWER_MIN_MS && receive_counter <= INITIAL_LOW_TIME_ANSWER_MAX_MS)
                 {
                     p->receiving_counter = 0;
-                    if (!start_receiving_answer(p))
+                    if (!parallel_manchester_receive_background(p))
                     {
                         is_failed = true;
                         LOG("Failed to start receiving answer on pin %u\n", p->pin);
@@ -481,7 +464,6 @@ static void fsm_data_handshake(void)
 #endif
             if (parallel_manchester_receive_complete(p))
             {
-
                 if (!handle_request_receive_complete(p->pin, p))
                 {
                     // Failed to handle request properly
@@ -506,7 +488,7 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
-                   // gpio_drive_high(DEBUG_PIN2);
+                    // gpio_drive_high(DEBUG_PIN2);
                     LOG("Failed to receive request on pin %u\n", p->pin);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
@@ -547,7 +529,7 @@ static void fsm_data_handshake(void)
                 }
                 else
                 {
-                    //gpio_drive_high(DEBUG_PIN2);
+                    // gpio_drive_high(DEBUG_PIN2);
                     LOG("Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
@@ -569,7 +551,6 @@ static void fsm_data_handshake(void)
     {
         last_change_in_isr = 0;
     }
-    gpio_drive_low(DEBUG_PIN2);
 }
 static void stop_send_data_timer(void)
 {
@@ -645,7 +626,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     uint8_t pin_index, idx = 0;
     uint64_t valid_pins_for_fsm_mask = 0;
 
-    uint8_t initiator_cnt = 1;
+    uint8_t initiator_cnt = 0;
     uuid = get_own_device_id();
 
     while (bitmap_iterator_next(&it, &pin_index))
@@ -695,7 +676,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     {
         while (!interrupt_flag)
             ;
-        gpio_drive_high(DEBUG_PIN1);
+
         interrupt_flag = false;
         isr_done = false;
         pman_timer_isr(global_datahandshake_pindata, number_of_pins);
@@ -706,7 +687,6 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
         }
         isr_counter++;
         isr_done = true;
-        gpio_drive_low(DEBUG_PIN1);
     }
     if (handshake_result.status == DATA_HANDSHAKE_ISR_TO_LONG)
     {
