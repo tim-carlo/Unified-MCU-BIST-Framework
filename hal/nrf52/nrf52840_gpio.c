@@ -94,7 +94,7 @@ void gpio_reset(uint8_t abs_pin)
 
     port_ptr(port)->PIN_CNF[idx] =
         (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-        (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
+        (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
         (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos) |
         (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos) |
         (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
@@ -121,7 +121,7 @@ bool gpio_read(uint8_t abs_pin)
 
 /**
  * @brief Read both GPIO ports with explicit bit positioning
- * 
+ *
  * @return uint64_t Combined value where:
  *         - Bits [31:0]  = Port 0 pins
  *         - Bits [63:32] = Port 1 pins
@@ -285,12 +285,6 @@ void gpio_od_hold_low(uint8_t abs_pin)
     // Temporarily disable GPIOTE interrupt
     NVIC_DisableIRQ(GPIOTE_IRQn);
 
-    // Disable SENSE to prevent spurious events while driving low
-    // uint32_t cnf = p->PIN_CNF[idx];
-    // cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
-    // cnf |= BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
-    // p->PIN_CNF[idx] = cnf;
-
     // Configure as output and drive low
     p->OUTCLR = (1UL << idx);
     p->DIRSET = (1UL << idx);
@@ -348,4 +342,3 @@ void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_leve
         }
     }
 }
-
