@@ -32,15 +32,14 @@
 #include "crc.h"
 #include "pin_config.h"
 
-#define DATA_TIMER_INTERVAL_US 1000 // 10ms interval for both platforms
-#define DATA_TIMER_INTERVAL_MS (DATA_TIMER_INTERVAL_US / 1000)
 
-#define REQUEST_PACKSIZE 15
-#define ANSWER_PACKSIZE 25
+#define REQUEST_PACKSIZE (15)
+#define ANSWER_PACKSIZE (25)
 
-#define REQEST_MUTEX_ON_THIS_PIN 0x55
-#define ALLOWING_MUTEX_ON_THIS_PIN 0xAA
-#define NO_MUTEX_ON_THIS_PIN 0x00
+#define REQEST_MUTEX_ON_THIS_PIN (0x55)
+#define ALLOWING_MUTEX_ON_THIS_PIN (0xAA)
+#define DENYING_MUTEX_ON_THIS_PIN (0x11)
+#define NO_MUTEX_ON_THIS_PIN (0x00)
 
 typedef enum
 {
