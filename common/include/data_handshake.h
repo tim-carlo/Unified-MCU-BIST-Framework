@@ -33,9 +33,6 @@
 #include "pin_config.h"
 
 
-#define REQUEST_PACKSIZE (15)
-#define ANSWER_PACKSIZE (25)
-
 #define REQEST_MUTEX_ON_THIS_PIN (0x55)
 #define ALLOWING_MUTEX_ON_THIS_PIN (0xAA)
 #define DENYING_MUTEX_ON_THIS_PIN (0x11)
