@@ -25,7 +25,7 @@
 #include "pin_config.h"
 #include "stack.h"
 #include "timing_pindata.h"
-#include "check_initial_state.h"
+
 #include "manchester.h"
 #include "random_utils.h"
 #include "handshake.h"
@@ -61,26 +61,22 @@ void set_standart_blacklist_pins(volatile uint64_t *mask)
     *mask = 0xFFFFFFFFFFFFFFFFULL;
 
 #if defined(NRF52840_XXAA)
-    *mask &= ~(1ULL << 12); // Pin 12
     *mask &= ~(1ULL << 11); // Pin 11
-                            //  *mask &= ~(1ULL << 13); // Pin 13
-                            //  *mask &= ~(1ULL << 14); // Pin 14
-                            //  *mask &= ~(1ULL << 15); // Pin 15
-                            //  *mask &= ~(1ULL << 16); // Pin 16
-                            //  *mask &= ~(1ULL << 17); // Pin 17
-                            //   *mask &= ~(1ULL << 18); // Pin 18
+    *mask &= ~(1ULL << 12); // Pin 12
+    *mask &= ~(1ULL << 13); // Pin 13
+    *mask &= ~(1ULL << 14); // Pin 14
+    *mask &= ~(1ULL << 15); // Pin 15
+    *mask &= ~(1ULL << 16); // Pin 16
     data_handshake_result_test.mutex_pin = 12;
     data_handshake_result_test.i_am_mutex_owner = true;
 
 #elif defined(__MSP430FR5994__)
     *mask &= ~(1ULL << ABS_PIN(3, 7)); // Pin 23
     *mask &= ~(1ULL << ABS_PIN(3, 6)); // Pin 22
-                                       // *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
-                                       // *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
-                                       //  *mask &= ~(1ULL << ABS_PIN(2, 5)); // Pin 18
-                                       // *mask &= ~(1ULL << ABS_PIN(4, 3)); // Pin 17
-                                       //  *mask &= ~(1ULL << ABS_PIN(4, 2)); // Pin 16
-                                       // *mask &= ~(1ULL << ABS_PIN(4, 1)); // Pin 15
+    *mask &= ~(1ULL << ABS_PIN(3, 5)); // Pin 21
+    *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
+    *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
+    *mask &= ~(1ULL << ABS_PIN(7, 3)); 
 #endif
 }
 
@@ -245,6 +241,27 @@ int main(void)
     // #endif
     mcu_init();
 
+    char src[] = "Hello, memcpy!";
+    char dest[20]; 
+
+    // Clear destination buffer
+    memset(dest, 0, sizeof(dest));
+
+    // Copy data
+    memcpy(dest, src, strlen(src) + 1); // +1 to include null terminator
+
+    // Verify result
+    if (strcmp(src, dest) == 0) {
+        printf("memcpy test passed!\n");
+        printf("Source:      %s\n", src);
+        printf("Destination: %s\n", dest);
+    } else {
+        printf("memcpy test failed!\n");
+        printf("Source:      %s\n", src);
+        printf("Destination: %s\n", dest);
+    }
+
+
 #if (DEV_KIT == 0)
     set_shepherd_pins();
 #if defined(__MSP430FR5994__)
@@ -268,62 +285,11 @@ int main(void)
     set_standart_blacklist_pins(&initial_state_mask);
 #endif
 
-    // size_t all_count = sizeof(all) / sizeof(all[0]);
-
-    // // configure as open-drain for each pin in all[]
-    // for (size_t i = 0; i < all_count; ++i)
-    // {
-    //     uint32_t pin = all[i];
-    //     gpio_od_init((uint8_t)pin);
-    // }
-    // delay_ms(50);
-
-    // // briefly drive low each pin in all[]
-    // for (size_t i = 0; i < all_count; ++i)
-    // {
-    //     uint32_t pin = all[i];
-    //     LOG("DEBUG: OD test pin %u\n", (unsigned)pin);
-    //     gpio_od_hold_low((uint8_t)pin);
-    //     delay_ms(10);
-    //     gpio_od_release((uint8_t)pin);
-    // }
-    // delay_ms(50);
-    // size_t array_size = sizeof(array) / sizeof(array[0]);
-
-    // /* set array to output */
-    // for (uint8_t count = 0; count < array_size; count++)
-    // {
-    //     //set_gpio_out(array[count], true);
-    //     gpio_output_init(array[count]);
-    // }
-    // delay_ms(100);
-    // /* switch each pin on in array */
-    // for (uint8_t count = 0; count < array_size; count++)
-    // {
-    //     gpio_drive_high(array[count]);
-    //     //gpio_drive_high(array[count]);
-    //     delay_ms(100);
-    //     //set_gpio_state(array[count], false);
-    //     gpio_drive_low(array[count]);
-    // }
-    // /* set pins to INPUT */
-    // delay_ms(100);
-    // for (uint8_t count = 0; count < array_size; count++)
-    // {
-    //     //set_gpio_out(array[count], false);
-    //     gpio_reset(array[count]);
-    // }
-
-
     LOG("DEBUG: Starting handshake process\n");
-
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-
     gpio_output_init(DEBUG_PIN1);
-
-#if defined(__NRF52840_XXAA__)
     gpio_output_init(DEBUG_PIN2);
-#endif
+
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
