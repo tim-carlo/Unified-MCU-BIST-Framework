@@ -111,7 +111,7 @@ static void analyze_pindata_events(PinData *pindata)
 static inline uint16_t get_listen_until_time(uint16_t factor)
 {
     uint32_t rnd = random32();
-    const uint16_t jitter_range = (MAXIMUM_REQUEST_CYCLES >> 2); // MAX / 4
+    const uint16_t jitter_range = (MAXIMUM_REQUEST_CYCLES >> 3); // MAX / 8
 
     uint16_t rnd16 = (uint16_t)(rnd >> 16);
     uint16_t jitter = (uint16_t)(((uint32_t)rnd16 * jitter_range) >> 16);
@@ -129,7 +129,6 @@ static inline uint16_t get_listen_until_time(uint16_t factor)
     return (uint16_t)total;
 }
 
-
 static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeData *p)
 {
 
@@ -140,13 +139,13 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     if (received_data[0] != REQUEST_IDENTIFIER)
         return false;
 
-    //   uint32_t received_crc_le;
-    //   memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
-    //   if (crcFast(received_data, 11) != le32toh(received_crc_le))
-    //   {
-    //       LOG("Request CRC error\n");
-    //       return false;
-    //   }
+    uint32_t received_crc_le;
+    memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
+    if (crcFast(received_data, 11) != le32toh(received_crc_le))
+    {
+        LOG("Request CRC error\n");
+        return false;
+    }
 
     uint64_t remote_uuid_le;
     memcpy(&remote_uuid_le, &received_data[1], sizeof(remote_uuid_le));
@@ -224,8 +223,13 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
         LOG("Answer not for us (PIN mismatch)");
         return false;
     }
-
-    // TODO: Add CRC check for the answer packet here!
+    uint32_t received_crc_le;
+    memcpy(&received_crc_le, &received_data[20], sizeof(received_crc_le));
+    if (crcFast(received_data, 20) != le32toh(received_crc_le))
+    {
+        LOG("Answer CRC error\n");
+        return false;
+    }
 
     uint64_t other_device_uuid_le;
     memcpy(&other_device_uuid_le, &received_data[10], sizeof(other_device_uuid_le));
@@ -408,7 +412,7 @@ static void fsm_data_handshake(void)
                     p->current_job = JOB_LISTEN;
                 }
             }
-            // Here is no timeout needed since the sender will always finish sending 
+            // Here is no timeout needed since the sender will always finish sending
             something_happened = true;
             break;
         }
