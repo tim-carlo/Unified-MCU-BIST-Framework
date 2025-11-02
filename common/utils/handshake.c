@@ -2,6 +2,7 @@
 
 // Static pointer to handshake state
 static HandshakeState *handshake_state = NULL;
+static HandshakeResult handshake_result = HANDSHAKE_NO_WORKING_PIN_FOUND;
 
 // #define LOG(fmt, ...) // Uncomment this line to disable Logging
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -97,12 +98,19 @@ const TimingTaskDef task_lut[] = {
  * @brief Interrupt Service Routine for reading pin states and managing handshake tasks
  *
  */
-static HandshakeResult handshake_result = HANDSHAKE_NO_WORKING_PIN_FOUND;
-static volatile bool is_complete = false;
-static volatile bool reader_flag = false;
 
+static volatile bool is_complete = true;
 static void reader_isr(void)
 {
+    if (!is_complete)
+    {
+        // Previous ISR not complete, skip this invocation
+        // Timeout detection
+        LOG("WARNING: Handshake reader ISR timeout detected!\n");
+        handshake_result = HANDSHAKE_ISR_TIMEOUT;
+        return;
+    }
+    is_complete = false;
     gpio_drive_high(DEBUG_PIN1);
     if (handshake_state == NULL)
         return; // Safety check
@@ -210,17 +218,6 @@ static void reader_isr(void)
     is_complete = true;
 }
 
-static void handshake_isr(void)
-{
-    reader_flag = true;
-    if (!is_complete)
-    {
-        // Timeout handling: force complete
-        handshake_state->handshake_time = DURATION_OF_HANDSHAKE_MS;
-        handshake_result = HANDSHAKE_ISR_TIMEOUT;
-    }
-}
-
 static void start_handshake_timer(void)
 {
 #if defined(NRF52840_XXAA)
@@ -307,28 +304,24 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     // start handshake process
     start_handshake_timer();
     handshake_state->handshake_time = 0;
-    while (handshake_state->handshake_time < DURATION_OF_HANDSHAKE_MS)
+    while ((handshake_state->handshake_time < DURATION_OF_HANDSHAKE_MS) && (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND))
     {
-        // Wait for ISR to complete
-        while (!reader_flag)
-            ;
-        reader_flag = false;
-        is_complete = false;
-        reader_isr();
-        is_complete = true;
     }
-    stop_handshake_timer();
 
     if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
     {
+        LOG("DEBUG: Handshake aborted due to ISR timeout\n");
         // Cleanup - deinitialize handshake state
-        LOG("DEBUG: HANDSHAKE ISR TIMEOUT\n");
+        handshake_state_deinit(handshake_state);
         return handshake_result;
     }
+
     for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
     {
         gpio_od_release(handshake_state->global_timing_pindata[i].pin);
     }
+
+    stop_handshake_timer();
 
     it = bitmap_iterator_create(valid_pins_mask);
     idx = 0;

@@ -33,14 +33,14 @@
 #include "pin_config.h"
 
 
-#define READER_INTERVAL_US 1000 // Reader: every 1 ms
-#define PRESCALER_DIV 8         // Prescaler division factor for the timer
+#define READER_INTERVAL_US (1000) // Reader: every 1 ms
+#define PRESCALER_DIV (8)         // Prescaler division factor for the timer
 #define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 #define MANAGER_TICKS ((MANAGER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 
-#define SYN_DURATION 200     // Duration of SYN signal in microseconds
-#define SYN_ACK_DURATION 600 // Duration of SYN_ACK signal in microseconds
-#define ACK_DURATION 1100    // Duration of ACK signal in microseconds
+#define SYN_DURATION (200)     // Duration of SYN signal in microseconds
+#define SYN_ACK_DURATION (600) // Duration of SYN_ACK signal in microseconds
+#define ACK_DURATION (1100)    // Duration of ACK signal in microseconds
 
 #define SYN_CYCLES ((uint32_t)SYN_DURATION * 1000UL / READER_INTERVAL_US)
 #define SYN_ACK_CYCLES ((uint32_t)SYN_ACK_DURATION * 1000UL / READER_INTERVAL_US)
@@ -57,9 +57,9 @@
 #define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
-#define DURATION_OF_HANDSHAKE_MS 5000 // Duration of the handshake process in milliseconds
+#define DURATION_OF_HANDSHAKE_MS (5000) // Duration of the handshake process in milliseconds
 
-#define MAXIMUM_NUMBER_OF_TRIES 5 // Maximum number of tries for a successful handshake
+#define MAXIMUM_NUMBER_OF_TRIES (5) // Maximum number of tries for a successful handshake
 
 typedef struct
 {
@@ -79,6 +79,7 @@ typedef enum
 {
     HANDSHAKE_FOUND_WORKING_PIN = 0,
     HANDSHAKE_NO_WORKING_PIN_FOUND = 1,
+    HANDSHAKE_ISR_TIMEOUT = 2,
 } HandshakeResult;
 
 HandshakeResult perform_handshake(PinData *pin_data, uint64_t initial_blacklist_mask);
