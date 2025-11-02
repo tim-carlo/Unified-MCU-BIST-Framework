@@ -86,15 +86,20 @@ uint8_t add_seen_device(uint64_t other_device_id)
  */
 static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_index)
 {
-    const uint8_t count = (data->connection_index < MAX_CONNECTIONS_PER_PIN) ? data->connection_index : MAX_CONNECTIONS_PER_PIN;
+    const uint8_t count = data->connections_count;
+
+    uint8_t start_index = (data->connection_index + MAX_CONNECTIONS_PER_PIN - count) % MAX_CONNECTIONS_PER_PIN;
 
     for (uint8_t i = 0; i < count; i++)
     {
-        if (data->connections[i].other_pin == other_pin && data->connections[i].device_index == device_index)
+        uint8_t idx = (start_index + i) % MAX_CONNECTIONS_PER_PIN;
+        if (data->connections[idx].other_pin == other_pin &&
+            data->connections[idx].device_index == device_index)
         {
             return true;
         }
     }
+
     return false;
 }
 
@@ -108,7 +113,6 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, 
     uint8_t device_index = get_index_of_unique_id(device_uuid);
     if (device_index == DEVICE_NOT_FOUND)
     {
-        // Device not found, add it
         device_index = add_seen_device(device_uuid);
     }
 
@@ -116,18 +120,20 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, 
     {
         return;
     }
-    uint8_t conn_idx_to_write = data->connection_index % MAX_CONNECTIONS_PER_PIN;
+
+    uint8_t conn_idx_to_write = data->connection_index;
     data->connections[conn_idx_to_write].other_pin = other_pin_index;
     data->connections[conn_idx_to_write].device_index = device_index;
 
-    data->connection_index++;
-    if (conn_idx_to_write >= MAX_CONNECTIONS_PER_PIN)
-    {
-        data->connections_count = 1;
-    }
-    else
+    if (data->connections_count < MAX_CONNECTIONS_PER_PIN)
     {
         data->connections_count++;
+    }
+
+    data->connection_index++;
+    if (data->connection_index >= MAX_CONNECTIONS_PER_PIN)
+    {
+        data->connection_index = 0; // wrap around
     }
 }
 
@@ -140,10 +146,6 @@ void sort_pin_connections(PinData *pindata, uint8_t pin)
 
     const uint8_t count = (data->connection_index < MAX_CONNECTIONS_PER_PIN) ? data->connection_index : MAX_CONNECTIONS_PER_PIN;
 
-    if (count < 2)
-    {
-        return; // nothing to sort
-    }
 
     // Simple bubble sort
     for (uint8_t i = 0; i < count - 1; i++)
