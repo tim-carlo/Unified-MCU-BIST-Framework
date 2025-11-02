@@ -1,8 +1,8 @@
 #include "uart_transmitter.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
+#include "pin_config.h"
 
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
@@ -23,14 +23,11 @@ void uart_transmitter_init(void)
 {
 #if defined(NRF52840_XXAA)
     tx_uart = NRF_UART0;
-    uart_pins_t uart_pins;
-    uart_pins = create_uart_pins(6, 8);
-    // uart_init(tx_uart, 9600, &uart_pins);
 #elif defined(__MSP430FR5994__)
+#if DEV_KIT == 1
     tx_uart = MSP430_UART0;
-    uart_pins_t uart_pins;
-    uart_pins = create_uart_pins(8, 9);
-    // uart_init(tx_uart, 9600, &uart_pins);
+#elif DEV_KIT == 0
+    tx_uart = MSP430_UART1;
 #endif
 }
 
@@ -249,7 +246,7 @@ UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uin
         else
         {
             LOG("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n",
-                   serialization_result, (void *)chunk.data, chunk.size_in_bytes);
+                serialization_result, (void *)chunk.data, chunk.size_in_bytes);
         }
 
     } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
