@@ -76,15 +76,15 @@ void set_standart_blacklist_pins(volatile uint64_t *mask)
     *mask &= ~(1ULL << ABS_PIN(3, 5)); // Pin 21
     *mask &= ~(1ULL << ABS_PIN(3, 4)); // Pin 20
     *mask &= ~(1ULL << ABS_PIN(2, 6)); // Pin 19
-    *mask &= ~(1ULL << ABS_PIN(7, 3)); 
+    *mask &= ~(1ULL << ABS_PIN(7, 3));
 #endif
 }
 
 #if DEV_KIT == 0
 
 const uint8_t array[] = {
-    // GPIO0,
-    /*GPIO1,*/
+    GPIO0,
+    /*GPIO1,*/ // leave UART TX pin blacklisted
     GPIO2,
     GPIO3,
     GPIO4,
@@ -95,45 +95,36 @@ const uint8_t array[] = {
     GPIO9,
     GPIO10,
     GPIO11,
-    GPIO12,
-    GPIO13,
+    //GPIO12,
+    //GPIO13,
     //  GPIO14,
     // GPIO15,
-    // PWRGDL,
-    // PWRGDH,
-    // PIN_LED0,
-    // PIN_LED2,
-    // I2C_SCL,
-    // I2C_SDA,
-    // /*RTC_INT,*/ MAX_INT,
-    // C2C_CLK,
-    // C2C_CoPi,
-    // C2C_CiPo,
-    // C2C_PSel,
-    // C2C_GPIO,
-    // THRCTRL_H0,
-    // THRCTRL_H1,
-    // THRCTRL_L0,
-    // THRCTRL_L1,
+    PWRGDL,
+    PWRGDH,
+    PIN_LED0,
+    PIN_LED2,
+    I2C_SCL,
+    I2C_SDA,
+    /*RTC_INT,*/ MAX_INT,
+    C2C_CLK,
+    C2C_CoPi,
+    C2C_CiPo,
+    C2C_PSel,
+    C2C_GPIO,
+    THRCTRL_H0,
+    THRCTRL_H1,
+    THRCTRL_L0,
+    THRCTRL_L1,
 };
 #endif
 void set_shepherd_pins()
 {
     initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
-    initial_state_mask &= ~(1ULL << GPIO2);
-    initial_state_mask &= ~(1ULL << GPIO3);
-    initial_state_mask &= ~(1ULL << GPIO4);
-    initial_state_mask &= ~(1ULL << GPIO5);
-    initial_state_mask &= ~(1ULL << GPIO6);
-    initial_state_mask &= ~(1ULL << GPIO7);
-    initial_state_mask &= ~(1ULL << GPIO8);
-    initial_state_mask &= ~(1ULL << GPIO9);
-    initial_state_mask &= ~(1ULL << GPIO10);
-    initial_state_mask &= ~(1ULL << GPIO11);
-    //  initial_state_mask &= ~(1ULL << GPIO12);
-    //  initial_state_mask &= ~(1ULL << GPIO13);
-    // initial_state_mask &= ~(1ULL << GPIO14);
-    // initial_state_mask &= ~(1ULL << GPIO15);
+
+    for (size_t i = 0; i < sizeof(array) / sizeof(array[0]); i++)
+    {
+        initial_state_mask &= ~(1ULL << array[i]);
+    }
 }
 
 void set_pins_test_env_pins()
@@ -181,12 +172,6 @@ void led2_show_error()
 
 void perfom_mutex_operations()
 {
-
-    // reset all pins to clean state
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    {
-        gpio_reset(pin);
-    }
     run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     uart_transmitter_init();
@@ -230,37 +215,18 @@ void perfom_mutex_operations()
 
 int main(void)
 {
-    // #if defined(NRF52840_XXAA)
-
-    //     // Configure all GPIO pins as inputs
-    //     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    //     {
-    //         gpio_input_init(pin, GPIO_PULL);  // set pin as input
-    //     }
-    //     while(1) {}
-    // #endif
     mcu_init();
+    // test of mutex handeler
 
-    char src[] = "Hello, memcpy!";
-    char dest[20]; 
+    DataHandshakeResult test_data_handshake_result;
+#if defined(NRF52840_XXAA)
+    test_data_handshake_result.mutex_pin = 12;
+    test_data_handshake_result.i_am_mutex_owner = true;
 
-    // Clear destination buffer
-    memset(dest, 0, sizeof(dest));
-
-    // Copy data
-    memcpy(dest, src, strlen(src) + 1); // +1 to include null terminator
-
-    // Verify result
-    if (strcmp(src, dest) == 0) {
-        printf("memcpy test passed!\n");
-        printf("Source:      %s\n", src);
-        printf("Destination: %s\n", dest);
-    } else {
-        printf("memcpy test failed!\n");
-        printf("Source:      %s\n", src);
-        printf("Destination: %s\n", dest);
-    }
-
+#elif defined(__MSP430FR5994__)
+    test_data_handshake_result.mutex_pin = ABS_PIN(2, 6);
+    test_data_handshake_result.i_am_mutex_owner = false;
+#endif
 
 #if (DEV_KIT == 0)
     set_shepherd_pins();
@@ -293,11 +259,17 @@ int main(void)
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
-            continue;      // Skip blacklisted pins (bit = 1)
-        gpio_od_init(pin); // Initialize non-blacklisted pins (bit = 0) with pull-up resistors
+            continue;
+        gpio_od_init(pin);
     }
 
     HandshakeResult handshake_result = perform_handshake(pin_data, initial_state_mask);
+
+    if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
+    {
+        LOG("DEBUG: HANDSHAKE ISR TO LONG\n");
+        return 1; // Handshake failed, exit program
+    }
 
     // if no working pin found, exit program, but run initial tests first
     if (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND)
@@ -329,14 +301,14 @@ int main(void)
         UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
         return 0; // No mutex pin assigned, exit program
     }
-    mutex_handeler_init(&data_handshake_result);
-    mutex_handler_request_mutex(initial_state_mask);
+    MutexHandler mutex_handler;
+
+    mutex_handler_init(&data_handshake_result, &mutex_handler);
+    mutex_handler_request_mutex(initial_state_mask, &mutex_handler);
     LOG("DEBUG: now having mutex\n");
-
     perfom_mutex_operations();
+    LOG("DEBUG: releasing mutex\n");
+    mutex_handler_release_mutex(initial_state_mask, &mutex_handler);
 
-    // TODO Handle different error codes
-    mutex_handler_release_mutex(initial_state_mask);
-    LOG("DEBUG: released mutex\n");
     return 0;
 }

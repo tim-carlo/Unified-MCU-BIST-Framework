@@ -139,9 +139,8 @@ static void manchester_stop_timer()
     interrupt_flag = 0;
 }
 
-static void rx_cb(uint8_t *data, uint8_t data_size, void *udata)
+static void rx_cb(uint8_t *data, uint16_t data_size, void *udata)
 {
-    printf("rx_cb called with data_size: %u\n", data_size);
     if (data_size < 1)
         return;
     if (receive_buffer != NULL)
@@ -186,7 +185,7 @@ void manchester_init(BaudRate rate)
         &enc, encoder_buffer, ENCODER_BUFFER_SIZE);
 
     enum spooky_decoder_init_res dec_result = spooky_decoder_init(
-        &dec, decoder_buffer, DECODER_BUFFER_SIZE, rx_cb, NULL);
+        &dec, decoder_buffer, DECODER_BUFFER_SIZE);
 
     encoder_initialized = (enc_result == SPOOKY_ENCODER_INIT_OK);
     decoder_initialized = (dec_result == SPOOKY_DECODER_INIT_OK);
@@ -238,6 +237,10 @@ bool manchester_receive_array(uint8_t *data, uint8_t size)
         {
             decoder_succesfull = true;
             mode = MANCHESTER_NONE;
+
+            // copy data to user buffer
+            uint8_t bytes_to_copy = (dec.index < size) ? dec.index : size;
+            memcpy(data, dec.buffer, bytes_to_copy);
             return true;
         }
         else if (step_result == SPOOKY_DECODER_STEP_ERROR_NULL)
@@ -328,15 +331,6 @@ bool manchester_transmit_array(uint8_t *data, uint8_t size)
 
     mode = MANCHESTER_NONE;
     return true;
-}
-
-void manchester_cancel_transmission(void)
-{
-    if (mode == MANCHESTER_SEND && !transmission_complete)
-    {
-        transmission_canceled = true;
-        set_TX(true); // release the line
-    }
 }
 
 bool manchester_is_transmitting(void)

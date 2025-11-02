@@ -3,8 +3,7 @@
 // Static pointer to handshake state
 static HandshakeState *handshake_state = NULL;
 
-
-//#define LOG(fmt, ...) // Uncomment this line to disable Logging
+// #define LOG(fmt, ...) // Uncomment this line to disable Logging
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 /**
@@ -98,9 +97,13 @@ const TimingTaskDef task_lut[] = {
  * @brief Interrupt Service Routine for reading pin states and managing handshake tasks
  *
  */
+static HandshakeResult handshake_result = HANDSHAKE_NO_WORKING_PIN_FOUND;
+static volatile bool is_complete = false;
+static volatile bool reader_flag = false;
+
 static void reader_isr(void)
 {
-    gpio_drive_high(DEBUG_PIN1); 
+    gpio_drive_high(DEBUG_PIN1);
     if (handshake_state == NULL)
         return; // Safety check
 
@@ -204,6 +207,18 @@ static void reader_isr(void)
     }
     handshake_state->handshake_time++;
     gpio_drive_low(DEBUG_PIN1); // Set debug pin low to indicate ISR exit
+    is_complete = true;
+}
+
+static void handshake_isr(void)
+{
+    reader_flag = true;
+    if (!is_complete)
+    {
+        // Timeout handling: force complete
+        handshake_state = DURATION_OF_HANDSHAKE_MS;
+        handshake_result = HANDSHAKE_ISR_TIMEOUT;
+    }
 }
 
 static void start_handshake_timer(void)
@@ -238,12 +253,10 @@ static void stop_handshake_timer(void)
 
 HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initial_blacklist_mask)
 {
-
-    HandshakeResult result = HANDSHAKE_NO_WORKING_PIN_FOUND;
     // Initialize handshake state
     if (handshake_state_init() == NULL)
     {
-        return result; // Initialization failed
+        return handshake_result; // Initialization failed
     }
 
     // Store initial blacklist mask
@@ -263,7 +276,7 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     LOG("Number of active pins: %u\n", handshake_state->number_of_active_pins);
     if (handshake_state->number_of_active_pins == 0)
     {
-        return result; // No valid pins to use
+        return handshake_result; // No valid pins to use
     }
 
     // Allocate or reallocate global TimingPinData array
@@ -274,7 +287,7 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     handshake_state->global_timing_pindata = calloc(handshake_state->number_of_active_pins, sizeof(TimingPinData));
     if (!handshake_state->global_timing_pindata)
     {
-        return result; // Allocation failed
+        return handshake_result; // Allocation failed
     }
 
     // Initialize TimingPinData for each valid pin
@@ -296,14 +309,26 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     handshake_state->handshake_time = 0;
     while (handshake_state->handshake_time < DURATION_OF_HANDSHAKE_MS)
     {
+        // Wait for ISR to complete
+        while (!reader_flag)
+            ;
+        reader_flag = false;
+        is_complete = false;
+        reader_isr();
+        is_complete = true;
     }
+    stop_handshake_timer();
 
+    if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
+    {
+        // Cleanup - deinitialize handshake state
+        LOG("DEBUG: HANDSHAKE ISR TIMEOUT\n");
+        return handshake_result;
+    }
     for (uint8_t i = 0; i < handshake_state->number_of_active_pins; ++i)
     {
         gpio_od_release(handshake_state->global_timing_pindata[i].pin);
     }
-
-    stop_handshake_timer();
 
     it = bitmap_iterator_create(valid_pins_mask);
     idx = 0;
@@ -348,10 +373,10 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
     }
     if (found_working_pin)
     {
-        result = HANDSHAKE_FOUND_WORKING_PIN;
+        handshake_result = HANDSHAKE_FOUND_WORKING_PIN;
     }
 
     // Cleanup - deinitialize handshake state
     handshake_state_deinit(handshake_state);
-    return result;
+    return handshake_result;
 }
