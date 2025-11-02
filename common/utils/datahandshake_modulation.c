@@ -2,7 +2,6 @@
 #include "bitmap_iterator.h"
 #include "printf.h"
 #include <stdlib.h>
-#include <string.h>
 
 // #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
@@ -216,7 +215,7 @@ inline uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBau
 }
 
 // Update rx_callback to use instance buffer directly
-static void pman_rx_callback(uint8_t *data, uint8_t data_size, void *udata)
+static void pman_rx_callback(uint8_t *data, uint16_t data_size, void *udata)
 {
     // not used
 }
@@ -239,14 +238,7 @@ inline bool parallel_manchester_add_instance(DataHandshakeData *instance)
     }
 
     // Decoder: will write received bytes directly into the same buffer and call pman_rx_callback.
-    // Workaround since uudata in callback cannot be used to pass instance pointer.
-    uint8_t newindex = 0;
-
-    enum spooky_decoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec,
-                                                               instance->data_buffer,
-                                                               BUFFER_SIZE,
-                                                               pman_rx_callback,
-                                                               (void *)(uintptr_t)newindex);
+    enum spooky_decoder_init_res dec_res = spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE);
 
     if (dec_res != SPOOKY_DECODER_INIT_OK)
     {
@@ -292,12 +284,12 @@ inline bool parallel_manchester_receive_background(DataHandshakeData *instance)
     // Clear decoder state
     reset_decoder(&instance->manchester_dec);
 
-    // reinitialize decoder to reset internal state
-    // if (spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE, pman_rx_callback, instance->) != 0)
-    // {
-    //     printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
-    //     return false; // Invalid index
-    // }
+    if (spooky_decoder_init(&instance->manchester_dec, instance->data_buffer, BUFFER_SIZE) != 0)
+    {
+        printf("Error: Decoder re-init failed for pin %u\n", instance->pin);
+        return false; 
+    }
+
 
     // Start receiving - data will be written directly to instance buffer by spooky decoder
     dhd_set_manchester_mode(instance, PMAN_RECEIVE);
