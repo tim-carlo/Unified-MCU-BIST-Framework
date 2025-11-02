@@ -61,10 +61,9 @@ static void append_to_ring_buffer(struct spooky_decoder *dec, uint8_t offset);
 /* Initialize a spooky decoder. */
 enum spooky_decoder_init_res
 spooky_decoder_init(struct spooky_decoder *dec,
-                    uint8_t *output_buffer, size_t buffer_size,
-                    spooky_decoder_cb *cb, void *udata)
+                    uint8_t *output_buffer, size_t buffer_size)
 {
-    if ((dec == NULL) || (output_buffer == NULL) || (cb == NULL))
+    if ((dec == NULL) || (output_buffer == NULL))
     {
         LOG("init error: null pointer given\n");
         return SPOOKY_DECODER_INIT_ERROR_NULL;
@@ -82,9 +81,6 @@ spooky_decoder_init(struct spooky_decoder *dec,
     dec->buffer = output_buffer;
     dec->buffer_size = buffer_size;
     memset(dec->buffer, 0, buffer_size);
-
-    dec->cb = cb;
-    dec->cb_udata = udata;
 
     LOG("initialized decoder %p with buffer %p (%zu bytes)\n",
         (void *)dec, (void *)output_buffer, buffer_size);
@@ -323,7 +319,6 @@ static uint8_t payload_byte_cb(struct spooky_decoder *dec)
         if (cs == dec->chksum)
         {
             LOG("success! got %u bytes\n", dec->index);
-            dec->cb(dec->buffer, dec->index, dec->cb_udata);
         }
         else
         {
