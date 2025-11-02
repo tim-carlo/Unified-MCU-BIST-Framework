@@ -216,7 +216,7 @@ static void handshake_isr(void)
     if (!is_complete)
     {
         // Timeout handling: force complete
-        handshake_state = DURATION_OF_HANDSHAKE_MS;
+        handshake_state->handshake_time = DURATION_OF_HANDSHAKE_MS;
         handshake_result = HANDSHAKE_ISR_TIMEOUT;
     }
 }
