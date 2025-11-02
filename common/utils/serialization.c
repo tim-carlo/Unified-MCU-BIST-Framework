@@ -219,7 +219,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
 
     // Get device information
     uint64_t device_uuid = get_unique_id();
-    const uint8_t *device_family = get_chip_family_name();
+    const char *device_family = get_chip_family_name();
     uint8_t family_name_len = strlen(device_family);
 
     // Count active pins
