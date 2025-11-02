@@ -5,8 +5,8 @@
 #include <string.h>
 
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
-#define NUMBER_OF_SAMPLES 5
-#define SETTLE_TIME_US 100
+#define NUMBER_OF_SAMPLES 10
+#define SETTLE_TIME_US 1000
 
 static uint64_t read_all_pins(uint64_t blacklist_mask)
 {
