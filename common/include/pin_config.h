@@ -60,6 +60,9 @@
 #elif defined(__MSP430FR5994__)
 // UART Config for MSP430FR5994
 // Adapted pinout for Target V1.2 (Riotee)
+#define PIN_UART_TX (8 * 2 + 5) // P2.5
+#define PIN_UART_RX (8 * 2 + 6) // P2.6
+
 #define GPIO0       PIN_UART_RX
 #define GPIO1       PIN_UART_TX
 #define GPIO2       (8 * 2 + 3) // P2.3
@@ -118,8 +121,8 @@
 #define PIN_UART_TX 6
 #define PIN_UART_RX 8
 
-#define DEBUG_PIN1 19
-#define DEBUG_PIN2 20
+#define DEBUG_PIN1 26
+#define DEBUG_PIN2 27
 
 #define GPIO0 0
 #define GPIO1 1
@@ -143,8 +146,8 @@
 #define PIN_UART_TX ABS_PIN(2, 0) // P2.0
 #define PIN_UART_RX ABS_PIN(2, 1) // P2.1
 
-#define DEBUG_PIN1 ABS_PIN(7, 0) // P3.0
-#define DEBUG_PIN2 ABS_PIN(7, 1) // P3.1
+#define DEBUG_PIN1 ABS_PIN(7, 0)
+#define DEBUG_PIN2 ABS_PIN(7, 1)
 
 #define PIN_LED0 ABS_PIN(1, 0)
 #define PIN_LED2 ABS_PIN(1, 1)

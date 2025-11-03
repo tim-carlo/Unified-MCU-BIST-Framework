@@ -27,7 +27,6 @@
 #include "timing_pindata.h"
 
 #include "manchester.h"
-#include "random_utils.h"
 #include "handshake.h"
 #include "data_handshake.h"
 #include "serialisation.h"
@@ -97,8 +96,8 @@ const uint8_t array[] = {
     GPIO11,
     //GPIO12,
     //GPIO13,
-    //  GPIO14,
-    // GPIO15,
+    //GPIO14,
+    //GPIO15,
     PWRGDL,
     PWRGDH,
     PIN_LED0,

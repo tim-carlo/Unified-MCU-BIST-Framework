@@ -14,8 +14,8 @@
 
 
 
-#define DEBOUNCE_SAMPLES 5
-#define DEBOUNCE_DELAY_US 20
+#define DEBOUNCE_SAMPLES (5)
+#define DEBOUNCE_DELAY_US (20)
 
 #define BV(pos) (1u << (pos))
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)

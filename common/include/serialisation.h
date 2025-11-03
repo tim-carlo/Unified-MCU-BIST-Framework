@@ -67,8 +67,8 @@ extern uint8_t current_chunk_id;
 
 #define HEADER_VERSION (1)
 #define HEADER_BUFFER_SIZE (64)
-#define CHUNK_BUFFER_SIZE (128)
-#define NUMBER_OF_ENTRIES_PER_CHUNK (5)
+#define CHUNK_BUFFER_SIZE (500)
+#define NUMBER_OF_ENTRIES_PER_CHUNK (2)
 
 // Error codes for serialization operations
 typedef enum {

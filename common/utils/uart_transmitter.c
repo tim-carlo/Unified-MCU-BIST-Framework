@@ -29,6 +29,7 @@ void uart_transmitter_init(void)
 #elif DEV_KIT == 0
     tx_uart = MSP430_UART1;
 #endif
+#endif
 }
 
 /**
@@ -326,7 +327,12 @@ UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8
             chunk.crc32 = 0;
             current_chunk_id++;
             // Short delay to ensure chunk is processed before next chunk
-            delay_ms(100);
+            delay_ms(200);
+        }
+        else
+        {
+            LOG("DEBUG: No more data to send or serialization failed. Result=%d, data=%p, size=%zu\n",
+                serialization_result, (void *)chunk.data, chunk.size_in_bytes);
         }
     } while (serialization_result == SERIALIZATION_OK && current_pin_data_index < pindata_size);
     // Send transmission end identifier

@@ -8,9 +8,14 @@
 #define NUMBER_OF_SAMPLES 10
 #define SETTLE_TIME_US 1000
 
+// Phase 0 time 10ms
+// Phase 1 time 20ms
+// Phase 2 time 30ms
+// Phase 3 time 40ms
+
 static uint64_t read_all_pins(uint64_t blacklist_mask)
 {
-    uint64_t result = ~0ULL;
+    uint64_t result = 0xFFFFFFFFFFFFFFFFULL;
     for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
     {
         uint64_t sample = 0;
@@ -121,6 +126,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     {
         uint64_t before_state = read_all_pins(blacklist_mask);
 
+        // Configure pin with pull-up resistor
         gpio_input_init(pin, GPIO_PULL_UP);
         delay_ms(20);
 
@@ -130,6 +136,8 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
         uint64_t after_state = read_all_pins(blacklist_mask);
         log_pin_changes(before_state, after_state, pin, pindata);
 
+
+        // Set pin back to high impedance
         gpio_reset(pin);
         gpio_input_init(pin, GPIO_PULL_NONE);
         delay_us(SETTLE_TIME_US);
@@ -151,6 +159,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     {
         uint64_t before_state = read_all_pins(blacklist_mask);
 
+        // Configure pin as output and drive low
         gpio_output_init(pin);
         gpio_drive_low(pin);
         delay_ms(30);
@@ -161,6 +170,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
         uint64_t after_state = read_all_pins(blacklist_mask);
         log_pin_changes(before_state, after_state, pin, pindata);
 
+        // Set pin back to high impedance
         gpio_reset(pin);
         gpio_input_init(pin, GPIO_PULL_NONE);
         delay_us(SETTLE_TIME_US);
@@ -182,6 +192,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     {
         uint64_t before_state = read_all_pins(blacklist_mask);
 
+        // Configure pin as output and drive high
         gpio_output_init(pin);
         gpio_drive_high(pin);
         delay_ms(40);
@@ -192,6 +203,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
         uint64_t after_state = read_all_pins(blacklist_mask);
         log_pin_changes(before_state, after_state, pin, pindata);
 
+        // Set pin back to high impedance
         gpio_reset(pin);
         gpio_input_init(pin, GPIO_PULL_NONE);
         delay_us(SETTLE_TIME_US);

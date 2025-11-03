@@ -191,7 +191,7 @@ void mutex_handler_init(DataHandshakeResult *result, MutexHandler *handler)
         return;
     }
 
-    printf("Mutex handler initialized on pin %u, iam_owner=%d\n",
+    LOG("Mutex handler initialized on pin %u, iam_owner=%d\n",
            handler->current_mutex_pin,
            handler->iam_mutex_owner);
 

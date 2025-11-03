@@ -28,7 +28,6 @@
 #include "timing_pindata.h"
 #include "pindata.h"
 #include "bitmap_iterator.h"
-#include "random_utils.h"
 #include "crc.h"
 #include "pin_config.h"
 

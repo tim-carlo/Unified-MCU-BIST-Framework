@@ -17,7 +17,6 @@
 #include "nrf52840_gpio.h"
 #include "nrf52840_time.h"
 
-
 #endif
 
 #include "printf.h"
@@ -32,11 +31,9 @@
 #include "pindata.h"
 #include "pin_config.h"
 
-
-#define READER_INTERVAL_US (1000) // Reader: every 1 ms
+#define READER_INTERVAL_US (5000) // Reader: every 5 ms
 #define PRESCALER_DIV (8)         // Prescaler division factor for the timer
 #define READER_TICKS ((READER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
-#define MANAGER_TICKS ((MANAGER_INTERVAL_US * (SMCLK_HZ / PRESCALER_DIV / 1000000UL)))
 
 #define SYN_DURATION (200)     // Duration of SYN signal in microseconds
 #define SYN_ACK_DURATION (600) // Duration of SYN_ACK signal in microseconds
@@ -48,7 +45,9 @@
 
 #define SIGNAL_INACCURACY 100 // Signal inaccuracy in milliseconds
 #define CYCLE_INACCURACY ((uint32_t)SIGNAL_INACCURACY * 1000UL / READER_INTERVAL_US)
-#define MAXIMUM_WAITING_CYCLES 500 // Maximum waiting cycles for a signal
+
+#define MINIMUM_WAITING_TIME_MS (500)                                                                 // 50ms
+#define MAXIMUM_WAITING_CYCLES ((uint32_t)((MINIMUM_WAITING_TIME_MS * 1000UL) / READER_INTERVAL_US)) // 500ms max waiting time
 
 #define MIN_SYN_CYCLES ((uint32_t)(SYN_DURATION - SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MIN_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION - SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
@@ -57,7 +56,7 @@
 #define MAXIMUM_SYN_CYCLES ((uint32_t)(SYN_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_SYN_ACK_CYCLES ((uint32_t)(SYN_ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
 #define MAXIMUM_ACK_CYCLES ((uint32_t)(ACK_DURATION + SIGNAL_INACCURACY) * 1000UL / READER_INTERVAL_US)
-#define DURATION_OF_HANDSHAKE_MS (5000) // Duration of the handshake process in milliseconds
+#define DURATION_OF_HANDSHAKE_MS ((uint32_t)((5000 * 1000UL) / READER_INTERVAL_US)) // Duration of the handshake process in milliseconds
 
 #define MAXIMUM_NUMBER_OF_TRIES (5) // Maximum number of tries for a successful handshake
 

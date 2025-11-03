@@ -19,7 +19,7 @@ void mcu_init(void)
         }
     }
     // Set up UART0 for printf using the new UART library
-   uart_pins_t uart_pins = create_uart_pins(DEBUG_PIN2, PIN_UART_RX);
+   uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX);
    uart_init(NRF_UART0, 9600, &uart_pins);
 }
 

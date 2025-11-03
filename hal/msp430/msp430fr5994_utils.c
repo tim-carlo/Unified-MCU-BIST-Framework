@@ -18,11 +18,11 @@ uint64_t get_unique_id(void)
  */
 const uint8_t *get_unique_id_str(void)
 {
-    static uint8_t buf[9];
-    uint32_t id = get_unique_id();
-    // Forat as 8-digit hexadecimal string
+    static char buf[9];
+    uint32_t id = (uint32_t)get_unique_id();
+    // Format as 8-digit hexadecimal string
     snprintf(buf, sizeof(buf), "%08lX", (unsigned long)id);
-    return buf;
+    return (const uint8_t *)buf;
 }
 
 /**
@@ -60,9 +60,9 @@ uint32_t random32(void)
 /**
  * @brief Get the family name of the chip
  *
- * @return const uint8_t* Chin family name
+ * @return const uint8_t* Chip family name
  */
-const uint8_t *get_chip_family_name(void)
+const char* get_chip_family_name(void)
 {
     return "MSP430FR5994";
 }
