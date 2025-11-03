@@ -45,8 +45,6 @@ bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event)
  */
 uint8_t get_index_of_unique_id(uint64_t unique_id)
 {
-    // CORRECT: The loop MUST iterate over the actual number of stored
-    // devices (`seen_devices_count`), not over the write pointer (`seen_devices_index`).
     for (uint8_t i = 0; i < seen_devices_count; i++)
     {
         if (seen_devices[i] == unique_id)
@@ -134,6 +132,9 @@ void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, 
     if (data->connection_index >= MAX_CONNECTIONS_PER_PIN)
     {
         data->connection_index = 0; // wrap around
+
+        data->connections_count = 0;
+        memset(data->connections, 0, sizeof(data->connections));
     }
 }
 
@@ -144,8 +145,7 @@ void sort_pin_connections(PinData *pindata, uint8_t pin)
 {
     PinData *data = &pindata[pin];
 
-    const uint8_t count = (data->connection_index < MAX_CONNECTIONS_PER_PIN) ? data->connection_index : MAX_CONNECTIONS_PER_PIN;
-
+    const uint8_t count = data->connections_count;
 
     // Simple bubble sort
     for (uint8_t i = 0; i < count - 1; i++)
