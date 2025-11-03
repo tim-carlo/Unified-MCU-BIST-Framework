@@ -8,41 +8,60 @@
 #define NUMBER_OF_SAMPLES 10
 #define SETTLE_TIME_US 1000
 
+static const uint8_t threshold = (uint8_t)((NUMBER_OF_SAMPLES * 100) / 70 ) ; // 80% threshold
+
 // Phase 0 time 10ms
 // Phase 1 time 20ms
 // Phase 2 time 30ms
 // Phase 3 time 40ms
 
-static uint64_t read_all_pins(uint64_t blacklist_mask)
+static uint64_t read_all_pins(const uint64_t blacklist_mask)
 {
-    uint64_t result = 0xFFFFFFFFFFFFFFFFULL;
+    const uint64_t active_mask = ~blacklist_mask;
+    uint8_t high_count[64] = {0}; // Count how often each pin was read HIGH
+
     for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
     {
-        uint64_t sample = 0;
-        BitmapIterator sample_it = bitmap_iterator_create(~blacklist_mask);
+        BitmapIterator it = bitmap_iterator_create(active_mask);
         uint8_t pin;
 
-        while (bitmap_iterator_next(&sample_it, &pin))
+        while (bitmap_iterator_next(&it, &pin))
         {
             if (gpio_read(pin))
-                sample |= (1ULL << pin);
+                high_count[pin]++;
         }
 
-        result &= sample;
         delay_us(SETTLE_TIME_US);
     }
+
+    // Majority decision per pin
+    uint64_t result = 0;
+
+    BitmapIterator final_it = bitmap_iterator_create(active_mask);
+    uint8_t pin;
+
+    while (bitmap_iterator_next(&final_it, &pin))
+    {
+        if (high_count[pin] >= threshold)
+            result |= (1ULL << pin);
+    }
+
     return result;
 }
 
-static bool sample_pin_state(uint8_t pin, bool expected_state)
+static bool sample_pin_state(const uint8_t pin, const bool expected_state)
 {
+    uint8_t match_count = 0;
+
     for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
     {
-        if (gpio_read(pin) != expected_state)
-            return false;
+        if (gpio_read(pin) == expected_state)
+            match_count++;
+
         delay_us(SETTLE_TIME_US);
     }
-    return true;
+
+    return (match_count >= threshold);
 }
 
 /**
