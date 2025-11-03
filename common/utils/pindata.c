@@ -1,7 +1,5 @@
 #include "pindata.h"
-#include "printf.h" // assumed for debug output
-
-// NOTE: seen_devices and seen_devices_index are defined in the header file.
+#include "printf.h"
 
 uint8_t seen_devices_count = 0;
 uint64_t seen_devices[MAX_SEEN_DEVICES];
@@ -57,6 +55,8 @@ uint8_t get_index_of_unique_id(uint64_t unique_id)
 
 /**
  * @brief Adds a device ID to the list (ring buffer logic).
+ * @param other_device_id The unique ID of the other device.
+ * @return The index where the device ID was added.
  */
 uint8_t add_seen_device(uint64_t other_device_id)
 {
@@ -81,8 +81,13 @@ uint8_t add_seen_device(uint64_t other_device_id)
 
 /**
  * @brief Helper function to check whether a connection already exists.
+ * @param connection_type The type of connection (internal or external).
+ * @param data The PinData structure for the pin.
+ * @param other_pin The other pin in the connection.
+ * @param parameter Additional parameter for the connection.
+ * @return true if the connection exists, false otherwise.
  */
-static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_index)
+static bool connection_exists(ConnectionType connection_type, PinData *data, uint8_t other_pin, uint8_t parameter)
 {
     const uint8_t count = data->connections_count;
 
@@ -92,7 +97,8 @@ static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_i
     {
         uint8_t idx = (start_index + i) % MAX_CONNECTIONS_PER_PIN;
         if (data->connections[idx].other_pin == other_pin &&
-            data->connections[idx].device_index == device_index)
+            data->connections[idx].parameter == parameter &&
+            data->connections[idx].connection_type == connection_type)
         {
             return true;
         }
@@ -103,99 +109,34 @@ static bool connection_exists(PinData *data, uint8_t other_pin, uint8_t device_i
 
 /**
  * @brief Adds a pin connection (ring buffer logic).
+ * @param connection_type The type of connection (internal or external).
+ * @param pindata The array of PinData structures.
+ * @param pin The pin to which the connection is to be added.
+ * @param other_pin_index The index of the other pin in the connection.
+ * @param parameter Additional parameter for the connection. In case of external connections, it is used to store the idx of the other device.
  */
-void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint64_t device_uuid)
+void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter)
 {
     PinData *data = &pindata[pin];
+    uint8_t conn_idx_to_write;
 
-    uint8_t device_index = get_index_of_unique_id(device_uuid);
-    if (device_index == DEVICE_NOT_FOUND)
-    {
-        device_index = add_seen_device(device_uuid);
-    }
-
-    if (connection_exists(data, other_pin_index, device_index))
+    if (connection_exists(connection_type, data, other_pin_index, parameter))
     {
         return;
     }
 
-    uint8_t conn_idx_to_write = data->connection_index;
-    data->connections[conn_idx_to_write].other_pin = other_pin_index;
-    data->connections[conn_idx_to_write].device_index = device_index;
-
-    if (data->connections_count < MAX_CONNECTIONS_PER_PIN)
-    {
-        data->connections_count++;
-    }
-
-    data->connection_index++;
-    if (data->connection_index >= MAX_CONNECTIONS_PER_PIN)
+    if (data->connections_count >= MAX_CONNECTIONS_PER_PIN)
     {
         data->connection_index = 0; // wrap around
-
         data->connections_count = 0;
         memset(data->connections, 0, sizeof(data->connections));
     }
-}
 
-/**
- * @brief Sorts the connections of a pin.
- */
-void sort_pin_connections(PinData *pindata, uint8_t pin)
-{
-    PinData *data = &pindata[pin];
+    data->connections[conn_idx_to_write].other_pin = other_pin_index;
+    data->connections[conn_idx_to_write].parameter = parameter;
+    data->connections[conn_idx_to_write].connection_type = connection_type;
 
-    const uint8_t count = data->connections_count;
-
-    // Simple bubble sort
-    for (uint8_t i = 0; i < count - 1; i++)
-    {
-        bool swapped = false;
-        for (uint8_t j = 0; j < count - i - 1; j++)
-        {
-            PinConnection *a = &data->connections[j];
-            PinConnection *b = &data->connections[j + 1];
-
-            if (a->device_index > b->device_index ||
-                (a->device_index == b->device_index && a->other_pin > b->other_pin))
-            {
-                PinConnection tmp = *a;
-                *a = *b;
-                *b = tmp;
-                swapped = true;
-            }
-        }
-        if (!swapped)
-            break; // already sorted
-    }
-}
-
-/**
- * @brief Sorts the seen devices array.
- */
-void sort_seen_devices()
-{
-    if (seen_devices_count < 2)
-    {
-        return;
-    }
-
-    for (uint8_t i = 0; i < seen_devices_count - 1; i++)
-    {
-        bool swapped = false;
-        for (uint8_t j = 0; j < seen_devices_count - i - 1; j++)
-        {
-            if (seen_devices[j] > seen_devices[j + 1])
-            {
-                uint64_t tmp = seen_devices[j];
-                seen_devices[j] = seen_devices[j + 1];
-                seen_devices[j + 1] = tmp;
-                swapped = true;
-            }
-        }
-        if (!swapped)
-            break;
-    }
+    data->connections_count++;
 }
 
 /**

@@ -154,7 +154,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t remote_pin = received_data[9];
     const uint8_t mutex_request = received_data[10];
 
-    add_pin_connection(&global_pindata[pin], pin, remote_pin, remote_uuid);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, &global_pindata[pin], pin, remote_pin, remote_uuid);
     add_pin_event(global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
@@ -238,7 +238,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t remote_pin = received_data[18];
     const uint8_t mutex_allowed = received_data[19];
 
-    add_pin_connection(&global_pindata[pin], pin, remote_pin, other_device_uuid);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, &global_pindata[pin], pin, remote_pin, other_device_uuid);
     add_pin_event(global_pindata, pin, PIN_IS_CONNECTED_WITH_EXTERNAL_PIN);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
@@ -588,7 +588,7 @@ static void send_data_isr(void)
 
 static void start_send_data_timer(void)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(PMAN_BAUD_100);
+    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -718,7 +718,8 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
                 LOG(" - %u\n", global_datahandshake_pindata[i].pin);
                 add_pin_event(global_pindata, global_datahandshake_pindata[i].pin, DATA_HANDSHAKE_OK);
                 any_success = true;
-            } else 
+            }
+            else
             {
                 // add failure
                 add_pin_event(global_pindata, global_datahandshake_pindata[i].pin, DATA_HANDSHAKE_FAILURE);

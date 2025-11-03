@@ -16,10 +16,10 @@
 
 #define EVENT_BUFFER_SIZE 10
 #define INITIAL_CONNECTION_CAPACITY 1 // Initial capacity for connections array
-#define MY_DEVICE_ID_INDEX 0 // Index of own device in seen_devices arrays
+#define MY_DEVICE_ID_INDEX 0          // Index of own device in seen_devices arrays
 
-#define MAX_CONNECTIONS_PER_PIN 3 // Adjust this if more is needed
-#define MAX_SEEN_DEVICES 2 // Maximum number of seen devices to track
+#define MAX_CONNECTIONS_PER_PIN 5 // Adjust this if more is needed
+#define MAX_SEEN_DEVICES 2        // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
 typedef uint8_t PinEventType;
@@ -43,35 +43,33 @@ enum
     EXPECTS_TO_WORK_IN_ONE_DIRECTION = 15
 };
 
-// Hier den Grunddatentype Typ definieren um das zu minimieren.
-
-// Need to log the connected Device IDs as well
-typedef union
+typedef uint8_t ConnectionType;
+enum
 {
-    struct
-    {
-        uint8_t other_pin;
-        uint8_t device_index;
-    };
-    uint16_t raw; 
-} PinConnection;
+    CONNECTION_TYPE_INTERNAL = 0,
+    CONNECTION_TYPE_EXTERNAL = 1
+};
 
+typedef struct
+{
+    uint8_t other_pin;
+    uint8_t parameter; // In the case of internal connections, this can be used to store extra info, in the case of external connections, it is used to store the idx of the other device
+    ConnectionType connection_type;
+} PinConnection;
 
 // List so that the algorithm can be extended in the future to work with multiple devices
 extern uint8_t seen_devices_count;
 extern uint64_t seen_devices[MAX_SEEN_DEVICES];
 extern uint8_t seen_devices_index;
 
-
 typedef struct
 {
     uint8_t pin;
     PinConnection connections[MAX_CONNECTIONS_PER_PIN];
-    uint8_t connection_index; // that is the highest used index in connections
+    uint8_t connection_index;  // that is the highest used index in connections
     uint8_t connections_count; // number of valid connections
-    uint32_t event_mask; // Bitmask to track which events have occurred
+    uint32_t event_mask;       // Bitmask to track which events have occurred
 } PinData;
-
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
@@ -80,15 +78,10 @@ bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event)
 uint8_t add_seen_device(uint64_t other_device_id);
 uint8_t get_index_of_unique_id(uint64_t unique_id);
 
-void add_pin_connection(PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint64_t device_uuid);
-
-// Sorting functions to make all outputs deterministic
-void sort_pin_connections(PinData *pindata, uint8_t pin);
+void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter);
 
 // Not sure if this is needed externally
-void sort_seen_devices();   
 
 uint64_t get_own_device_id();
-
 
 #endif // PINDATA_H

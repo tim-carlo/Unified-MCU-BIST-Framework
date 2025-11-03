@@ -52,7 +52,8 @@ extern uint8_t current_chunk_id;
 #define KEY_EVENTS (5)
 #define KEY_CONNECTIONS (6)
 #define KEY_OTHER_PIN (7)
-#define KEY_DEVICE_ID (8)
+#define KEY_CONNECTION_PARAMETER (8)
+#define KEY_CONNECTION_TYPE (9)
 
 
 #define HEADER_KEY_DEVICE_UUID (0)

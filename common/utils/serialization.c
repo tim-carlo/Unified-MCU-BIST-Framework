@@ -122,31 +122,31 @@ SerializationResult serialize_next_chunk()
 
         if (pin_data->connections_count > 0)
         {
-            // sort connections before serialization, is important for consistent ordering
-            // To make sure the cbor output is consistent across multiple runs
-            sort_pin_connections(current_pindata, pin_data->pin);
-
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connection_index);
             write_ptr += bytes_written;
 
             // Write connection data inside the array
             for (uint8_t j = 0; j < pin_data->connection_index; j++)
             {
-                bytes_written = cb0r_write(write_ptr, CB0R_MAP, 2);
+                bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
                 write_ptr += bytes_written;
+
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_TYPE);
+                write_ptr += bytes_written;
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].connection_type);
+                write_ptr += bytes_written;
+
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
                 write_ptr += bytes_written;
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].other_pin);
                 write_ptr += bytes_written;
 
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_DEVICE_ID);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_PARAMETER);
                 write_ptr += bytes_written;
 
                 // only write device index for compactness
-                // This must be sorted if the framework should work with multiple devices
-                // Only send the index to make the chucks compaireable
-                uint8_t device_idx = pin_data->connections[j].device_index;
+                uint8_t device_idx = pin_data->connections[j].parameter;
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, device_idx);
                 write_ptr += bytes_written;
             }
