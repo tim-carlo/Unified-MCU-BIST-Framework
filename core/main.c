@@ -262,6 +262,9 @@ int main(void)
         gpio_od_init(pin);
     }
 
+    perfom_mutex_operations();
+    return 0;
+
     HandshakeResult handshake_result = perform_handshake(pin_data, initial_state_mask);
 
     if (handshake_result == HANDSHAKE_ISR_TIMEOUT)

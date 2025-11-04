@@ -31,19 +31,6 @@
 
 typedef enum
 {
-    PMAN_BAUD_100 = 100,
-    PMAN_BAUD_300 = 300,
-    PMAN_BAUD_600 = 600,
-    PMAN_BAUD_1200 = 1200,
-    PMAN_BAUD_2400 = 2400,
-    PMAN_BAUD_4800 = 4800,
-    PMAN_BAUD_9600 = 9600,
-    PMAN_BAUD_19200 = 19200,
-    PMAN_BAUD_38400 = 38400
-} ParallelManchesterBaudRate;
-
-typedef enum
-{
     PMAN_NOT_INITIALIZED,
     PMAN_IDLE,
     PMAN_SEND,
@@ -121,7 +108,7 @@ ParallelManchesterMode dhd_get_manchester_mode(const DataHandshakeData *dhd);
 void dhd_set_manchester_mode(DataHandshakeData *dhd, ParallelManchesterMode mode);
 
 void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count);
-uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
+uint32_t parallel_manchester_get_sample_interval_us(uint8_t rate);
 
 // Instance management - now accepts buffer per instance
 bool parallel_manchester_add_instance(DataHandshakeData *instance);
@@ -133,17 +120,5 @@ bool parallel_manchester_receive_background(DataHandshakeData *instance);
 bool parallel_manchester_receive_complete(DataHandshakeData *instance);
 bool parallel_manchester_receive_error(DataHandshakeData *instance);
 bool parallel_manchester_data_received(DataHandshakeData *instance);
-
-// Status functions
-bool parallel_manchester_is_idle(uint8_t index);
-bool parallel_manchester_is_transmitting(uint8_t index);
-bool parallel_manchester_is_receiving(uint8_t index);
-
-
-// Helpers
-uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate);
-
-// Add new helper functions
-uint8_t *parallel_manchester_get_received_data(uint8_t index);
 
 #endif // DATAHANDSHAKE_MODULATION_H

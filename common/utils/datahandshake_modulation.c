@@ -208,9 +208,9 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
     }
 }
 
-inline uint32_t parallel_manchester_get_sample_interval_us(ParallelManchesterBaudRate rate)
+inline uint32_t parallel_manchester_get_sample_interval_us(uint8_t rate)
 {
-    uint32_t bit_time_us = 1000000UL / rate;
+    uint32_t bit_time_us = (uint32_t) 1000000UL / rate;
     return bit_time_us / TX_RATE;
 }
 

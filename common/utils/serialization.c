@@ -133,21 +133,19 @@ SerializationResult serialize_next_chunk()
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_TYPE);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].connection_type);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT,(uint8_t)pin_data->connections[j].connection_type);
                 write_ptr += bytes_written;
 
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, pin_data->connections[j].other_pin);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].other_pin);
                 write_ptr += bytes_written;
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_PARAMETER);
                 write_ptr += bytes_written;
 
-                // only write device index for compactness
-                uint8_t device_idx = pin_data->connections[j].parameter;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, device_idx);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].parameter);
                 write_ptr += bytes_written;
             }
         }

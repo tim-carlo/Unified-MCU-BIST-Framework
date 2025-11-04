@@ -127,10 +127,7 @@ static void calculate_baud_rate(uint16_t baud_rate, uint16_t *br0, uint16_t *br1
  * @param pins Pin configuration structure (unused, using P2.0/P2.1)
  */
 void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_t *pins)
-{
-    (void)baud_rate;  // Unused parameter
-    (void)pins;       // Unused parameter
-    
+{   
     if (uart == NULL)
         return;
 
@@ -163,8 +160,6 @@ bool uart_data_ready(uart_instance_t *uart)
         return true;
     }
 
-    // Secondary check: Status register (some MSP430 variants)
-    // Note: STATW might not have UCRXIFG, so we check for receive errors that indicate activity
     if (*(uart->STATW) & (UCFE | UCOE | UCPE))
     {
         // Clear error by reading RXBUF
@@ -385,9 +380,6 @@ void uart_set_receive_mode(uart_instance_t *uart, bool enable)
             volatile uint16_t dummy = *(uart->RXBUF);
             (void)dummy;
         }
-
-        // Enable receive interrupt if desired (optional for polling)
-        // *(uart->IE) |= uart->rx_flag_bit;
     }
     else
     {

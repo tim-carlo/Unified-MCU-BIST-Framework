@@ -25,6 +25,14 @@ typedef struct
     uint8_t buffer[16]; // since that is the min buffer size for spooky encoder/decoder
 } MutexHandler;
 
+typedef enum
+{
+    ACKNOWLEDGED,
+    RELEASED,
+    REQUESTED,
+    TIMEOUT
+} WaitForResult;
+
 #define MUTEX_REQEST (0x55)  // Request mutex on this pin
 #define MUTEX_RELEASE (0xFF) // Release mutex on this pin
 #define MUTEX_ACK (0xAA)     // Acknoledge mutex request or release

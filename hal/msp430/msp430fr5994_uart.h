@@ -40,6 +40,7 @@ extern uart_instance_t msp430_uart1_instance;
 extern uart_instance_t msp430_uart2_instance;
 extern uart_instance_t msp430_uart3_instance;
 
+// Shortcuts for predefined UART instances
 #define MSP430_UART0 (&msp430_uart0_instance)
 #define MSP430_UART1 (&msp430_uart1_instance)
 #define MSP430_UART2 (&msp430_uart2_instance)

@@ -18,29 +18,28 @@
 #define INITIAL_CONNECTION_CAPACITY 1 // Initial capacity for connections array
 #define MY_DEVICE_ID_INDEX 0          // Index of own device in seen_devices arrays
 
-#define MAX_CONNECTIONS_PER_PIN 5 // Adjust this if more is needed
+#define MAX_CONNECTIONS_PER_PIN 10 // Adjust this if more is needed
 #define MAX_SEEN_DEVICES 2        // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
+
+#define PIN_EVENT_COUNT 13
 typedef uint8_t PinEventType;
 enum
 {
-    PIN_INITIALLY_LOW = 0,
-    PIN_INITIALLY_HIGH = 1,
-    PIN_DISTURBED = 2,
-    HANDSHAKE_OK_INITIATOR = 3,
-    HANDSHAKE_OK_RESPONDER = 4,
-    HANDSHAKE_FAILURE = 5,
-    DATA_HANDSHAKE_OK = 6,
-    DATA_HANDSHAKE_FAILURE = 7,
-    PIN_IS_CONNECTED_WITH_INTERNAL_PIN = 8,
-    PIN_IS_CONNECTED_WITH_EXTERNAL_PIN = 9,
-    PIN_IS_NOT_LOW_WHEN_PULLED_DOWN = 10,
-    PIN_IS_NOT_HIGH_WHEN_PULLED_UP = 11,
-    PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW = 12,
-    PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH = 13,
-    UART_RX_IS_NOT_WORKING = 14,
-    EXPECTS_TO_WORK_IN_ONE_DIRECTION = 15
+    HANDSHAKE_OK_INITIATOR,
+    HANDSHAKE_OK_RESPONDER,
+    HANDSHAKE_FAILURE,
+    DATA_HANDSHAKE_OK,
+    DATA_HANDSHAKE_FAILURE,
+    PIN_IS_CONNECTED_WITH_INTERNAL_PIN,
+    PIN_IS_NOT_LOW_WHEN_PULLED_DOWN,
+    PIN_IS_NOT_HIGH_WHEN_PULLED_UP,
+    PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW,
+    PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH,
+    UART_RX_IS_NOT_WORKING,
+    EXPECTS_TO_WORK_IN_ONE_DIRECTION,
+    EXCEEDS_CONNECTION_LIMIT
 };
 
 typedef uint8_t ConnectionType;
@@ -50,11 +49,15 @@ enum
     CONNECTION_TYPE_EXTERNAL = 1
 };
 
-typedef struct
+typedef union __attribute__((packed))
 {
-    uint8_t other_pin;
-    uint8_t parameter; // In the case of internal connections, this can be used to store extra info, in the case of external connections, it is used to store the idx of the other device
-    ConnectionType connection_type;
+    struct
+    {
+        uint8_t other_pin : 6;       // up to 64 pins
+        ConnectionType connection_type : 1;     // internal or external connection
+        uint8_t parameter;           // bleibt 8 Bit
+    };
+    uint16_t raw;
 } PinConnection;
 
 // List so that the algorithm can be extended in the future to work with multiple devices
@@ -68,7 +71,7 @@ typedef struct
     PinConnection connections[MAX_CONNECTIONS_PER_PIN];
     uint8_t connection_index;  // that is the highest used index in connections
     uint8_t connections_count; // number of valid connections
-    uint32_t event_mask;       // Bitmask to track which events have occurred
+    uint16_t event_mask;       // Bitmask to track which events have occurred
 } PinData;
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
@@ -79,6 +82,7 @@ uint8_t add_seen_device(uint64_t other_device_id);
 uint8_t get_index_of_unique_id(uint64_t unique_id);
 
 void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter);
+
 
 // Not sure if this is needed externally
 

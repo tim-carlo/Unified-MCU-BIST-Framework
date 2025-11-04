@@ -1,9 +1,10 @@
 #include "mutex_handeler.h"
 #include "bitmap_iterator.h"
+#include "datahandshake_modulation.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h> /* printf for LOG */
 
 #if defined(NRF52840_XXAA)
 #define MUTEX_TIMER NRF_TIMER4
@@ -22,15 +23,24 @@ static const uint8_t MAX_RELEASE_TRIES = 4;
 static const uint8_t MAX_REQUEST_TRIES = 4;
 static volatile bool interrupt_flag = false;
 
-
+/**
+ * @brief Timer interrupt handler for mutex operations
+ * 
+ */
 static void mutex_timer_interrupt(void)
 {
     interrupt_flag = true;
 }
 
+/**
+ * @brief Start the mutex timer with appropriate configuration
+ * 
+ */
 static void mutex_timer_start(void)
 {
-    const uint32_t sample_interval_us = 1000;
+    // Must be configured in the same way as the spooky encoder/decoder sample rate in the 
+
+    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20); // 20 baud
 
 #if defined(NRF52840_XXAA)
     configure_timer(MUTEX_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -39,7 +49,6 @@ static void mutex_timer_start(void)
     set_timer_event_callback(MUTEX_TIMER, mutex_timer_interrupt);
     start_timer(MUTEX_TIMER);
 #elif defined(__MSP430FR5994__)
-    /* SMCLK_HZ muss definiert sein (z.B. 16000000) */
     uint32_t timer_ticks = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
     configure_timer(MUTEX_TIMER, 0, MC__UP);
     set_timer_compare(MUTEX_TIMER, 0, (uint16_t)timer_ticks);
@@ -48,6 +57,10 @@ static void mutex_timer_start(void)
 #endif
 }
 
+/**
+ * @brief Stop the mutex timer
+ * 
+ */
 static void mutex_timer_stop(void)
 {
 #if defined(NRF52840_XXAA) || defined(__MSP430FR5994__)
@@ -57,14 +70,12 @@ static void mutex_timer_stop(void)
     interrupt_flag = false;
 }
 
-typedef enum
-{
-    ACKNOWLEDGED,
-    RELEASED,
-    REQUESTED,
-    TIMEOUT
-} WaitForResult;
-
+/**
+ * @brief Wait for a signal on the mutex pin
+ * 
+ * @param handler Pointer to MutexHandler
+ * @return WaitForResult Result of the wait operation
+ */
 static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
 {
     uint8_t received = 0;
@@ -127,6 +138,14 @@ done_wait:
     return result;
 }
 
+/**
+ * @brief Send a signal using the mutex handler's encoder
+ * 
+ * @param handler Pointer to MutexHandler
+ * @param data Data byte to send
+ * @return true
+ * @return false 
+ */
 static bool mutex_send_signal(MutexHandler *handler, uint8_t data)
 {
     bool done = false;

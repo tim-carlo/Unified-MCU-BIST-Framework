@@ -127,6 +127,7 @@ void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_
 
     if (data->connections_count >= MAX_CONNECTIONS_PER_PIN)
     {
+        add_pin_event(pindata, pin, EXCEEDS_CONNECTION_LIMIT);
         data->connection_index = 0; // wrap around
         data->connections_count = 0;
         memset(data->connections, 0, sizeof(data->connections));
