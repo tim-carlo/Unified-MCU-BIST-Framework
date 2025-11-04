@@ -6,21 +6,21 @@
 #include <stddef.h>
 
 #include <msp430.h>
+#include <msp430fr5994.h>
 
 // UART instance type
-typedef struct
-{
-    volatile uint16_t *CTLW0; // Control Word Register 0
-    volatile uint16_t *BR0;   // Baud Rate 0
-    volatile uint16_t *BR1;   // Baud Rate 1
-    volatile uint16_t *MCTLW; // Modulation Control
-    volatile uint16_t *STATW; // Status Word
-    volatile uint16_t *RXBUF; // Receive Buffer
-    volatile uint16_t *TXBUF; // Transmit Buffer
-    volatile uint16_t *IFG;   // Interrupt Flag
-    volatile uint16_t *IE;    // Interrupt Enable
-    uint8_t rx_flag_bit;      // RX interrupt flag bit
-    uint8_t tx_flag_bit;      // TX interrupt flag bit
+
+typedef struct {
+    volatile uint16_t *CTLW0;
+    volatile uint16_t *BRW;
+    volatile uint16_t *MCTLW;
+    volatile uint8_t  *STATW;
+    volatile uint8_t  *RXBUF;
+    volatile uint8_t  *TXBUF;
+    volatile uint16_t *IE;
+    volatile uint16_t *IFG;
+    uint16_t rx_flag_bit;
+    uint16_t tx_flag_bit;
 } uart_instance_t;
 
 typedef struct
