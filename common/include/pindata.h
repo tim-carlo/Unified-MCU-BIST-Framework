@@ -19,9 +19,8 @@
 #define MY_DEVICE_ID_INDEX 0          // Index of own device in seen_devices arrays
 
 #define MAX_CONNECTIONS_PER_PIN 10 // Adjust this if more is needed
-#define MAX_SEEN_DEVICES 2        // Maximum number of seen devices to track
+#define MAX_SEEN_DEVICES 2         // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
-
 
 #define PIN_EVENT_COUNT 13
 typedef uint8_t PinEventType;
@@ -48,16 +47,11 @@ enum
     CONNECTION_TYPE_INTERNAL = 0,
     CONNECTION_TYPE_EXTERNAL = 1
 };
-
-typedef union __attribute__((packed))
+typedef struct
 {
-    struct
-    {
-        uint8_t other_pin : 6;       // up to 64 pins
-        ConnectionType connection_type : 1;     // internal or external connection
-        uint8_t parameter;           // bleibt 8 Bit
-    };
-    uint16_t raw;
+    uint8_t other_pin : 6;              // up to 64 pins
+    ConnectionType connection_type : 1; // internal or external connection
+    uint8_t parameter;                  // bleibt 8 Bit
 } PinConnection;
 
 // List so that the algorithm can be extended in the future to work with multiple devices
@@ -82,7 +76,6 @@ uint8_t add_seen_device(uint64_t other_device_id);
 uint8_t get_index_of_unique_id(uint64_t unique_id);
 
 void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter);
-
 
 // Not sure if this is needed externally
 

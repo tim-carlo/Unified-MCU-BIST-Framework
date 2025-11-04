@@ -5,14 +5,16 @@
 #include <string.h>
 
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
-#define NUMBER_OF_SAMPLES_FOR_DEBOUNCING (50)
-#define NUMBER_OF_SAMPLES_FOR_MEASURING (1)
 
-static const uint8_t SETTLE_TIME_US = 100;
-static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 100000; // 10ms
+const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 30;
+const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+
+static const uint32_t SETTLE_TIME_US = 1000;
+static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
 static const uint32_t POLLING_DELAY_US = 1000;
 
-static const uint8_t threshold = (uint8_t)((NUMBER_OF_SAMPLES_FOR_DEBOUNCING * 100) / 70); // 80% threshold
+static const uint8_t threshold_percent = 70;
+static const uint8_t threshold = (NUMBER_OF_SAMPLES_FOR_DEBOUNCING * threshold_percent) / 100;
 
 typedef uint8_t SetOneMeasureALLPhase;
 enum
@@ -31,7 +33,7 @@ enum
 static uint64_t read_all_pins(const uint64_t blacklist_mask)
 {
     const uint64_t active_mask = ~blacklist_mask;
-    uint8_t high_count[64] = {0}; // Count how often each pin was read HIGH
+    uint8_t high_count[64] = {0};
 
     for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_DEBOUNCING; i++)
     {
@@ -86,12 +88,12 @@ static void flush_pin_states(const uint64_t blacklist_mask, gpio_pull_t pull_typ
 
     while (bitmap_iterator_next(&it_pull, &pin))
     {
-        gpio_input_init(pin, pull_type);
+       // gpio_input_init(pin, pull_type);
     }
     pin = 0;
 
     // let the conductance discharge / charge
-    delay_us(SETTLE_TIME_US);
+   // delay_us(SETTLE_TIME_US);
 
     BitmapIterator it_reset = bitmap_iterator_create(~blacklist_mask);
     while (bitmap_iterator_next(&it_reset, &pin))
@@ -173,10 +175,7 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
             if (before != after)
             {
                 LOG("Pin %u changed when pin %u was changed\n", pin, test_pin);
-                add_pin_connection(PIN_IS_CONNECTED_WITH_INTERNAL_PIN, pindata, test_pin, pin, (uint8_t)phase);
-
-                // Not really nessecary to add both directions, but for completeness
-                add_pin_event(pindata, test_pin, PIN_IS_CONNECTED_WITH_INTERNAL_PIN);
+                add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
             }
         }
     }
@@ -208,6 +207,12 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
             delay_ms(10);
 
             uint64_t after = read_all_pins(blacklist_mask);
+            /* print after in binary */
+            char after_bin[65];
+            for (int b = 0; b < 64; ++b)
+                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
+            after_bin[64] = '\0';
+            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
             current_pin_state = gpio_read(pin);
 
             before_combined &= before;
@@ -246,6 +251,11 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
             delay_ms(20);
 
             uint64_t after = read_all_pins(blacklist_mask);
+            char after_bin[65];
+            for (int b = 0; b < 64; ++b)
+                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
+            after_bin[64] = '\0';
+            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
 
             before_combined &= before;
             after_combined &= after;
@@ -284,7 +294,6 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
             delay_ms(30);
 
             uint64_t after = read_all_pins(blacklist_mask);
-
             before_combined &= before;
             after_combined &= after;
 
@@ -321,6 +330,11 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
             delay_ms(40);
 
             uint64_t after = read_all_pins(blacklist_mask);
+            char after_bin[65];
+            for (int b = 0; b < 64; ++b)
+                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
+            after_bin[64] = '\0';
+            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
 
             before_combined &= before;
             after_combined &= after;

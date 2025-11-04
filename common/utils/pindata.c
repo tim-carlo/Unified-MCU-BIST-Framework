@@ -89,21 +89,15 @@ uint8_t add_seen_device(uint64_t other_device_id)
  */
 static bool connection_exists(ConnectionType connection_type, PinData *data, uint8_t other_pin, uint8_t parameter)
 {
-    const uint8_t count = data->connections_count;
-
-    uint8_t start_index = (data->connection_index + MAX_CONNECTIONS_PER_PIN - count) % MAX_CONNECTIONS_PER_PIN;
-
-    for (uint8_t i = 0; i < count; i++)
+    for (uint8_t i = 0; i < data->connections_count; i++)
     {
-        uint8_t idx = (start_index + i) % MAX_CONNECTIONS_PER_PIN;
-        if (data->connections[idx].other_pin == other_pin &&
-            data->connections[idx].parameter == parameter &&
-            data->connections[idx].connection_type == connection_type)
+        if (data->connections[i].other_pin == other_pin &&
+            data->connections[i].parameter == parameter &&
+            data->connections[i].connection_type == connection_type)
         {
             return true;
         }
     }
-
     return false;
 }
 
@@ -118,20 +112,18 @@ static bool connection_exists(ConnectionType connection_type, PinData *data, uin
 void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter)
 {
     PinData *data = &pindata[pin];
-    uint8_t conn_idx_to_write;
 
     if (connection_exists(connection_type, data, other_pin_index, parameter))
-    {
         return;
-    }
 
     if (data->connections_count >= MAX_CONNECTIONS_PER_PIN)
     {
         add_pin_event(pindata, pin, EXCEEDS_CONNECTION_LIMIT);
-        data->connection_index = 0; // wrap around
-        data->connections_count = 0;
-        memset(data->connections, 0, sizeof(data->connections));
+        return;
     }
+
+    // Verbindung am nächsten freien Slot hinzufügen
+    uint8_t conn_idx_to_write = data->connections_count;
 
     data->connections[conn_idx_to_write].other_pin = other_pin_index;
     data->connections[conn_idx_to_write].parameter = parameter;
@@ -139,7 +131,6 @@ void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_
 
     data->connections_count++;
 }
-
 /**
  * @brief Returns the own device UUID.
  */

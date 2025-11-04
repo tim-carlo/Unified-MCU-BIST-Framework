@@ -122,30 +122,28 @@ SerializationResult serialize_next_chunk()
 
         if (pin_data->connections_count > 0)
         {
-            bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connection_index);
+            bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connections_count);
             write_ptr += bytes_written;
 
-            // Write connection data inside the array
-            for (uint8_t j = 0; j < pin_data->connection_index; j++)
+            for (uint8_t i = 0; i < pin_data->connections_count; i++)
             {
+                // Write connection map
                 bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
                 write_ptr += bytes_written;
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_TYPE);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT,(uint8_t)pin_data->connections[j].connection_type);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].connection_type);
                 write_ptr += bytes_written;
-
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].other_pin);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].other_pin);
                 write_ptr += bytes_written;
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_PARAMETER);
                 write_ptr += bytes_written;
-
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].parameter);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].parameter);
                 write_ptr += bytes_written;
             }
         }
