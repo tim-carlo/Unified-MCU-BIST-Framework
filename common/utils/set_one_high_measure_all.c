@@ -179,7 +179,7 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
             if (changes[pin] >= threshold_measure)
             {
                 LOG("Phase %d: Pin %u affected by pin %u\n", phase, pin, test_pin);
-                add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, pin, test_pin, (uint8_t)phase);
+                add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
             }
         }
     }
