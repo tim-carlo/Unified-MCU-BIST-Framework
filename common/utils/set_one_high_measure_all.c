@@ -7,6 +7,8 @@
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 30;
+
+
 const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
 
 static const uint32_t SETTLE_TIME_US = 1000;
@@ -75,30 +77,34 @@ static void flush_pin_states(const uint64_t blacklist_mask, gpio_pull_t pull_typ
     while (bitmap_iterator_next(&it_pull, &pin))
     {
         gpio_input_init(pin, pull_type);
+        // bisschen zu timing abhänigig
     }
     pin = 0;
 
     // let the conductance discharge / charge
     delay_us(SETTLE_TIME_US);
+    // Hier lesen einmal ausprobieren
 
-    BitmapIterator it_reset = bitmap_iterator_create(~blacklist_mask);
-    while (bitmap_iterator_next(&it_reset, &pin))
-    {
-        // gpio_reset(pin);
-        if (pull_type == GPIO_PULL_DOWN)
-            gpio_input_init(pin, GPIO_PULL_UP);
-        else if (pull_type == GPIO_PULL_UP)
-            gpio_input_init(pin, GPIO_PULL_DOWN);
+    // BitmapIterator it_reset = bitmap_iterator_create(~blacklist_mask);
+    // while (bitmap_iterator_next(&it_reset, &pin))
+    // {
+    //     // gpio_reset(pin);
+    //     if (pull_type == GPIO_PULL_DOWN)
+    //         gpio_input_init(pin, GPIO_PULL_UP);
+    //     else if (pull_type == GPIO_PULL_UP)
+    //         gpio_input_init(pin, GPIO_PULL_DOWN);
 
-        // gpio_input_init(pin, pull_type);
-    }
-    delay_us(SETTLE_TIME_US);
+    //     // gpio_input_init(pin, pull_type);
+    // }
+    // delay_us(SETTLE_TIME_US);
 
     BitmapIterator it_final = bitmap_iterator_create(~blacklist_mask);
     while (bitmap_iterator_next(&it_final, &pin))
     {
         gpio_input_init(pin, GPIO_PULL_NONE);
     }
+
+    // Oder hier einmal lesen
 }
 /**
  * @brief Reset all pins to high impedance input with no pull resistors
@@ -191,12 +197,14 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
+            
             // Read own pin state:
-            bool current_pin_state = gpio_read(pin);
-            uint64_t before = read_all_pins(blacklist_mask);
+            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
 
+            uint64_t before = read_all_pins(blacklist_mask);
+            
             gpio_input_init(pin, GPIO_PULL_DOWN);
-            delay_ms(10);
+            delay_ms(1);
 
             uint64_t after = read_all_pins(blacklist_mask);
 
@@ -208,9 +216,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
                     changes[check_pin]++;
             }
 
-            // gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
+            gpio_reset(pin);
         }
         log_pin_changes(PHASE_0_PULLDOWN_DRIVE_LOW, pindata, blacklist_mask, changes, pin);
     }
@@ -233,11 +239,11 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
+            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
             uint64_t before = read_all_pins(blacklist_mask);
 
-            bool current_pin_state = gpio_read(pin);
             gpio_input_init(pin, GPIO_PULL_UP);
-            delay_ms(20);
+            delay_ms(1);
 
             uint64_t after = read_all_pins(blacklist_mask);
             uint64_t diff = (before ^ after) & ~blacklist_mask;
@@ -248,9 +254,8 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
                     changes[check_pin]++;
             }
 
-            // gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
+            gpio_reset(pin);
+            
         }
         log_pin_changes(PHASE_1_PULLUP_DRIVE_HIGH, pindata, blacklist_mask, changes, pin);
     }
@@ -273,12 +278,12 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
+            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
             uint64_t before = read_all_pins(blacklist_mask);
 
-            bool current_pin_state = gpio_read(pin);
             gpio_output_init(pin);
             gpio_drive_low(pin);
-            delay_ms(30);
+            delay_ms(1);
 
             uint64_t after = read_all_pins(blacklist_mask);
 
@@ -290,9 +295,8 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
                     changes[check_pin]++;
             }
 
-            // gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
+            gpio_reset(pin);
+            
         }
         log_pin_changes(PHASE_2_NO_PULL_DRIVE_LOW, pindata, blacklist_mask, changes, pin);
     }
@@ -315,10 +319,13 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
+            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
             uint64_t before = read_all_pins(blacklist_mask);
             gpio_output_init(pin);
             gpio_drive_high(pin);
-            delay_ms(40);
+            delay_ms(1);
+
+            // Großer Widerstand und die größte Kapazität führen zum Worstcase
 
             uint64_t after = read_all_pins(blacklist_mask);
             uint64_t diff = (before ^ after) & ~blacklist_mask;
@@ -329,9 +336,8 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
                     changes[check_pin]++;
             }
 
-            // gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
+            gpio_reset(pin);
+            
         }
         log_pin_changes(PHASE_3_NO_PULL_DRIVE_HIGH, pindata, blacklist_mask, changes, pin);
     }
