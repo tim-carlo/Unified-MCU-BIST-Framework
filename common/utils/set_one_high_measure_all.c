@@ -6,16 +6,17 @@
 
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 
-const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 30;
+const uint8_t TIME_BETWEEN_PHASES = 10;
 
+const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
 
-const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
 
 static const uint32_t SETTLE_TIME_US = 1000;
 static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
-static const uint32_t POLLING_DELAY_US = 1000;
+static const uint32_t DEBOUNCING_DELAY_US = 10;
 
-static const uint8_t threshold_percent = 70;
+static const uint8_t threshold_percent = 50;
 static const uint8_t threshold = (NUMBER_OF_SAMPLES_FOR_DEBOUNCING * threshold_percent) / 100;
 
 static const uint8_t threshold_measure_percent = 100;
@@ -48,10 +49,12 @@ static uint64_t read_all_pins(const uint64_t blacklist_mask)
         while (bitmap_iterator_next(&it, &pin))
         {
             if (gpio_read(pin))
+            {
                 high_count[pin]++;
+            }
         }
 
-        delay_us(POLLING_DELAY_US);
+        delay_us(DEBOUNCING_DELAY_US);
     }
 
     // Majority decision per pin
@@ -62,8 +65,10 @@ static uint64_t read_all_pins(const uint64_t blacklist_mask)
 
     while (bitmap_iterator_next(&final_it, &pin))
     {
-        if (high_count[pin] >= threshold)
+        if (high_count[pin] > threshold)
+        {
             result |= (1ULL << pin);
+        }
     }
 
     return result;
@@ -204,7 +209,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
             uint64_t before = read_all_pins(blacklist_mask);
             
             gpio_input_init(pin, GPIO_PULL_DOWN);
-            delay_ms(1);
+            delay_ms(TIME_BETWEEN_PHASES);
 
             uint64_t after = read_all_pins(blacklist_mask);
 
@@ -243,7 +248,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
             uint64_t before = read_all_pins(blacklist_mask);
 
             gpio_input_init(pin, GPIO_PULL_UP);
-            delay_ms(1);
+            delay_ms(TIME_BETWEEN_PHASES);
 
             uint64_t after = read_all_pins(blacklist_mask);
             uint64_t diff = (before ^ after) & ~blacklist_mask;
@@ -283,7 +288,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
 
             gpio_output_init(pin);
             gpio_drive_low(pin);
-            delay_ms(1);
+            delay_ms(TIME_BETWEEN_PHASES);
 
             uint64_t after = read_all_pins(blacklist_mask);
 
@@ -323,7 +328,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
             uint64_t before = read_all_pins(blacklist_mask);
             gpio_output_init(pin);
             gpio_drive_high(pin);
-            delay_ms(1);
+            delay_ms(TIME_BETWEEN_PHASES);
 
             // Großer Widerstand und die größte Kapazität führen zum Worstcase
 
