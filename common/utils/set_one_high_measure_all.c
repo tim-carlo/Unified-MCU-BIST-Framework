@@ -16,6 +16,8 @@ static const uint32_t POLLING_DELAY_US = 1000;
 static const uint8_t threshold_percent = 70;
 static const uint8_t threshold = (NUMBER_OF_SAMPLES_FOR_DEBOUNCING * threshold_percent) / 100;
 
+static const uint8_t threshold_for_iterations = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_percent) / 100;
+
 typedef uint8_t SetOneMeasureALLPhase;
 enum
 {
@@ -88,12 +90,12 @@ static void flush_pin_states(const uint64_t blacklist_mask, gpio_pull_t pull_typ
 
     while (bitmap_iterator_next(&it_pull, &pin))
     {
-       // gpio_input_init(pin, pull_type);
+        gpio_input_init(pin, pull_type);
     }
     pin = 0;
 
     // let the conductance discharge / charge
-   // delay_us(SETTLE_TIME_US);
+    delay_us(SETTLE_TIME_US);
 
     BitmapIterator it_reset = bitmap_iterator_create(~blacklist_mask);
     while (bitmap_iterator_next(&it_reset, &pin))
@@ -181,6 +183,102 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
     }
 }
 
+static void measure_phase(uint64_t blacklist_mask,
+                          void (*setup_func)(uint8_t pin),
+                          uint16_t delay_ms_val,
+                          void (*post_func)(uint8_t pin),
+                          uint32_t before_history[64],
+                          uint32_t after_history[64])
+{
+    for (uint8_t iteration = 0; iteration < NUMBER_OF_SAMPLES_FOR_MEASURING; iteration++)
+    {
+        BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
+        uint8_t pin;
+
+        while (bitmap_iterator_next(&it, &pin))
+        {
+            uint64_t before = read_all_pins(blacklist_mask);
+
+            setup_func(pin);
+            delay_ms(delay_ms_val);
+
+            uint64_t after = read_all_pins(blacklist_mask);
+
+            for (uint8_t b = 0; b < 64; b++)
+            {
+                before_history[b] <<= 1;
+                after_history[b] <<= 1;
+                if (before & (1ULL << b))
+                    before_history[b] |= 1;
+                if (after & (1ULL << b))
+                    after_history[b] |= 1;
+            }
+
+            post_func(pin);
+            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
+        }
+    }
+}
+
+static void compute_majority(const uint32_t before_history[64],
+                             const uint32_t after_history[64],
+                             uint64_t *before_majority,
+                             uint64_t *after_majority)
+{
+    *before_majority = 0;
+    *after_majority = 0;
+
+    for (uint8_t b = 0; b < 64; b++)
+    {
+        if (__builtin_popcount(before_history[b]) > threshold_for_iterations)
+            *before_majority |= (1ULL << b);
+        if (__builtin_popcount(after_history[b]) > threshold_for_iterations)
+            *after_majority |= (1ULL << b);
+    }
+}
+
+static void log_all_pins(SetOneMeasureALLPhase phase, uint64_t blacklist_mask,
+                         PinData *pindata, uint64_t before_majority, uint64_t after_majority)
+{
+    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
+    uint8_t pin;
+    while (bitmap_iterator_next(&it, &pin))
+    {
+        log_pin_changes(phase, pindata, blacklist_mask,
+                        before_majority, after_majority, pin);
+    }
+}
+
+static void setup_pulldown_low(uint8_t pin)
+{
+    gpio_input_init(pin, GPIO_PULL_DOWN);
+}
+static void setup_pullup_high(uint8_t pin)
+{
+    gpio_input_init(pin, GPIO_PULL_UP);
+}
+static void setup_no_pull_low(uint8_t pin)
+{
+    gpio_output_init(pin);
+    gpio_drive_low(pin);
+}
+static void setup_no_pull_high(uint8_t pin)
+{
+    gpio_output_init(pin);
+    gpio_drive_high(pin);
+}
+
+static void post_reset_pullup(uint8_t pin)
+{
+    gpio_reset(pin);
+    flush_pin_states(0, GPIO_PULL_UP);
+}
+static void post_reset_pulldown(uint8_t pin)
+{
+    gpio_reset(pin);
+    flush_pin_states(0, GPIO_PULL_DOWN);
+}
+
 /**
  * @brief Phase 0: Pull-down configuration, drive each pin low and measure others
  */
@@ -189,41 +287,14 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     LOG("Phase 0: Pull-down, drive low\n");
     reset_all_pins(blacklist_mask);
 
-    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-    uint8_t pin;
+    uint32_t before_history[64] = {0};
+    uint32_t after_history[64] = {0};
 
-    while (bitmap_iterator_next(&it, &pin))
-    {
-        uint64_t before_combined = ~0ULL;
-        uint64_t after_combined = ~0ULL;
+    measure_phase(blacklist_mask, setup_pulldown_low, 10, post_reset_pullup, before_history, after_history);
 
-        for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
-        {
-            // Read own pin state:
-            bool current_pin_state = gpio_read(pin);
-            uint64_t before = read_all_pins(blacklist_mask);
-
-            gpio_input_init(pin, GPIO_PULL_DOWN);
-            delay_ms(10);
-
-            uint64_t after = read_all_pins(blacklist_mask);
-            /* print after in binary */
-            char after_bin[65];
-            for (int b = 0; b < 64; ++b)
-                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
-            after_bin[64] = '\0';
-            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
-            current_pin_state = gpio_read(pin);
-
-            before_combined &= before;
-            after_combined &= after;
-
-            gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
-        }
-        log_pin_changes(PHASE_0_PULLDOWN_DRIVE_LOW, pindata, blacklist_mask, before_combined, after_combined, pin);
-    }
+    uint64_t before_majority, after_majority;
+    compute_majority(before_history, after_history, &before_majority, &after_majority);
+    log_all_pins(PHASE_0_PULLDOWN_DRIVE_LOW, blacklist_mask, pindata, before_majority, after_majority);
 }
 
 /**
@@ -234,38 +305,14 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     LOG("Phase 1: Pull-up, drive high\n");
     reset_all_pins(blacklist_mask);
 
-    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-    uint8_t pin;
+    uint32_t before_history[64] = {0};
+    uint32_t after_history[64] = {0};
 
-    while (bitmap_iterator_next(&it, &pin))
-    {
-        uint64_t before_combined = ~0ULL;
-        uint64_t after_combined = ~0ULL;
+    measure_phase(blacklist_mask, setup_pullup_high, 20, post_reset_pulldown, before_history, after_history);
 
-        for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
-        {
-            uint64_t before = read_all_pins(blacklist_mask);
-
-            bool current_pin_state = gpio_read(pin);
-            gpio_input_init(pin, GPIO_PULL_UP);
-            delay_ms(20);
-
-            uint64_t after = read_all_pins(blacklist_mask);
-            char after_bin[65];
-            for (int b = 0; b < 64; ++b)
-                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
-            after_bin[64] = '\0';
-            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
-
-            before_combined &= before;
-            after_combined &= after;
-
-            gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
-        }
-        log_pin_changes(PHASE_1_PULLUP_DRIVE_HIGH, pindata, blacklist_mask, before_combined, after_combined, pin);
-    }
+    uint64_t before_majority, after_majority;
+    compute_majority(before_history, after_history, &before_majority, &after_majority);
+    log_all_pins(PHASE_1_PULLUP_DRIVE_HIGH, blacklist_mask, pindata, before_majority, after_majority);
 }
 
 /**
@@ -276,34 +323,14 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     LOG("Phase 2: No pull, drive low\n");
     reset_all_pins(blacklist_mask);
 
-    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-    uint8_t pin;
+    uint32_t before_history[64] = {0};
+    uint32_t after_history[64] = {0};
 
-    while (bitmap_iterator_next(&it, &pin))
-    {
-        uint64_t before_combined = ~0ULL;
-        uint64_t after_combined = ~0ULL;
+    measure_phase(blacklist_mask, setup_no_pull_low, 30, post_reset_pullup, before_history, after_history);
 
-        for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
-        {
-            uint64_t before = read_all_pins(blacklist_mask);
-
-            bool current_pin_state = gpio_read(pin);
-            gpio_output_init(pin);
-            gpio_drive_low(pin);
-            delay_ms(30);
-
-            uint64_t after = read_all_pins(blacklist_mask);
-            before_combined &= before;
-            after_combined &= after;
-
-            gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_UP);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
-        }
-
-        log_pin_changes(PHASE_2_NO_PULL_DRIVE_LOW, pindata, blacklist_mask, before_combined, after_combined, pin);
-    }
+    uint64_t before_majority, after_majority;
+    compute_majority(before_history, after_history, &before_majority, &after_majority);
+    log_all_pins(PHASE_2_NO_PULL_DRIVE_LOW, blacklist_mask, pindata, before_majority, after_majority);
 }
 
 /**
@@ -314,37 +341,14 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     LOG("Phase 3: No pull, drive high\n");
     reset_all_pins(blacklist_mask);
 
-    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
-    uint8_t pin;
+    uint32_t before_history[64] = {0};
+    uint32_t after_history[64] = {0};
 
-    while (bitmap_iterator_next(&it, &pin))
-    {
-        uint64_t before_combined = ~0ULL;
-        uint64_t after_combined = ~0ULL;
+    measure_phase(blacklist_mask, setup_no_pull_high, 40, post_reset_pulldown, before_history, after_history);
 
-        for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
-        {
-            uint64_t before = read_all_pins(blacklist_mask);
-            gpio_output_init(pin);
-            gpio_drive_high(pin);
-            delay_ms(40);
-
-            uint64_t after = read_all_pins(blacklist_mask);
-            char after_bin[65];
-            for (int b = 0; b < 64; ++b)
-                after_bin[b] = ((after >> (63 - b)) & 1ULL) ? '1' : '0';
-            after_bin[64] = '\0';
-            // printf("DEBUG: pin %u after: 0b%s\n", pin, after_bin);
-
-            before_combined &= before;
-            after_combined &= after;
-
-            gpio_reset(pin);
-            flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            delay_us(TIME_BETWEEN_MEASUREMENTS_US);
-        }
-        log_pin_changes(PHASE_3_NO_PULL_DRIVE_HIGH, pindata, blacklist_mask, before_combined, after_combined, pin);
-    }
+    uint64_t before_majority, after_majority;
+    compute_majority(before_history, after_history, &before_majority, &after_majority);
+    log_all_pins(PHASE_3_NO_PULL_DRIVE_HIGH, blacklist_mask, pindata, before_majority, after_majority);
 }
 
 /**
