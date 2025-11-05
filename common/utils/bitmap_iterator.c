@@ -50,3 +50,16 @@ bool bitmap_iterator_next(BitmapIterator *it, uint8_t *out_bit)
     *out_bit = bit;
     return true;
 }
+
+
+bool bitmap_iterator_next_mask_as_param(uint64_t *mask, uint8_t *out_bit)
+{
+    if (mask == NULL || *mask == 0)
+        return false;
+
+    uint64_t m = *mask;
+    uint8_t bit = __builtin_ctzll(m);  // find lowest set bit
+    *mask &= m - 1;                     // clear that bit
+    *out_bit = bit;
+    return true;
+}

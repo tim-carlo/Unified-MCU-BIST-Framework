@@ -26,10 +26,9 @@ extern "C"
 
     typedef enum
     {
-        GPIO_PULL_NONE = 0,
-        GPIO_PULL_DOWN = 1,
-        GPIO_PULL_UP = 2,
-        GPIO_NO_PULL = 3
+        GPIO_PULL_DOWN,
+        GPIO_PULL_UP,
+        GPIO_PULL_NONE
     } gpio_pull_t;
 
     // Configuration for GPIO pins
@@ -44,6 +43,7 @@ extern "C"
     void gpio_toggle(uint8_t abs_pin);
     bool gpio_read(uint8_t abs_pin);
     void gpio_reset(uint8_t abs_pin);
+    void gpio_reset_from_blacklist(const uint64_t blacklist_mask);
     uint64_t gpio_read_all_ports(void);
 
     // Interrupt handling

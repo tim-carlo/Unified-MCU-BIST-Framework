@@ -22,6 +22,8 @@
 
 #endif
 
+#include "nrf52840.h"
+
 #include "pin_config.h"
 #include "stack.h"
 #include "timing_pindata.h"
@@ -94,10 +96,10 @@ const uint8_t array[] = {
     GPIO9,
     GPIO10,
     GPIO11,
-    //GPIO12,
-    //GPIO13,
-    //GPIO14,
-    //GPIO15,
+    // GPIO12,
+    // GPIO13,
+    // GPIO14,
+    // GPIO15,
     PWRGDL,
     PWRGDH,
     PIN_LED0,
@@ -251,6 +253,21 @@ int main(void)
 #endif
 
     LOG("DEBUG: Starting handshake process\n");
+
+    NRF_P0->PIN_CNF[4] = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+                         BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+                         BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup) |
+                         BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) |
+                         BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
+
+    delay_ms(1000); // wait for pin config to settle
+
+    NRF_P0->DIRCLR = (1UL << 4); // Try to reset pin
+
+    delay_ms(1000); // wait for pin config to settle
+
+    LOG("DEBUG: Pin 4 state: %u\n", (NRF_P0->IN >> 4) & 1);
+
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
     gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);

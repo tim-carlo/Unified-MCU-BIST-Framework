@@ -1,4 +1,5 @@
 #include "nrf52840_gpio.h"
+#include "bitmap_iterator.h"
 #include "nrf52840.h"
 #include "nrf.h"
 #include "printf.h"
@@ -35,7 +36,7 @@ static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pul
     case GPIO_PULL_DOWN:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown);
         break;
-    case GPIO_NO_PULL:
+    case GPIO_PULL_NONE:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled);
         break;
     default:
@@ -69,6 +70,32 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
     uint32_t port = ABS_TO_PORT(abs_pin);
     uint32_t idx = ABS_TO_PINIDX(abs_pin);
     cfg_pin_input(port_ptr(port), idx, pull);
+}
+
+static inline uint32_t gpio_pull_to_cnf_bits(gpio_pull_t pull)
+{
+    switch (pull)
+    {
+    case GPIO_PULL_UP:
+        return BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup);
+    case GPIO_PULL_DOWN:
+        return BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown);
+    case GPIO_PULL_NONE:
+    default:
+        return BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled);
+    }
+}
+
+void gpio_reset_from_blacklist(const uint64_t blacklist_mask)
+{
+    const uint64_t mask = blacklist_mask;
+    const uint8_t pin;
+    while (bitmap_iterator_next_mask_as_param(&mask, &pin))
+    {
+        const uint32_t port = ABS_TO_PORT(pin);
+        const uint32_t idx = ABS_TO_PINIDX(pin);
+        port_ptr(port)->PIN_CNF[idx] = 0;
+    }
 }
 
 void gpio_pullup_init(uint8_t abs_pin) { gpio_input_init(abs_pin, GPIO_PULL_UP); }
