@@ -27,7 +27,7 @@ static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_M
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
 
 static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50;
-static const uint16_t MAXIMUM_REQUEST_CYCLES = 700;
+static const uint16_t MAXIMUM_REQUEST_CYCLES = 400;
 static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This needs to be higher than the maximum request time
 
 static const uint8_t ANSWER_IDENTIFIER = 0x55;

@@ -258,12 +258,11 @@ int main(void)
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (initial_state_mask & (1ULL << pin))
+        {
             continue;
+        }
         gpio_od_init(pin);
     }
-
-    perfom_mutex_operations();
-    return 0;
 
     HandshakeResult handshake_result = perform_handshake(pin_data, initial_state_mask);
 

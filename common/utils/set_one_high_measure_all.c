@@ -13,10 +13,10 @@ static const uint32_t SETTLE_TIME_US = 1000;
 static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
 static const uint32_t POLLING_DELAY_US = 1000;
 
-static const uint8_t threshold_percent = 70;
+static const uint8_t threshold_percent = 90;
 static const uint8_t threshold = (NUMBER_OF_SAMPLES_FOR_DEBOUNCING * threshold_percent) / 100;
 
-static const uint8_t threshold_for_iterations = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_percent) / 100;
+static const uint8_t threshold_for_iterations = (NUMBER_OF_SAMPLES_FOR_MEASURING * 100) / 100;
 
 typedef uint8_t SetOneMeasureALLPhase;
 enum
@@ -123,61 +123,39 @@ static void reset_all_pins(uint64_t blacklist_mask)
 static void log_pin_changes(SetOneMeasureALLPhase phase,
                             PinData *pindata,
                             uint64_t blacklist_mask,
-                            uint64_t before_state,
-                            uint64_t after_state,
+                            uint64_t change_mask,
                             uint8_t test_pin)
 {
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
     while (bitmap_iterator_next(&it, &pin))
     {
-        bool before = (before_state >> pin) & 1U;
-        bool after = (after_state >> pin) & 1U;
-
-        if (pin == test_pin)
+        bool changed = (change_mask >> pin) & 1U;
+        if (pin != test_pin && changed)
         {
-            // only store events to safe connection storage.
+            LOG("Pin %u changed when pin %u was changed\n", pin, test_pin);
+            add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
+        }
+        else if (pin == test_pin && !changed)
+        {
+            LOG("Pin %u did NOT change when pin %u was changed\n", pin, test_pin);
+
             switch (phase)
             {
             case PHASE_0_PULLDOWN_DRIVE_LOW:
-                if (after == 1)
-                {
-                    add_pin_event(pindata, pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
-                    printf("DEBUG: Pin %u did not go low when pulled down\n", pin);
-                }
+                add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
                 break;
             case PHASE_1_PULLUP_DRIVE_HIGH:
-                if (after == 0)
-                {
-                    add_pin_event(pindata, pin, PIN_IS_NOT_HIGH_WHEN_PULLED_UP);
-                    printf("DEBUG: Pin %u did not go high when pulled up\n", pin);
-                }
+                add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_PULLED_UP);
                 break;
             case PHASE_2_NO_PULL_DRIVE_LOW:
-                if (after == 1)
-                {
-                    add_pin_event(pindata, pin, PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW);
-                    printf("DEBUG: Pin %u did not go low when driven low\n", pin);
-                }
-
+                add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW);
                 break;
             case PHASE_3_NO_PULL_DRIVE_HIGH:
-                if (after == 0)
-                {
-                    add_pin_event(pindata, pin, PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH);
-                    printf("DEBUG: Pin %u did not go high when driven high\n", pin);
-                }
+                add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH);
                 break;
             default:
                 break;
-            }
-        }
-        else
-        {
-            if (before != after)
-            {
-                LOG("Pin %u changed when pin %u was changed\n", pin, test_pin);
-                add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
             }
         }
     }
@@ -186,9 +164,8 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
 static void measure_phase(uint64_t blacklist_mask,
                           void (*setup_func)(uint8_t pin),
                           uint16_t delay_ms_val,
-                          void (*post_func)(uint8_t pin),
-                          uint32_t before_history[64],
-                          uint32_t after_history[64])
+                          void (*post_func)(uint64_t blacklist_mask, uint8_t pin),
+                          uint32_t change_history[64])
 {
     for (uint8_t iteration = 0; iteration < NUMBER_OF_SAMPLES_FOR_MEASURING; iteration++)
     {
@@ -204,48 +181,43 @@ static void measure_phase(uint64_t blacklist_mask,
 
             uint64_t after = read_all_pins(blacklist_mask);
 
+            uint64_t change = before ^ after;
+
             for (uint8_t b = 0; b < 64; b++)
             {
-                before_history[b] <<= 1;
-                after_history[b] <<= 1;
-                if (before & (1ULL << b))
-                    before_history[b] |= 1;
-                if (after & (1ULL << b))
-                    after_history[b] |= 1;
+                if (pin == b)
+                    continue;
+                
+                if (change & (1ULL << b))
+                    change_history[b]++;
             }
 
-            post_func(pin);
+            post_func(blacklist_mask, pin);
             delay_us(TIME_BETWEEN_MEASUREMENTS_US);
         }
     }
 }
 
-static void compute_majority(const uint32_t before_history[64],
-                             const uint32_t after_history[64],
-                             uint64_t *before_majority,
-                             uint64_t *after_majority)
+static uint64_t compute_affected_pins(const uint32_t change_history[64])
 {
-    *before_majority = 0;
-    *after_majority = 0;
+    uint64_t affected_pins_mask = 0;
 
-    for (uint8_t b = 0; b < 64; b++)
+    for (uint8_t pin = 0; pin < 64; pin++)
     {
-        if (__builtin_popcount(before_history[b]) > threshold_for_iterations)
-            *before_majority |= (1ULL << b);
-        if (__builtin_popcount(after_history[b]) > threshold_for_iterations)
-            *after_majority |= (1ULL << b);
+        if (change_history[pin] >= threshold_for_iterations)
+            affected_pins_mask |= (1ULL << pin);
     }
+    return affected_pins_mask;
 }
 
 static void log_all_pins(SetOneMeasureALLPhase phase, uint64_t blacklist_mask,
-                         PinData *pindata, uint64_t before_majority, uint64_t after_majority)
+                         PinData *pindata, uint64_t changed_majority)
 {
     BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
     uint8_t pin;
     while (bitmap_iterator_next(&it, &pin))
     {
-        log_pin_changes(phase, pindata, blacklist_mask,
-                        before_majority, after_majority, pin);
+        log_pin_changes(phase, pindata, blacklist_mask, changed_majority, pin);
     }
 }
 
@@ -268,15 +240,15 @@ static void setup_no_pull_high(uint8_t pin)
     gpio_drive_high(pin);
 }
 
-static void post_reset_pullup(uint8_t pin)
+static void post_reset_pullup(uint64_t blacklist, uint8_t pin)
 {
     gpio_reset(pin);
-    flush_pin_states(0, GPIO_PULL_UP);
+    flush_pin_states(blacklist, GPIO_PULL_UP);
 }
-static void post_reset_pulldown(uint8_t pin)
+static void post_reset_pulldown(uint64_t blacklist, uint8_t pin)
 {
     gpio_reset(pin);
-    flush_pin_states(0, GPIO_PULL_DOWN);
+    flush_pin_states(blacklist, GPIO_PULL_DOWN);
 }
 
 /**
@@ -287,14 +259,12 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     LOG("Phase 0: Pull-down, drive low\n");
     reset_all_pins(blacklist_mask);
 
-    uint32_t before_history[64] = {0};
-    uint32_t after_history[64] = {0};
+    uint32_t changed_history[64] = {0};
 
-    measure_phase(blacklist_mask, setup_pulldown_low, 10, post_reset_pullup, before_history, after_history);
+    measure_phase(blacklist_mask, setup_pulldown_low, 10, post_reset_pullup, changed_history);
 
-    uint64_t before_majority, after_majority;
-    compute_majority(before_history, after_history, &before_majority, &after_majority);
-    log_all_pins(PHASE_0_PULLDOWN_DRIVE_LOW, blacklist_mask, pindata, before_majority, after_majority);
+    uint64_t changed_majority = compute_affected_pins(changed_history);
+    log_all_pins(PHASE_0_PULLDOWN_DRIVE_LOW, blacklist_mask, pindata, changed_majority);
 }
 
 /**
@@ -305,14 +275,13 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     LOG("Phase 1: Pull-up, drive high\n");
     reset_all_pins(blacklist_mask);
 
-    uint32_t before_history[64] = {0};
-    uint32_t after_history[64] = {0};
+    uint32_t changed_history[64] = {0};
 
-    measure_phase(blacklist_mask, setup_pullup_high, 20, post_reset_pulldown, before_history, after_history);
+    measure_phase(blacklist_mask, setup_pullup_high, 20, post_reset_pulldown, changed_history);
 
     uint64_t before_majority, after_majority;
-    compute_majority(before_history, after_history, &before_majority, &after_majority);
-    log_all_pins(PHASE_1_PULLUP_DRIVE_HIGH, blacklist_mask, pindata, before_majority, after_majority);
+    uint64_t changed_majority = compute_affected_pins(changed_history);
+    log_all_pins(PHASE_1_PULLUP_DRIVE_HIGH, blacklist_mask, pindata, changed_majority);
 }
 
 /**
@@ -323,14 +292,11 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     LOG("Phase 2: No pull, drive low\n");
     reset_all_pins(blacklist_mask);
 
-    uint32_t before_history[64] = {0};
-    uint32_t after_history[64] = {0};
+    uint32_t changed_history[64] = {0};
+    measure_phase(blacklist_mask, setup_no_pull_low, 30, post_reset_pullup, changed_history);
 
-    measure_phase(blacklist_mask, setup_no_pull_low, 30, post_reset_pullup, before_history, after_history);
-
-    uint64_t before_majority, after_majority;
-    compute_majority(before_history, after_history, &before_majority, &after_majority);
-    log_all_pins(PHASE_2_NO_PULL_DRIVE_LOW, blacklist_mask, pindata, before_majority, after_majority);
+    uint64_t changed_majority = compute_affected_pins(changed_history);
+    log_all_pins(PHASE_2_NO_PULL_DRIVE_LOW, blacklist_mask, pindata, changed_majority);
 }
 
 /**
@@ -341,14 +307,10 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     LOG("Phase 3: No pull, drive high\n");
     reset_all_pins(blacklist_mask);
 
-    uint32_t before_history[64] = {0};
-    uint32_t after_history[64] = {0};
-
-    measure_phase(blacklist_mask, setup_no_pull_high, 40, post_reset_pulldown, before_history, after_history);
-
-    uint64_t before_majority, after_majority;
-    compute_majority(before_history, after_history, &before_majority, &after_majority);
-    log_all_pins(PHASE_3_NO_PULL_DRIVE_HIGH, blacklist_mask, pindata, before_majority, after_majority);
+    uint32_t changed_history[64] = {0};
+    measure_phase(blacklist_mask, setup_no_pull_high, 40, post_reset_pulldown, changed_history);
+    uint64_t changed_majority = compute_affected_pins(changed_history);
+    log_all_pins(PHASE_3_NO_PULL_DRIVE_HIGH, blacklist_mask, pindata, changed_majority);
 }
 
 /**
