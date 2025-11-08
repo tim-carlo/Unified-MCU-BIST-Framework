@@ -22,7 +22,7 @@
 #define MAX_SEEN_DEVICES 2         // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
-#define PIN_EVENT_COUNT 13
+#define PIN_EVENT_COUNT 16
 typedef uint8_t PinEventType;
 enum
 {
@@ -38,7 +38,13 @@ enum
     PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH,
     UART_RX_IS_NOT_WORKING,
     EXPECTS_TO_WORK_IN_ONE_DIRECTION,
-    EXCEEDS_CONNECTION_LIMIT
+    EXCEEDS_CONNECTION_LIMIT,
+    STEP_1_A_FOLLOWS,
+    STEP_1_B_FOLLOWS,
+    STEP_2_A_FOLLOWS,
+    STEP_2_B_FOLLOWS,
+    STEP_3_A_FOLLOWS,
+    STEP_3_B_FOLLOWS
 };
 
 typedef uint8_t ConnectionType;
@@ -65,7 +71,7 @@ typedef struct
     PinConnection connections[MAX_CONNECTIONS_PER_PIN];
     uint8_t connection_index;  // that is the highest used index in connections
     uint8_t connections_count; // number of valid connections
-    uint16_t event_mask;       // Bitmask to track which events have occurred
+    uint32_t event_mask;       // Bitmask to track which events have occurred
 } PinData;
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
