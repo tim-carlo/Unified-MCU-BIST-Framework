@@ -22,7 +22,7 @@
 #define MAX_SEEN_DEVICES 2         // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
-#define PIN_EVENT_COUNT 16
+#define PIN_EVENT_COUNT 25
 typedef uint8_t PinEventType;
 enum
 {
@@ -39,12 +39,18 @@ enum
     UART_RX_IS_NOT_WORKING,
     EXPECTS_TO_WORK_IN_ONE_DIRECTION,
     EXCEEDS_CONNECTION_LIMIT,
-    STEP_1_A_FOLLOWS,
-    STEP_1_B_FOLLOWS,
-    STEP_2_A_FOLLOWS,
-    STEP_2_B_FOLLOWS,
-    STEP_3_A_FOLLOWS,
-    STEP_3_B_FOLLOWS
+    STEP_1_A_HIGH,
+    STEP_1_A_LOW,
+    STEP_1_B_HIGH,
+    STEP_1_B_LOW,
+    STEP_2_A_HIGH,
+    STEP_2_A_LOW,
+    STEP_2_B_HIGH,
+    STEP_2_B_LOW,
+    STEP_3_A_HIGH,
+    STEP_3_A_LOW,
+    STEP_3_B_HIGH,
+    STEP_3_B_LOW
 };
 
 typedef uint8_t ConnectionType;
