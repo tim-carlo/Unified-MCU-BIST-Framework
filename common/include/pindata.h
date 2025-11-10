@@ -22,7 +22,7 @@
 #define MAX_SEEN_DEVICES 2         // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
-#define PIN_EVENT_COUNT 25
+#define PIN_EVENT_COUNT 29
 typedef uint8_t PinEventType;
 enum
 {
@@ -50,7 +50,11 @@ enum
     STEP_3_A_HIGH,
     STEP_3_A_LOW,
     STEP_3_B_HIGH,
-    STEP_3_B_LOW
+    STEP_3_B_LOW,
+    PIN_FLOATING_IN_PHASE0,
+    PIN_FLOATING_IN_PHASE1,
+    PIN_FLOATING_IN_PHASE2,
+    PIN_FLOATING_IN_PHASE3
 };
 
 typedef uint8_t ConnectionType;

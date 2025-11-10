@@ -255,7 +255,6 @@ int main(void)
     LOG("DEBUG: Starting handshake process\n");
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    pin_data[0].event_mask = 0xFFFFFFFFU;
     gpio_output_init(DEBUG_PIN1);gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
 
