@@ -38,13 +38,13 @@ enum
 typedef struct
 {
     uint64_t high_low;
-    uint64_t floating;
+    uint64_t undefined;
 } PinSamplesMultiplePins;
 
 typedef struct
 {
     bool high;
-    bool floating;
+    bool undefined;
 } PinSamples;
 
 /**
@@ -52,7 +52,7 @@ typedef struct
  *
  * @param blacklist_mask Mask where 1 = skip this pin, 0 = read this pin
  * @param samples Number of samples to read for debouncing
- * @return PinSamplesMultiplePins Structure containing high/low and floating states
+ * @return PinSamplesMultiplePins Structure containing high/low and undefined states
  */
 static inline PinSamplesMultiplePins read_all_pins(const uint64_t blacklist_mask, const uint8_t samples, const uint32_t Ddelay_us)
 {
@@ -93,7 +93,7 @@ static inline PinSamplesMultiplePins read_all_pins(const uint64_t blacklist_mask
         }
         else
         {
-            result.floating |= (1ULL << pin);
+            result.undefined |= (1ULL << pin);
         }
     }
 
@@ -121,16 +121,16 @@ static inline PinSamples sample_pin(const uint8_t pin, const uint8_t samples, co
     if (high_count >= high)
     {
         result.high = true;
-        result.floating = false;
+        result.undefined = false;
     }
     else if (high_count <= low)
     {
         result.high = false;
-        result.floating = false;
+        result.undefined = false;
     }
     else
     {
-        result.floating = true;
+        result.undefined = true;
     }
 
     return result;
@@ -138,7 +138,7 @@ static inline PinSamples sample_pin(const uint8_t pin, const uint8_t samples, co
 
 /**
  * @brief Set all pins to input with specified pull type, wait for settling, then reset them
- * This helps to discharge/charge any capacitances on the lines, and reduce floating states.
+ * This helps to discharge/charge any capacitances on the lines, and reduce undefined states.
  * @param blacklist_mask Mask where 1 = skip this pin, 0 = set this pin
  * @param pull_type Pull resistor type to set on the pins
  */
@@ -181,14 +181,14 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
                             PinData *pindata,
                             uint64_t blacklist_mask,
                             uint8_t changes[64],
-                            uint8_t floating_counts[64],
+                            uint8_t undefined_counts[64],
                             uint8_t state_after_as_expected_of_own,
                             uint8_t test_pin)
 {
 
     // We want to be clear if the pin is clearly not behaving as expected
     // So that it is externally modified
-    if (state_after_as_expected_of_own < threshold_measure && floating_counts[test_pin] == 0)
+    if (state_after_as_expected_of_own < threshold_measure && undefined_counts[test_pin] == 0)
     {
         switch (phase)
         {
@@ -254,7 +254,8 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
 
         for (uint8_t k = 0; k < 64; k++)
         {
-            if (!(state.floating & (1ULL << k)))
+            // Ignore all pins that are undefined
+            if (!(state.undefined & (1ULL << k)))
             {
                 // Check if pin is high
                 if (state.high_low & (1ULL << k))
@@ -306,7 +307,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
 
         for (uint8_t k = 0; k < 64; k++)
         {
-            if (!(state.floating & (1ULL << k)))
+            if (!(state.undefined & (1ULL << k)))
             {
                 // Check if pin is high
                 if (state.high_low & (1ULL << k))
@@ -342,6 +343,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
 
     const uint8_t threshold_step2 = (repetitions_step2 * 100) / 100;
     const uint8_t number_of_samples = 16;
+    const uint8_t Ddelay_us = 10;
 
     // Step A:
     uint64_t pin_mask = ~blacklist_mask;
@@ -354,11 +356,11 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_DOWN);
             delay_ms(10 * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples, 10);
+            PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
-            if (!state.floating)
+            if (!state.undefined)
             {
                 if (state.high)
                 {
@@ -389,11 +391,11 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_UP);
             delay_ms(10 * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples, 10);
+            PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
-            if (!state.floating)
+            if (!state.undefined)
             {
                 if (state.high)
                 {
@@ -427,6 +429,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_low[64] = {0};
 
     const uint8_t number_of_samples = 16;
+    const uint8_t Ddelay_us = 10;
 
     uint64_t mask = ~blacklist_mask;
     uint8_t pin;
@@ -441,15 +444,15 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_low(pin);
             delay_ms(1);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples, 10);
+            PinSamples measurements = sample_pin(pin, number_of_samples, Ddelay_us);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
-            if (!measurements.floating && !measurements.high)
+            if (!measurements.undefined && !measurements.high)
             {
                 pin_low[pin]++;
             }
-            else if (!measurements.floating && measurements.high)
+            else if (!measurements.undefined && measurements.high)
             {
                 pin_high[pin]++;
             }
@@ -481,16 +484,16 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_high(pin);
             delay_ms(1);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples, 10);
+            PinSamples measurements = sample_pin(pin, number_of_samples, Ddelay_us);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
 
-            if (!measurements.floating && !measurements.high)
+            if (!measurements.undefined && !measurements.high)
             {
                 pin_low[pin]++;
             }
-            else if (!measurements.floating && measurements.high)
+            else if (!measurements.undefined && measurements.high)
             {
                 pin_high[pin]++;
             }
@@ -524,7 +527,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
     while (bitmap_iterator_next(&it, &pin))
     {
         uint8_t changes[64] = {0};
-        uint8_t floating_counts[64] = {0};
+        uint8_t undefined_counts[64] = {0};
         uint8_t state_after_as_expected_of_own = 0;
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
@@ -546,9 +549,9 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
             {
                 // Check own pin
-                if (before.floating & (1ULL << check_pin) || after.floating & (1ULL << check_pin))
+                if (before.undefined & (1ULL << check_pin) || after.undefined & (1ULL << check_pin))
                 {
-                    floating_counts[check_pin]++;
+                    undefined_counts[check_pin]++;
                 }
                 else
                 {
@@ -570,7 +573,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
                 }
             }
         }
-        log_pin_changes(PHASE_0_PULLDOWN_DRIVE_LOW, pindata, blacklist_mask, changes, floating_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_0_PULLDOWN_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
@@ -588,7 +591,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
     while (bitmap_iterator_next(&it, &pin))
     {
         uint8_t changes[64] = {0};
-        uint8_t floating_counts[64] = {0};
+        uint8_t undefined_counts[64] = {0};
         uint8_t state_after_as_expected_of_own = 0;
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
@@ -605,9 +608,9 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
 
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
             {
-                if (before.floating & (1ULL << check_pin) || after.floating & (1ULL << check_pin))
+                if (before.undefined & (1ULL << check_pin) || after.undefined & (1ULL << check_pin))
                 {
-                    floating_counts[check_pin]++;
+                    undefined_counts[check_pin]++;
                 }
                 else
                 {
@@ -628,7 +631,7 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_1_PULLUP_DRIVE_HIGH, pindata, blacklist_mask, changes, floating_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_1_PULLUP_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
@@ -646,7 +649,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
     while (bitmap_iterator_next(&it, &pin))
     {
         uint8_t changes[64] = {0};
-        uint8_t floating_counts[64] = {0};
+        uint8_t undefined_counts[64] = {0};
         uint8_t state_after_as_expected_of_own = 0;
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
@@ -663,9 +666,9 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
             gpio_reset(pin);
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
             {
-                if (before.floating & (1ULL << check_pin) || after.floating & (1ULL << check_pin))
+                if (before.undefined & (1ULL << check_pin) || after.undefined & (1ULL << check_pin))
                 {
-                    floating_counts[check_pin]++;
+                    undefined_counts[check_pin]++;
                 }
                 else
                 {
@@ -686,7 +689,7 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_2_NO_PULL_DRIVE_LOW, pindata, blacklist_mask, changes, floating_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_2_NO_PULL_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
@@ -704,7 +707,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
     while (bitmap_iterator_next(&it, &pin))
     {
         uint8_t changes[64] = {0};
-        uint8_t floating_counts[64] = {0};
+        uint8_t undefined_counts[64] = {0};
         uint8_t state_after_as_expected_of_own = 0;
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
@@ -724,9 +727,9 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
 
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
             {
-                if (before.floating & (1ULL << check_pin) || after.floating & (1ULL << check_pin))
+                if (before.undefined & (1ULL << check_pin) || after.undefined & (1ULL << check_pin))
                 {
-                    floating_counts[check_pin]++;
+                    undefined_counts[check_pin]++;
                 }
                 else
                 {
@@ -747,7 +750,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
                 }
             }
         }
-        log_pin_changes(PHASE_3_NO_PULL_DRIVE_HIGH, pindata, blacklist_mask, changes, floating_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_3_NO_PULL_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
