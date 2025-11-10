@@ -334,7 +334,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
     LOG("Step 2A/B: Weak pull-up/pull-down test\n");
 
     const uint8_t threshold_step2 = (repetitions_step2 * 100) / 100;
-    const uint8_t number_of_samples = 16;
+    const uint8_t number_of_samples = 6;
     const uint8_t Ddelay_us = 10;
 
     // Step A:
@@ -347,7 +347,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         for (uint8_t i = 0; i < repetitions_step2; i++)
         {
             gpio_input_init(pin, GPIO_PULL_DOWN);
-            delay_ms(10 * (i + 1));
+            delay_ms(TIME_BETWEEN_PHASES * (i + 1));
             PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
@@ -420,7 +420,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_high[64] = {0};
     uint8_t pin_low[64] = {0};
 
-    const uint8_t number_of_samples = 16;
+    const uint8_t number_of_samples = 6;
     const uint8_t Ddelay_us = 10;
 
     uint64_t mask = ~blacklist_mask;

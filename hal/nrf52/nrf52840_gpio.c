@@ -94,7 +94,12 @@ void gpio_reset_from_blacklist(const uint64_t blacklist_mask)
     {
         uint32_t port = ABS_TO_PORT(pin);
         uint32_t idx = ABS_TO_PINIDX(pin);
-        port_ptr(port)->PIN_CNF[idx] = 0;
+        port_ptr(port)->PIN_CNF[idx] =
+            BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) |
+            BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) |
+            BV_BY_NAME(GPIO_PIN_CNF_PULL, Disabled) |
+            BV_BY_NAME(GPIO_PIN_CNF_DRIVE, S0S1) |
+            BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
     }
 }
 
