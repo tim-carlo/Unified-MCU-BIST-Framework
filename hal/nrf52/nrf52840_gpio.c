@@ -88,12 +88,12 @@ static inline uint32_t gpio_pull_to_cnf_bits(gpio_pull_t pull)
 
 void gpio_reset_from_blacklist(const uint64_t blacklist_mask)
 {
-    const uint64_t mask = ~blacklist_mask;
-    const uint8_t pin;
+    uint64_t mask = ~blacklist_mask;
+    uint8_t pin;
     while (bitmap_iterator_next_mask_as_param(&mask, &pin))
     {
-        const uint32_t port = ABS_TO_PORT(pin);
-        const uint32_t idx = ABS_TO_PINIDX(pin);
+        uint32_t port = ABS_TO_PORT(pin);
+        uint32_t idx = ABS_TO_PINIDX(pin);
         port_ptr(port)->PIN_CNF[idx] = 0;
     }
 }
