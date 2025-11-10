@@ -17,20 +17,20 @@
 #include "msp430fr5994_uart.h"
 #endif
 
-#define MAX_TIMEOUT 500000
-#define MAX_RETRIES 3
+#define MAX_TIMEOUT (500000)
+#define MAX_RETRIES (3)
 
-#define CHUNCK_START_IDENTIFIER 0x01020304
-#define CHUNCK_END_IDENTIFIER 0x05060708
-#define HEADER_START_IDENTIFIER 0x090A0B0C
-#define HEADER_END_IDENTIFIER 0x0D0E0F10
-#define TRANSMISSION_START_IDENTIFIER 0x11121314
-#define TRANSMISSION_END_IDENTIFIER 0x15161718
-#define ACK_START_IDENTIFIER 0x191A1B1C
-#define ACK_END_IDENTIFIER 0x1D1E1F20
+#define CHUNCK_START_IDENTIFIER (0x01020304)
+#define CHUNCK_END_IDENTIFIER (0x05060708)
+#define HEADER_START_IDENTIFIER (0x090A0B0C)
+#define HEADER_END_IDENTIFIER (0x0D0E0F10)
+#define TRANSMISSION_START_IDENTIFIER (0x11121314)
+#define TRANSMISSION_END_IDENTIFIER (0x15161718)
+#define ACK_START_IDENTIFIER (0x191A1B1C)
+#define ACK_END_IDENTIFIER (0x1D1E1F20)
 
 // Error identifier
-#define ERROR_IDENTIFIER 0xE0E1E2E3
+#define ERROR_IDENTIFIER (0xE0E1E2E3)
 
 typedef enum
 {
@@ -56,6 +56,5 @@ typedef enum
 void uart_transmitter_init(void);
 UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uint8_t pindata_size);
 UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8_t pindata_size);
-void example_cbor_header_transmission_with_ack(void);
 
 #endif // UART_TRANSMITTER_H
