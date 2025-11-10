@@ -242,10 +242,11 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     for (uint8_t i = 0; i < repetitions_step1; i++)
     {
         gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_DOWN);
-        delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-
+        
+        delay_us(SETTLE_TIME_US);
         // reset all pins to high impedance
         gpio_reset_from_blacklist(blacklist_mask);
+        delay_ms(TIME_BETWEEN_PHASES * (i + 1));
         PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples, Ddelay_us);
 
         for (uint8_t k = 0; k < 64; k++)
@@ -290,9 +291,10 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     {
         gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_UP);
         // delay
-        delay_ms(10 * (i + 1));
+        delay_us(SETTLE_TIME_US);
         // reset all pins to high impedance
         gpio_reset_from_blacklist(blacklist_mask);
+        delay_ms(TIME_BETWEEN_PHASES * (i + 1));
         PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples, Ddelay_us);
 
         for (uint8_t k = 0; k < 64; k++)
