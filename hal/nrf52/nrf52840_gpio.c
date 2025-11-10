@@ -21,7 +21,7 @@ static inline NRF_GPIO_Type *port_ptr(uint32_t port)
 #endif
 }
 
-static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pull)
+static inline void cfg_pin_input(const NRF_GPIO_Type *p, const uint32_t idx, const gpio_pull_t pull)
 {
     // DIR=Input, INPUT=Connect, DRIVE=S0S1 (default), SENSE=Disabled
     uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
@@ -95,6 +95,18 @@ void gpio_reset_from_blacklist(const uint64_t blacklist_mask)
         uint32_t port = ABS_TO_PORT(pin);
         uint32_t idx = ABS_TO_PINIDX(pin);
         port_ptr(port)->PIN_CNF[idx] = 0;
+    }
+}
+
+void gpio_input_from_blacklist(const uint64_t blacklist_mask, gpio_pull_t pull)
+{
+    uint64_t mask = ~blacklist_mask;
+    uint8_t pin;
+    while (bitmap_iterator_next_mask_as_param(&mask, &pin))
+    {
+        uint32_t port = ABS_TO_PORT(pin);
+        uint32_t idx = ABS_TO_PINIDX(pin);
+        cfg_pin_input(port_ptr(port), idx, pull);
     }
 }
 

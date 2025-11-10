@@ -44,6 +44,7 @@ extern "C"
     bool gpio_read(uint8_t abs_pin);
     void gpio_reset(uint8_t abs_pin);
     void gpio_reset_from_blacklist(const uint64_t blacklist_mask);
+    void gpio_input_from_blacklist(const uint64_t blacklist_mask, gpio_pull_t pull);
     uint64_t gpio_read_all_ports(void);
 
     // Interrupt handling

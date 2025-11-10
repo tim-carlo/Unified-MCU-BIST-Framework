@@ -37,7 +37,7 @@ enum
 };
 typedef struct
 {
-    uint64_t high_low;
+    uint64_t high;
     uint64_t undefined;
 } PinSamplesMultiplePins;
 
@@ -85,11 +85,11 @@ static inline PinSamplesMultiplePins read_all_pins(const uint64_t blacklist_mask
     {
         if (high_count[pin] >= high)
         {
-            result.high_low |= (1ULL << pin);
+            result.high |= (1ULL << pin);
         }
         else if (high_count[pin] <= low)
         {
-            result.high_low &= ~(1ULL << pin);
+            result.high &= ~(1ULL << pin);
         }
         else
         {
@@ -238,15 +238,11 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
 
     // Phase A:
     const uint8_t phase_1_threshold = (repetitions_step1 * 100) / 100;
+
     for (uint8_t i = 0; i < repetitions_step1; i++)
     {
-        uint64_t pin_mask = ~blacklist_mask;
-        uint8_t pin;
-        while (bitmap_iterator_next_mask_as_param(&pin_mask, &pin))
-        {
-            gpio_input_init(pin, GPIO_PULL_DOWN);
-        }
-        delay_ms(10 * (i + 1));
+        gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_DOWN);
+        delay_ms(TIME_BETWEEN_PHASES * (i + 1));
 
         // reset all pins to high impedance
         gpio_reset_from_blacklist(blacklist_mask);
@@ -258,12 +254,12 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
             if (!(state.undefined & (1ULL << k)))
             {
                 // Check if pin is high
-                if (state.high_low & (1ULL << k))
+                if (state.high & (1ULL << k))
                 {
                     pin_high[k]++;
                 }
                 // Check if pin is low
-                else if (!(state.high_low & (1ULL << k)))
+                else if (!(state.high & (1ULL << k)))
                 {
                     pin_low[k]++;
                 }
@@ -292,13 +288,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     // Phase B:
     for (uint8_t i = 0; i < repetitions_step1; i++)
     {
-        uint64_t pin_mask = ~blacklist_mask;
-        uint8_t pin;
-        while (bitmap_iterator_next_mask_as_param(&pin_mask, &pin))
-        {
-            gpio_input_init(pin, GPIO_PULL_UP);
-        }
-
+        gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_UP);
         // delay
         delay_ms(10 * (i + 1));
         // reset all pins to high impedance
@@ -310,12 +300,12 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
             if (!(state.undefined & (1ULL << k)))
             {
                 // Check if pin is high
-                if (state.high_low & (1ULL << k))
+                if (state.high & (1ULL << k))
                 {
                     pin_high[k]++;
                 }
                 // Check if pin is low
-                else if (!(state.high_low & (1ULL << k)))
+                else if (!(state.high & (1ULL << k)))
                 {
                     pin_low[k]++;
                 }
@@ -557,14 +547,14 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
                 {
                     if (check_pin == pin)
                     {
-                        if (!(after.high_low & (1ULL << check_pin)))
+                        if (!(after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own++;
                         }
                     }
                     else
                     {
-                        uint64_t diff = (before.high_low ^ after.high_low) & ~blacklist_mask;
+                        uint64_t diff = (before.high ^ after.high) & ~blacklist_mask;
                         if (diff & (1ULL << check_pin))
                         {
                             changes[check_pin]++;
@@ -617,14 +607,14 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
                     if (check_pin == pin)
                     {
                         // Check if the pin is high as expected
-                        if ((after.high_low & (1ULL << check_pin)))
+                        if ((after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own++;
                         }
                     }
                     else
                     {
-                        uint64_t diff = (before.high_low ^ after.high_low) & ~blacklist_mask;
+                        uint64_t diff = (before.high ^ after.high) & ~blacklist_mask;
                         if (diff & (1ULL << check_pin))
                             changes[check_pin]++;
                     }
@@ -675,14 +665,14 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
                     if (check_pin == pin)
                     {
                         // Check if the pin is low as expected
-                        if (!(after.high_low & (1ULL << check_pin)))
+                        if (!(after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own++;
                         }
                     }
                     else
                     {
-                        uint64_t diff = (before.high_low ^ after.high_low) & ~blacklist_mask;
+                        uint64_t diff = (before.high ^ after.high) & ~blacklist_mask;
                         if (diff & (1ULL << check_pin))
                             changes[check_pin]++;
                     }
@@ -736,14 +726,14 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
                     if (check_pin == pin)
                     {
                         // Check if the pin is high as expected
-                        if ((after.high_low & (1ULL << check_pin)))
+                        if ((after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own++;
                         }
                     }
                     else
                     {
-                        uint64_t diff = (before.high_low ^ after.high_low) & ~blacklist_mask;
+                        uint64_t diff = (before.high ^ after.high) & ~blacklist_mask;
                         if (diff & (1ULL << check_pin))
                             changes[check_pin]++;
                     }
