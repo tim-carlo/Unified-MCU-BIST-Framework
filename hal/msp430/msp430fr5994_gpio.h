@@ -1,5 +1,6 @@
-#ifndef MSP430FR5994_GPIO_HAL_H
-#define MSP430FR5994_GPIO_HAL_H
+#ifndef MSP430FR5994_GPIO_H
+#define MSP430FR5994_GPIO_H
+
 #include <msp430.h>
 #include <msp430fr5994.h>
 #include <stdint.h>
@@ -18,10 +19,6 @@ extern "C" {
 #define ABS_BIT(abs_pin) (1ULL << (uint64_t)(abs_pin))
 
 #define NUMBER_OF_GPIO_PINS MSP430_NUM_ABS_PINS
-
-
-
-
 #define INVALID_PIN 255 // Invalid pin number
 
 // Pull configuration
@@ -58,8 +55,4 @@ void gpio_od_hold_low(uint8_t abs_pin);
 void gpio_od_release(uint8_t abs_pin);
 
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // MSP430FR5994_GPIO_HAL_H
+#endif // MSP430FR5994_GPIO_H

@@ -1,5 +1,5 @@
-#ifndef MANCHESTER_h
-#define MANCHESTER_h
+#ifndef MANCHESTER_H
+#define MANCHESTER_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -64,4 +64,4 @@ bool manchester_is_transmitting(void);
 bool manchester_is_receiving(void);
 bool manchester_is_idle(void);
 
-#endif // MANCHESTER_h
+#endif // MANCHESTER_H

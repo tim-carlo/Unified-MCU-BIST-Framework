@@ -30,10 +30,10 @@ static const uint8_t repetitions_step3 = 5;
 typedef uint8_t SetOneMeasureALLPhase;
 enum
 {
-    PHASE_0_PULLDOWN_DRIVE_LOW,
-    PHASE_1_PULLUP_DRIVE_HIGH,
-    PHASE_2_NO_PULL_DRIVE_LOW,
-    PHASE_3_NO_PULL_DRIVE_HIGH
+    PHASE_0_ONE_SET_PULLDOWN,
+    PHASE_1_ONE_SET_PULLUP,
+    PHASE_2_DRIVE_LOW,
+    PHASE_3_DRIVE_HIGH,
 };
 typedef struct
 {
@@ -192,21 +192,21 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
     {
         switch (phase)
         {
-        case PHASE_0_PULLDOWN_DRIVE_LOW:
+        case PHASE_0_ONE_SET_PULLDOWN:
             // state_after_as_expected_of_own
             LOG("state_after_as_expected_of_own %d < threshold_measure %d\n", state_after_as_expected_of_own, threshold_measure);
             LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
             break;
-        case PHASE_1_PULLUP_DRIVE_HIGH:
+        case PHASE_1_ONE_SET_PULLUP:
             LOG("Phase %d: Pin %u did not go high as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_PULLED_UP);
             break;
-        case PHASE_2_NO_PULL_DRIVE_LOW:
+        case PHASE_2_DRIVE_LOW:
             LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_DRIVEN_LOW);
             break;
-        case PHASE_3_NO_PULL_DRIVE_HIGH:
+        case PHASE_3_DRIVE_HIGH:
             LOG("Phase %d: Pin %u did not go high as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH);
             break;
@@ -242,7 +242,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     for (uint8_t i = 0; i < repetitions_step1; i++)
     {
         gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_DOWN);
-        
+
         delay_us(SETTLE_TIME_US);
         // reset all pins to high impedance
         gpio_reset_from_blacklist(blacklist_mask);
@@ -382,7 +382,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         for (uint8_t i = 0; i < repetitions_step2; i++)
         {
             gpio_input_init(pin, GPIO_PULL_UP);
-            delay_ms(10 * (i + 1));
+            delay_ms(TIME_BETWEEN_PHASES * (i + 1));
             PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
@@ -508,7 +508,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
 /**
  * @brief Phase 0: Pull-down configuration, drive each pin low and measure others
  */
-static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata)
+static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 0: Pull-down, drive low\n");
     reset_all_pins(blacklist_mask);
@@ -565,14 +565,14 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
                 }
             }
         }
-        log_pin_changes(PHASE_0_PULLDOWN_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_0_ONE_SET_PULLDOWN, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
 /**
  * @brief Phase 1: Pull-up configuration, drive each pin high and measure others
  */
-static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
+static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 1: Pull-up, drive high\n");
     reset_all_pins(blacklist_mask);
@@ -623,14 +623,14 @@ static void phase_1_pullup_drive_high(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_1_PULLUP_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_1_ONE_SET_PULLUP, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
 /**
  * @brief Phase 2: No pull resistors, drive each pin low and measure others
  */
-static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
+static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 2: No pull, drive low\n");
     reset_all_pins(blacklist_mask);
@@ -681,14 +681,14 @@ static void phase_2_no_pull_drive_low(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_2_NO_PULL_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_2_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
 /**
  * @brief Phase 3: No pull resistors, drive each pin high and measure others
  */
-static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata)
+static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 3: No pull, drive high\n");
     reset_all_pins(blacklist_mask);
@@ -711,8 +711,6 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
             gpio_drive_high(pin);
 
             delay_us(500 * (i + 1));
-
-            // Großer Widerstand und die größte Kapazität führen zum Worstcase
 
             PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
             gpio_reset(pin);
@@ -742,7 +740,7 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
                 }
             }
         }
-        log_pin_changes(PHASE_3_NO_PULL_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_3_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
     }
 }
 
@@ -752,10 +750,11 @@ static void phase_3_no_pull_drive_high(uint64_t blacklist_mask, PinData *pindata
 void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size)
 {
     reset_all_pins(blacklist_mask);
-    phase_0_pulldown_drive_low(blacklist_mask, pindata);
-    phase_1_pullup_drive_high(blacklist_mask, pindata);
-    phase_2_no_pull_drive_low(blacklist_mask, pindata);
-    phase_3_no_pull_drive_high(blacklist_mask, pindata);
+    phase_0_one_set_pulldown(blacklist_mask, pindata);
+    phase_1_one_set_pullup(blacklist_mask, pindata);
+    phase_2_drive_low(blacklist_mask, pindata);
+    phase_3_drive_high(blacklist_mask, pindata);
+
     step_1(blacklist_mask, pindata);
     step_2(blacklist_mask, pindata);
     step_3(blacklist_mask, pindata);

@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef MUTEX_HANDLER_H
+#define MUTEX_HANDLER_H
 #if defined(NRF52840_XXAA)
 #include "nrf52840_gpio.h"
 #elif defined(__MSP430FR5994__)
@@ -43,3 +43,5 @@ void mutex_handler_deinit(MutexHandler *handler);
 
 void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler);
 void mutex_handler_release_mutex(uint64_t blacklist_mask, MutexHandler *handler);
+
+#endif // MUTEX_HANDLER_H

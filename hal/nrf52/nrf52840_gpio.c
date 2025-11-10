@@ -21,7 +21,7 @@ static inline NRF_GPIO_Type *port_ptr(uint32_t port)
 #endif
 }
 
-static inline void cfg_pin_input(const NRF_GPIO_Type *p, const uint32_t idx, const gpio_pull_t pull)
+static inline void cfg_pin_input(NRF_GPIO_Type *p, uint32_t idx, gpio_pull_t pull)
 {
     // DIR=Input, INPUT=Connect, DRIVE=S0S1 (default), SENSE=Disabled
     uint32_t cnf = BV_BY_NAME(GPIO_PIN_CNF_DIR, Input) | BV_BY_NAME(GPIO_PIN_CNF_INPUT, Connect) | BV_BY_NAME(GPIO_PIN_CNF_SENSE, Disabled);
@@ -30,8 +30,6 @@ static inline void cfg_pin_input(const NRF_GPIO_Type *p, const uint32_t idx, con
     {
     case GPIO_PULL_UP:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pullup);
-        // This means that the pin
-        //     cnf |= BV_BY_NAME(GPIO_DRIVE_MODE, D0S1);
         break;
     case GPIO_PULL_DOWN:
         cnf |= BV_BY_NAME(GPIO_PIN_CNF_PULL, Pulldown);

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PIN_CONFIG_H
+#define PIN_CONFIG_H
 
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h" // used for the abs pin calculation
@@ -170,3 +171,5 @@
 #endif
 
 #endif // DEV_KIT
+
+#endif // PIN_CONFIG_H
