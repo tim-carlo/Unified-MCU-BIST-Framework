@@ -186,11 +186,15 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
                             uint8_t test_pin)
 {
 
-    if (state_after_as_expected_of_own < threshold_measure)
+    // We want to be clear if the pin is clearly not behaving as expected
+    // So that it is externally modified
+    if (state_after_as_expected_of_own < threshold_measure && floating_counts[test_pin] == 0)
     {
         switch (phase)
         {
         case PHASE_0_PULLDOWN_DRIVE_LOW:
+            // state_after_as_expected_of_own
+            LOG("state_after_as_expected_of_own %d < threshold_measure %d\n", state_after_as_expected_of_own, threshold_measure);
             LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
             break;
@@ -547,7 +551,7 @@ static void phase_0_pulldown_drive_low(uint64_t blacklist_mask, PinData *pindata
                 {
                     if (check_pin == pin)
                     {
-                        if ((after.high_low & (1ULL << check_pin)))
+                        if (!(after.high_low & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own++;
                         }
