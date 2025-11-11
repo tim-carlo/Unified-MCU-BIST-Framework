@@ -470,22 +470,22 @@ void uart_clear_errors(uart_instance_t *uart)
  * @param abs_rx_pin Absolute RX pin number (0-63)
  * @return uart_pins_t Pin configuration structure
  */
-uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
-{
-    uart_pins_t pins = {0};
+// uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
+// {
+//     uart_pins_t pins = {0};
 
-    uint8_t tx_port = ABS_TO_PORT(abs_tx_pin);
-    uint8_t tx_idx = ABS_TO_PINIDX(abs_tx_pin);
-    uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
-    uint8_t rx_idx = ABS_TO_PINIDX(abs_rx_pin);
+//     uint8_t tx_port = ABS_TO_PORT(abs_tx_pin);
+//     uint8_t tx_idx = ABS_TO_PINIDX(abs_tx_pin);
+//     uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
+//     uint8_t rx_idx = ABS_TO_PINIDX(abs_rx_pin);
 
-    pins.tx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL0_OFFSET);
-    pins.tx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL1_OFFSET);
-    pins.tx_mask = (uint8_t)(1U << tx_idx);
+//     pins.tx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL0_OFFSET);
+//     pins.tx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL1_OFFSET);
+//     pins.tx_mask = (uint8_t)(1U << tx_idx);
 
-    pins.rx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL0_OFFSET);
-    pins.rx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL1_OFFSET);
-    pins.rx_mask = (uint8_t)(1U << rx_idx);
+//     pins.rx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL0_OFFSET);
+//     pins.rx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL1_OFFSET);
+//     pins.rx_mask = (uint8_t)(1U << rx_idx);
 
-    return pins;
-}
+//     return pins;
+// }

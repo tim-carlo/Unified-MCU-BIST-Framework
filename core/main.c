@@ -22,8 +22,6 @@
 
 #endif
 
-#include "nrf52840.h"
-
 #include "pin_config.h"
 #include "stack.h"
 #include "timing_pindata.h"
@@ -120,14 +118,20 @@ const uint8_t array[] = {
 #endif
 void set_shepherd_pins()
 {
-    initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
+    // Set every pin except the pins for SWDIO, SWDCLK, UART TX
+    // The document says some Pins should be configured in standard drive mode
+    // So we set them maximal to standard drive mode
+    // So blacklisting for aQFN73: On the dev kits the pin P0.18 is used for reset
+    // Programming pins cant be overwritten:
 
-    for (size_t i = 0; i < sizeof(array) / sizeof(array[0]); i++)
+    initial_state_mask = 0ULL; // whitelist all pins
+
+    // Black list all pins that don't exist
+    for (uint8_t pin = NUMBER_OF_GPIO_PINS; pin < 64; pin++)
     {
-        initial_state_mask &= ~(1ULL << array[i]);
+        initial_state_mask |= (1ULL << pin);
     }
 }
-
 void set_pins_test_env_pins()
 {
     initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted

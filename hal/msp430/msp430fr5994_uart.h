@@ -68,7 +68,7 @@ uint16_t uart_get_status(uart_instance_t *uart);
 uint16_t uart_get_errors(uart_instance_t *uart);
 void uart_clear_errors(uart_instance_t *uart);
 
-// Helper function to create pin configuration from absolute pin numbers
-uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin);
+/* // Helper function to create pin configuration from absolute pin numbers
+uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin); */
 
 #endif // MSP430FR5994_UART_H

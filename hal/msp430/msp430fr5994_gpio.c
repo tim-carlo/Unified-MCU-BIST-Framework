@@ -3,7 +3,6 @@
 
 #define LOG(fmt, ...) printf("GPIO: " fmt, ##__VA_ARGS__)
 
-
 /**
  * @brief Map absolute pin number to port register group (0–7: PJ, 8–15: P1, etc.)
  */
@@ -87,6 +86,56 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
         *port_ren[port] |= mask;
         *port_out[port] |= mask;
         break;
+    }
+}
+
+void gpio_reset_from_blacklist(uint64_t blacklist_mask)
+{
+    for (uint8_t port = 0; port < 8; ++port)
+    {
+        uint8_t bl = (blacklist_mask >> (port * 8)) & 0xFFU;
+
+        if (bl == 0xFF)
+            continue;
+
+        uint8_t active_mask = (uint8_t)(~bl);
+
+        *port_dir[port] &= ~active_mask;
+        *port_out[port] &= ~active_mask;
+        *port_ren[port] &= ~active_mask;
+    }
+}
+
+void gpio_input_from_blacklist(uint64_t blacklist_mask, gpio_pull_t pull)
+{
+    for (uint8_t port = 0; port < 8; ++port)
+    {
+        uint8_t bl = (blacklist_mask >> (port * 8)) & 0xFFU;
+
+        if (bl == 0xFF)
+            continue;
+
+        uint8_t active_mask = (uint8_t)(~bl);
+
+        // Set as input
+        *port_dir[port] &= ~active_mask;
+
+        switch (pull)
+        {
+        case GPIO_PULL_NONE:
+            *port_ren[port] &= ~active_mask;
+            break;
+
+        case GPIO_PULL_DOWN:
+            *port_ren[port] |= active_mask;
+            *port_out[port] &= ~active_mask;
+            break;
+
+        case GPIO_PULL_UP:
+            *port_ren[port] |= active_mask;
+            *port_out[port] |= active_mask;
+            break;
+        }
     }
 }
 
