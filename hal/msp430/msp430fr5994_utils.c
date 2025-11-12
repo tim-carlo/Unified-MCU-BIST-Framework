@@ -4,11 +4,49 @@
  *
  * @return uint32_t Unique device ID
  */
+
 uint64_t get_unique_id(void)
 {
-    // Not available on MSP430 devices.
-    // Maybe return the random number.
-    return 0;
+    const uint8_t *tlv = (const uint8_t *)TLV_START;
+    const uint8_t *tlv_end = (const uint8_t *)TLV_END;
+
+    while (tlv < tlv_end)
+    {
+        uint8_t tag = *tlv++;
+        uint8_t length = *tlv++;
+
+        // Correct constant name:
+        if (tag == TLV_DIERECORD)
+        {
+            // TLV_DIERECORD layout (SLAU367):
+            // +0: Wafer ID (2 bytes)
+            // +2: Die X position (2 bytes)
+            // +4: Die Y position (2 bytes)
+            // +6: Lot ID (6 bytes)
+            const uint16_t wafer_id  = *(const uint16_t *)(tlv + 0);
+            const uint16_t die_x_pos = *(const uint16_t *)(tlv + 2);
+            const uint16_t die_y_pos = *(const uint16_t *)(tlv + 4);
+            const uint8_t *lot_id    = tlv + 6;
+
+            uint64_t unique_id = 0;
+
+            // Combine into 64 bits: [lot_id(6 bytes)][wafer_id(2 bytes)]
+            for (int i = 0; i < 6; ++i)
+            {
+                unique_id = (unique_id << 8) | lot_id[i];
+            }
+            unique_id = (unique_id << 16) | wafer_id;
+
+            // Mix in die coordinates for extra entropy
+            unique_id ^= ((uint64_t)die_x_pos << 32) | die_y_pos;
+
+            return unique_id;
+        }
+
+        tlv += length;  // move to next TLV entry
+    }
+
+    return 0;  // fallback only if no TLV record found
 }
 
 /**
