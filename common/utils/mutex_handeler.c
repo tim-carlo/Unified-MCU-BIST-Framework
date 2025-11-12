@@ -20,7 +20,7 @@
 #endif
 
 static const uint8_t MAX_RELEASE_TRIES = 4;
-static const uint8_t MAX_REQUEST_TRIES = 4;
+static const uint8_t MAX_REQUEST_TRIES = 40;
 static volatile bool interrupt_flag = false;
 
 /**
