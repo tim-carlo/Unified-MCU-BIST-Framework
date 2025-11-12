@@ -50,6 +50,7 @@ PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 // Flags controlled via interrupts
 
 volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
+volatile uint64_t handshake_mask = 0;    // Mask used during handshake
 
 // Inspired from Hacker’s Delight by Henry S. Warren, Jr.
 
@@ -115,6 +116,16 @@ const uint8_t array[] = {
     THRCTRL_L0,
     THRCTRL_L1,
 };
+
+void set_handshake_pins() 
+{
+    handshake_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
+    // white list all pins from array:
+    for (size_t i = 0; i < sizeof(array); i++)
+    {
+        handshake_mask &= ~(1ULL << array[i]);
+    }
+}
 #endif
 void set_shepherd_pins()
 {
@@ -123,6 +134,10 @@ void set_shepherd_pins()
     // So we set them maximal to standard drive mode
     // So blacklisting for aQFN73: On the dev kits the pin P0.18 is used for reset
     // Programming pins cant be overwritten:
+
+    // On the MSP430FR5994:
+    // None of the Pins must be blacklisted since all are available for GPIO use
+    // The Spy Bi Wire pins must not be blacklisted
 
     initial_state_mask = 0ULL; // whitelist all pins
 
@@ -135,21 +150,6 @@ void set_shepherd_pins()
 void set_pins_test_env_pins()
 {
     initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
-
-    // initial_state_mask &= ~(1ULL << GPIO0);
-    // initial_state_mask &= ~(1ULL << GPIO1);
-    // initial_state_mask &= ~(1ULL << GPIO2);
-    // initial_state_mask &= ~(1ULL << GPIO3);
-    //  initial_state_mask &= ~(1ULL << GPIO6);
-    //  initial_state_mask &= ~(1ULL << GPIO7);
-    //  initial_state_mask &= ~(1ULL << GPIO8);
-    //  initial_state_mask &= ~(1ULL << GPIO9);
-    //  initial_state_mask &= ~(1ULL << GPIO10);
-    //   initial_state_mask &= ~(1ULL << GPIO11);
-    //    initial_state_mask &= ~(1ULL << GPIO12);
-    //  initial_state_mask &= ~(1ULL << GPIO13);
-    //  initial_state_mask &= ~(1ULL << GPIO14);
-    //  initial_state_mask &= ~(1ULL << GPIO15);
 }
 
 void led0_show_error()
@@ -192,30 +192,6 @@ void perfom_mutex_operations()
     default:
         break;
     }
-
-    // uart_transmitter_init();
-    // UartTransmissionResult uart_result = send_complete_transmission_with_ack(pin_data, NUMBER_OF_GPIO_PINS);
-
-    // switch (uart_result)
-    // {
-    // case UART_TRANSMISSION_ERROR_SEND_FAILED | UART_TRANSMISSION_ERROR_ACK_FAILED:
-    //     printf("DEBUG: UART RX not working\n");
-    //     add_pin_event(pin_data, PIN_UART_RX, UART_RX_IS_NOT_WORKING);
-    //     send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
-    //     led2_show_error();
-    //     break;
-    // case UART_TRANSMISSION_ERROR_INIT_FAILED:
-    //     led2_show_error();
-    //     break;
-    // case UART_TRANSMISSION_MEMORY_ALLOCATION_FAILED:
-    //     led2_show_error();
-    //     break;
-    // case UART_TRANSMISSION_ERROR_NULL_POINTER:
-    //     led2_show_error();
-    //     break;
-    // default:
-    //     break;
-    // }
 }
 
 int main(void)
@@ -239,17 +215,6 @@ int main(void)
     led0_show_error();
 #elif defined(NRF52840_XXAA)
     led2_show_error();
-
-    // // Configure all GPIO pins as inputs (with pull) and stop
-    // for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
-    // {
-    //     gpio_input_init(pin, GPIO_NO_PULL);
-    // }
-    // while (1)
-    // {
-    //     // idle forever with all pins configured as inputs
-    // }
-
 #endif
 #else
     // set_standart_blacklist_pins(&initial_state_mask);
@@ -259,7 +224,8 @@ int main(void)
     LOG("DEBUG: Starting handshake process\n");
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    gpio_output_init(DEBUG_PIN1);gpio_output_init(DEBUG_PIN1);
+    gpio_output_init(DEBUG_PIN1);
+    gpio_output_init(DEBUG_PIN1);
     gpio_output_init(DEBUG_PIN2);
 
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
@@ -271,7 +237,7 @@ int main(void)
         gpio_od_init(pin);
     }
 
-    HandshakeResult handshake_result = perform_handshake(pin_data, initial_state_mask);
+    HandshakeResult handshake_result = perform_handshake(pin_data, handshake_mask);
 
     if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
     {
@@ -287,7 +253,7 @@ int main(void)
     }
 
     LOG("DEBUG: PERFORMING DATA HANDSHAKE\n");
-    DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, initial_state_mask);
+    DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, handshake_mask);
     LOG("DEBUG: Data handshake result status: %u, mutex_pin: %u, i_am_mutex_owner: %u\n",
         data_handshake_result.status,
         data_handshake_result.mutex_pin,

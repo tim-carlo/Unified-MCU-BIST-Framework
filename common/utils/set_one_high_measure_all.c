@@ -8,7 +8,7 @@
 
 static const uint8_t TIME_BETWEEN_PHASES = 10;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
-static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 5;
 
 static const uint32_t SETTLE_TIME_US = 1000;
 static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
@@ -21,7 +21,7 @@ static const uint8_t threshold_measure_percent = 100;
 static const uint8_t threshold_measure = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_measure_percent) / 100;
 
 static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 8;
-static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 16;
+static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 6;
 
 static const uint8_t repetitions_step1 = 5;
 static const uint8_t repetitions_step2 = 5;
@@ -182,19 +182,19 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
                             uint64_t blacklist_mask,
                             uint8_t changes[64],
                             uint8_t undefined_counts[64],
-                            uint8_t state_after_as_expected_of_own,
+                            uint8_t state_after_as_expected_of_own_pin,
                             uint8_t test_pin)
 {
 
     // We want to be clear if the pin is clearly not behaving as expected
     // So that it is externally modified
-    if (state_after_as_expected_of_own < threshold_measure && undefined_counts[test_pin] == 0)
+    if (state_after_as_expected_of_own_pin < threshold_measure && undefined_counts[test_pin] == 0)
     {
         switch (phase)
         {
         case PHASE_0_ONE_SET_PULLDOWN:
-            // state_after_as_expected_of_own
-            LOG("state_after_as_expected_of_own %d < threshold_measure %d\n", state_after_as_expected_of_own, threshold_measure);
+            // state_after_as_expected_of_own_pin
+            LOG("state_after_as_expected_of_own_pin %d < threshold_measure %d\n", state_after_as_expected_of_own_pin, threshold_measure);
             LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
             break;
@@ -520,7 +520,7 @@ static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
     {
         uint8_t changes[64] = {0};
         uint8_t undefined_counts[64] = {0};
-        uint8_t state_after_as_expected_of_own = 0;
+        uint8_t state_after_as_expected_of_own_pin = 0;
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
@@ -551,7 +551,7 @@ static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
                     {
                         if (!(after.high & (1ULL << check_pin)))
                         {
-                            state_after_as_expected_of_own++;
+                            state_after_as_expected_of_own_pin++;
                         }
                     }
                     else
@@ -565,7 +565,7 @@ static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_0_ONE_SET_PULLDOWN, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_0_ONE_SET_PULLDOWN, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
 }
 
@@ -584,7 +584,7 @@ static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
     {
         uint8_t changes[64] = {0};
         uint8_t undefined_counts[64] = {0};
-        uint8_t state_after_as_expected_of_own = 0;
+        uint8_t state_after_as_expected_of_own_pin = 0;
 
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
@@ -611,7 +611,7 @@ static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
                         // Check if the pin is high as expected
                         if ((after.high & (1ULL << check_pin)))
                         {
-                            state_after_as_expected_of_own++;
+                            state_after_as_expected_of_own_pin++;
                         }
                     }
                     else
@@ -623,7 +623,7 @@ static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_1_ONE_SET_PULLUP, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_1_ONE_SET_PULLUP, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
 }
 
@@ -642,7 +642,7 @@ static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
     {
         uint8_t changes[64] = {0};
         uint8_t undefined_counts[64] = {0};
-        uint8_t state_after_as_expected_of_own = 0;
+        uint8_t state_after_as_expected_of_own_pin = 0;
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
@@ -669,7 +669,7 @@ static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
                         // Check if the pin is low as expected
                         if (!(after.high & (1ULL << check_pin)))
                         {
-                            state_after_as_expected_of_own++;
+                            state_after_as_expected_of_own_pin++;
                         }
                     }
                     else
@@ -681,7 +681,7 @@ static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_2_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_2_DRIVE_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
 }
 
@@ -700,7 +700,7 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
     {
         uint8_t changes[64] = {0};
         uint8_t undefined_counts[64] = {0};
-        uint8_t state_after_as_expected_of_own = 0;
+        uint8_t state_after_as_expected_of_own_pin = 0;
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
@@ -728,7 +728,7 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
                         // Check if the pin is high as expected
                         if ((after.high & (1ULL << check_pin)))
                         {
-                            state_after_as_expected_of_own++;
+                            state_after_as_expected_of_own_pin++;
                         }
                     }
                     else
@@ -740,7 +740,7 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
-        log_pin_changes(PHASE_3_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own, pin);
+        log_pin_changes(PHASE_3_DRIVE_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
 }
 
