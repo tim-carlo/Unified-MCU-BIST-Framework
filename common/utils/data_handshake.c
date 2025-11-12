@@ -5,7 +5,7 @@
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
 #endif
-// #include "printf.h"
+#include "printf.h"
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
 // #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -69,14 +69,13 @@ static void analyze_pindata_events(PinData *pindata)
 
     number_of_pins = 0;
 
-    // Calculate all pins mask at runtime - assume 64-bit max
-    const uint64_t all_pins_mask = ~0ULL;
-
     // Iterate through all pins that are not blacklisted
-    BitmapIterator it = bitmap_iterator_create(~internal_blacklist_mask & all_pins_mask);
+    uint64_t mask = ~internal_blacklist_mask;
     uint8_t pin;
 
-    while (bitmap_iterator_next(&it, &pin))
+    printf("DEBUG: Analyzing pindata events for handshake role determination\n");
+
+    while (bitmap_iterator_next_mask_as_param(&mask, &pin))
     {
         bool has_initiator = check_if_pinevent_exists(pindata, pin, HANDSHAKE_OK_INITIATOR);
         bool has_responder = check_if_pinevent_exists(pindata, pin, HANDSHAKE_OK_RESPONDER);
@@ -99,15 +98,21 @@ static void analyze_pindata_events(PinData *pindata)
         }
         else if (!has_initiator && !has_responder)
         {
-            // No valid role detected → blacklist pin
+            // No valid role detected: blacklist pin
+            internal_blacklist_mask |= (1ULL << pin);
+        }
+        else if (has_initiator && has_responder)
+        {
+            // No valid role detected: blacklist pin
             internal_blacklist_mask |= (1ULL << pin);
         }
         else
         {
-            // Both roles detected (should not happen) → blacklist pin
+            // Both roles detected (should not happen): blacklist pin
             internal_blacklist_mask |= (1ULL << pin);
         }
     }
+    printf("DEBUG: OKE \n");
 }
 
 static inline uint16_t get_listen_until_time(uint16_t factor)
@@ -156,7 +161,10 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t remote_pin = received_data[9];
     const uint8_t mutex_request = received_data[10];
 
-    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, remote_uuid);
+    // check if we already have a connection to the other device on this pin
+    //const uint8_t remote_uuid_index = add_seen_device(remote_uuid);
+
+    //add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, remote_uuid_index);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
@@ -239,7 +247,9 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t remote_pin = received_data[18];
     const uint8_t mutex_allowed = received_data[19];
 
-    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, other_device_uuid);
+    // Get index of the other device UUID
+    //const uint8_t other_device_uuid_index = add_seen_device(other_device_uuid);
+    //add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, other_device_uuid_index);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
     if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
@@ -325,14 +335,13 @@ static void fsm_data_handshake(void)
                     if (!parallel_manchester_receive_background(p))
                     {
                         LOG("Failed to start receiving request on pin %u\n", p->pin);
-                        // TODO: Handle ram failure properly
                     }
                     else
                     {
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
-                    // LOG("Request received on pin %u\n", pin);
+                    //LOG("Request received on pin %u\n", pin);
 
                     p->receiving_counter = 0;
                 }
@@ -469,11 +478,6 @@ static void fsm_data_handshake(void)
         }
         case JOB_RECEIVING_REQUEST:
         {
-#if defined(__MSP430FR5994__)
-            gpio_drive_high(PIN_LED0);
-#elif defined(NRF52840_XXAA)
-            gpio_drive_high(PIN_LED2);
-#endif
             if (parallel_manchester_receive_complete(p))
             {
                 if (!handle_request_receive_complete(p->pin, p))
@@ -506,11 +510,6 @@ static void fsm_data_handshake(void)
                 }
             }
             something_happened = true;
-#if defined(__MSP430FR5994__)
-            gpio_drive_low(PIN_LED0);
-#elif defined(NRF52840_XXAA)
-            gpio_drive_low(PIN_LED2);
-#endif
             break;
         }
         case JOB_RECEIVING_ANSWER:
@@ -594,7 +593,7 @@ static void send_data_isr(void)
 
 static void start_send_data_timer(void)
 {
-    uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
+    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(10);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -629,17 +628,25 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
     uint64_t valid_pins_mask = ~internal_blacklist_mask & ~0ULL;
 
+    printf("DEBUG: Number of pins to use for handshake: %u\n", number_of_pins);
+
     // Allocate and initialize
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
     if (!global_datahandshake_pindata)
+    {
+        printf("Failed to allocate memory for data handshake pindata\n");
         return handshake_result;
+    }
 
+    printf("DEBUG: Allocated memory for %u pins\n", number_of_pins);
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0;
     uint64_t valid_pins_for_fsm_mask = 0;
 
     uint8_t initiator_cnt = 0;
     uuid = get_own_device_id();
+
+    printf("Data handshake started on %u pins\n", number_of_pins);
 
     while (bitmap_iterator_next(&it, &pin_index))
     {

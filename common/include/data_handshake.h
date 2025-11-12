@@ -39,17 +39,17 @@
 
 typedef enum
 {
-    PACKET_TYPE_REQUEST,
-    PACKET_TYPE_ANSWER,
+    PACKET_TYPE_REQUEST = 0,
+    PACKET_TYPE_ANSWER = 1
 } PackageType;
 
 
 typedef enum
 {
-    DATA_HANDSHAKE_INITIALIZING_FAILURE,
-    DATA_HANDSHAKE_ISR_TO_LONG, // This failure is triggered when the ISR takes too long
-    DATA_HANDSHAKE_HANDSHAKE_FAILURE,
-    DATA_HANDSHAKE_SUCCESS
+    DATA_HANDSHAKE_INITIALIZING_FAILURE = 0,
+    DATA_HANDSHAKE_ISR_TO_LONG = 1, // This failure is triggered when the ISR takes too long
+    DATA_HANDSHAKE_HANDSHAKE_FAILURE = 2, // General handshake failure
+    DATA_HANDSHAKE_SUCCESS = 3
 } DataHandshakeStatus;
 
 typedef struct

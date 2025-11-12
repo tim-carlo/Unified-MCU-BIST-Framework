@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include "bitmap_iterator.h"
 
+
+
 #if defined(NRF52840_XXAA)
 #include "nrf52840_gpio.h"
 #include "nrf52840_utils.h"
@@ -18,7 +20,7 @@
 #define INITIAL_CONNECTION_CAPACITY 1 // Initial capacity for connections array
 #define MY_DEVICE_ID_INDEX 0          // Index of own device in seen_devices arrays
 
-#define MAX_CONNECTIONS_PER_PIN 10 // Adjust this if more is needed
+#define MAX_CONNECTIONS_PER_PIN 5 // Adjust this if more is needed
 #define MAX_SEEN_DEVICES 2         // Maximum number of seen devices to track
 #define DEVICE_NOT_FOUND 255
 
@@ -63,26 +65,29 @@ enum
     CONNECTION_TYPE_INTERNAL = 0,
     CONNECTION_TYPE_EXTERNAL = 1
 };
-typedef struct
+
+struct PinConnection
 {
     uint8_t other_pin : 6;              // up to 64 pins
     ConnectionType connection_type : 1; // internal or external connection
-    uint8_t parameter;                  // bleibt 8 Bit
-} PinConnection;
+    uint8_t parameter;                  
+} __attribute__((packed));
+typedef struct PinConnection PinConnection;
 
 // List so that the algorithm can be extended in the future to work with multiple devices
 extern uint8_t seen_devices_count;
 extern uint64_t seen_devices[MAX_SEEN_DEVICES];
 extern uint8_t seen_devices_index;
 
-typedef struct
+struct PinData
 {
     uint8_t pin;
     PinConnection connections[MAX_CONNECTIONS_PER_PIN];
     uint8_t connection_index;  // that is the highest used index in connections
     uint8_t connections_count; // number of valid connections
     uint32_t event_mask;       // Bitmask to track which events have occurred
-} PinData;
+} __attribute__((packed));
+typedef struct PinData PinData;
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);

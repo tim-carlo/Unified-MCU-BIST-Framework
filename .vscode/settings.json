@@ -48,6 +48,7 @@
         "nrf52840_uart.h": "c",
         "endian.h": "c",
         "string.h": "c",
-        "msp430fr5994_uart.h": "c"
+        "msp430fr5994_uart.h": "c",
+        "bitmap_iterator.h": "c"
     },
 }

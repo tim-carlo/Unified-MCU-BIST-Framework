@@ -48,11 +48,8 @@
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 
 // Flags controlled via interrupts
-
 volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
 volatile uint64_t handshake_mask = 0;    // Mask used during handshake
-
-// Inspired from Hacker’s Delight by Henry S. Warren, Jr.
 
 DataHandshakeResult data_handshake_result_test;
 
@@ -121,7 +118,7 @@ void set_handshake_pins()
 {
     handshake_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
     // white list all pins from array:
-    for (size_t i = 0; i < sizeof(array); i++)
+    for (size_t i = 0; i < (sizeof(array) / sizeof(array[0])); i++)
     {
         handshake_mask &= ~(1ULL << array[i]);
     }
@@ -147,10 +144,6 @@ void set_shepherd_pins()
         initial_state_mask |= (1ULL << pin);
     }
 }
-void set_pins_test_env_pins()
-{
-    initial_state_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
-}
 
 void led0_show_error()
 {
@@ -162,6 +155,7 @@ void led0_show_error()
         gpio_drive_low(PIN_LED0);
         delay_ms(200);
     }
+    gpio_reset(PIN_LED0);
 }
 void led2_show_error()
 {
@@ -173,6 +167,7 @@ void led2_show_error()
         gpio_drive_low(PIN_LED2);
         delay_ms(200);
     }
+    gpio_reset(PIN_LED2);
 }
 
 void perfom_mutex_operations()
@@ -198,6 +193,7 @@ int main(void)
 {
     mcu_init();
     // test of mutex handeler
+    printf("Size of PinData: %zu bytes\n", sizeof(PinData));
 
     DataHandshakeResult test_data_handshake_result;
 #if defined(NRF52840_XXAA)
@@ -209,28 +205,16 @@ int main(void)
     test_data_handshake_result.i_am_mutex_owner = false;
 #endif
 
-#if (DEV_KIT == 0)
     set_shepherd_pins();
-#if defined(__MSP430FR5994__)
-    led0_show_error();
-#elif defined(NRF52840_XXAA)
-    led2_show_error();
-#endif
-#else
-    // set_standart_blacklist_pins(&initial_state_mask);
-    set_standart_blacklist_pins(&initial_state_mask);
-#endif
-
+    set_handshake_pins();
     LOG("DEBUG: Starting handshake process\n");
 
+
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
-    gpio_output_init(DEBUG_PIN1);
-    gpio_output_init(DEBUG_PIN1);
-    gpio_output_init(DEBUG_PIN2);
 
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
-        if (initial_state_mask & (1ULL << pin))
+        if (handshake_mask & (1ULL << pin))
         {
             continue;
         }
@@ -248,6 +232,7 @@ int main(void)
     // if no working pin found, exit program, but run initial tests first
     if (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND)
     {
+        LOG("DEBUG: NO WORKING PIN FOUND DURING HANDSHAKE\n");
         perfom_mutex_operations();
         return 1; // Handshake failed, exit program
     }
