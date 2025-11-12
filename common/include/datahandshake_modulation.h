@@ -93,6 +93,7 @@ typedef struct
     uint8_t manchester_last_decoder_mode;
     bool manchester_last_rx;
     uint16_t manchester_rx_timeout_counter;
+    uint8_t handshake_attempts;
 } DataHandshakeData;
 
 // Status check functions

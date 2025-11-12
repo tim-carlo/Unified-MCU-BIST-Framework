@@ -26,9 +26,11 @@ static const uint16_t INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE = INITIAL_LOW_TIME
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
 
-static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50;
+static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50; // Needed for the random function
 static const uint16_t MAXIMUM_REQUEST_CYCLES = 400;
 static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This needs to be higher than the maximum request time
+
+static const uint8_t MAXIMUM_NUMBER_OF_HANDSHAKE_ATTEMPTS = 3; // It could happen that a dataline is only working in one direction
 
 static const uint8_t ANSWER_IDENTIFIER = 0x55;
 static const uint8_t REQUEST_IDENTIFIER = 0xAA;
@@ -154,7 +156,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t remote_pin = received_data[9];
     const uint8_t mutex_request = received_data[10];
 
-    add_pin_connection(CONNECTION_TYPE_EXTERNAL, &global_pindata[pin], pin, remote_pin, remote_uuid);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, remote_uuid);
     LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
@@ -237,7 +239,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t remote_pin = received_data[18];
     const uint8_t mutex_allowed = received_data[19];
 
-    add_pin_connection(CONNECTION_TYPE_EXTERNAL, &global_pindata[pin], pin, remote_pin, other_device_uuid);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, other_device_uuid);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
     if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
@@ -343,7 +345,13 @@ static void fsm_data_handshake(void)
                 // Schedule the next send if we're the initiator
                 if (dhd_status_role_initiator(p) && delta >= p->time_until_next_send)
                 {
-
+                    p->handshake_attempts++;
+                    if (p->handshake_attempts > MAXIMUM_NUMBER_OF_HANDSHAKE_ATTEMPTS)
+                    {
+                        // Too many attempts, give up on this pin for now
+                        // blacklist pin internally
+                        internal_blacklist_mask |= (1ULL << p->pin);
+                    }
                     p->current_job = JOB_SEND_REQUEST;
                     p->last_send_job_order = counter;
                     gpio_od_hold_low(p->pin); // Start sending by pulling line low
