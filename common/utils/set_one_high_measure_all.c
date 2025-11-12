@@ -652,6 +652,7 @@ static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
             gpio_output_init(pin);
             gpio_drive_low(pin);
 
+            // Here is a shorter delay to allow for line settling
             delay_us(500 * (i + 1));
 
             PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
@@ -745,7 +746,7 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
 }
 
 /**
- * @brief Run all 8 measurement phases
+ * @brief Run all 7 measurement phases
  */
 void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size)
 {
