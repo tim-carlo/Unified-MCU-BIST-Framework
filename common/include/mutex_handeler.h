@@ -15,6 +15,8 @@
 #include "pindata.h"
 #include "data_handshake.h"
 
+#define MUTEX_HANDELER_BUFFER_SIZE (16)
+
 typedef struct 
 {
     uint8_t current_mutex_pin;
@@ -22,7 +24,9 @@ typedef struct
     bool currently_having_mutex;
     struct spooky_encoder enc;
     struct spooky_decoder dec;
-    uint8_t buffer[16]; // since that is the min buffer size for spooky encoder/decoder
+    uint8_t last_mode;
+    bool last_rx;
+    uint8_t buffer[MUTEX_HANDELER_BUFFER_SIZE]; // since that is the min buffer size for spooky encoder/decoder
 } MutexHandler;
 
 typedef enum
@@ -33,7 +37,7 @@ typedef enum
     TIMEOUT
 } WaitForResult;
 
-#define MUTEX_REQEST (0x55)  // Request mutex on this pin
+#define MUTEX_REQUEST (0x55)  // Request mutex on this pin
 #define MUTEX_RELEASE (0xFF) // Release mutex on this pin
 #define MUTEX_ACK (0xAA)     // Acknoledge mutex request or release
 
