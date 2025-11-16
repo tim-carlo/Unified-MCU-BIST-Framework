@@ -22,7 +22,7 @@
  * @param pindata Array to store discovered connections and events
  * @param pindata_size Size of the pindata array
  */
-void run_set_one_high_measure_all(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size);
+void run_selfexploration_tests(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size);
 
 
 

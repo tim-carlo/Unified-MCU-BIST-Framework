@@ -47,7 +47,7 @@ void init_seeds(void)
     lfsr31 &= 0x7FFFFFFF;
 }
 
-static inline set_neutral_gpio()
+static inline void set_neutral_gpio()
 {
     /* set all to neutral state: input */
     PJOUT = 0u;
@@ -109,7 +109,7 @@ void mcu_init()
     // Unlock GPIO
     PM5CTL0 &= ~LOCKLPM5;
     // Set all GPIOs to neutral state
-    set_neutral_gpio();
+    //set_neutral_gpio();
 
     // Configure clock to 16MHz
     // Using DCO at 16MHz

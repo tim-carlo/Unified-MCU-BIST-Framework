@@ -71,8 +71,8 @@ static inline void pman_set_TX(const bool state, const uint8_t pin)
         gpio_od_hold_low(pin);
     }
 }
-static uint64_t set_one_mask = 0;
-static uint64_t set_zero_mask = 0;
+static volatile uint64_t set_one_mask = 0;
+static volatile uint64_t set_zero_mask = 0;
 
 inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count)
 {
@@ -208,17 +208,12 @@ inline void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instan
     }
 }
 
-inline uint32_t parallel_manchester_get_sample_interval_us(uint8_t rate)
+inline uint32_t parallel_manchester_get_sample_interval_us(const uint8_t rate)
 {
-    uint32_t bit_time_us = (uint32_t) 1000000UL / rate;
+    const uint32_t bit_time_us = (uint32_t) (1000000UL / (uint32_t) rate);
     return bit_time_us / TX_RATE;
 }
 
-// Update rx_callback to use instance buffer directly
-static void pman_rx_callback(uint8_t *data, uint16_t data_size, void *udata)
-{
-    // not used
-}
 
 // Update add_instance to remove data_buffer and data_size fields
 inline bool parallel_manchester_add_instance(DataHandshakeData *instance)
@@ -280,7 +275,8 @@ inline bool parallel_manchester_transmit_complete(DataHandshakeData *instance)
 // Non-blocking receive function
 inline bool parallel_manchester_receive_background(DataHandshakeData *instance)
 {
-    memset(instance->data_buffer, 0, BUFFER_SIZE);
+    // Not needed, but clear encoder buffer to be safe
+    //memset(instance->data_buffer, 0, BUFFER_SIZE);
     // Clear decoder state
     reset_decoder(&instance->manchester_dec);
 

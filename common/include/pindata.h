@@ -70,7 +70,8 @@ struct PinConnection
 {
     uint8_t other_pin : 6;              // up to 64 pins
     ConnectionType connection_type : 1; // internal or external connection
-    uint8_t parameter;                  
+    uint8_t parameter;
+    // One bit is unused               
 } __attribute__((packed));
 typedef struct PinConnection PinConnection;
 

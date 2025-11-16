@@ -47,8 +47,10 @@ static uint64_t internal_valid_pins = ~0ULL; // Assume 64-bit max
 static uint64_t responder_mask = 0;
 static uint64_t initiator_mask = 0;
 static uint64_t uuid = 0;
-static uint32_t last_change_in_isr = 0;
+static volatile uint32_t last_change_in_isr = 0;
 static volatile bool interrupt_flag = false;
+static volatile uint8_t isr_counter = 0;
+static volatile bool isr_done = true; // must be initialized to true at start
 
 // Used for mutex handling
 static uint8_t mutex_pin = 255;       // Pin currently holding the mutex (255 = none)
@@ -59,7 +61,7 @@ static uint8_t number_of_pins = 0;
  * @brief This function is used to build the initiator and responder masks based on pindata events
  * The Idea in this handshake to improve its perfomance is to only listen on pins where the MCU was the responder.
  * And only send requests on pins where the MCU was the initiator.
- * @param pindata
+ * @param pindata Pointer to the PinData structure containing pin events
  */
 static void analyze_pindata_events(PinData *pindata)
 {
@@ -288,7 +290,6 @@ static inline bool send_answer_in_background(uint8_t pin, DataHandshakeData *p)
 {
     // The packet is already assembled in the buffer
     // So just start transmission
-    // This little delay is needed to ensure the line is released before transmitting
     return parallel_manchester_transmit_background(p, ANSWER_PACKSIZE);
 }
 
@@ -301,7 +302,7 @@ static inline void reschedule_request(DataHandshakeData *p, uint32_t counter)
 
 static volatile uint32_t counter = 0;
 
-static void fsm_data_handshake(void)
+static inline void fsm_data_handshake(void)
 {
     counter++;
 
@@ -553,7 +554,8 @@ static void fsm_data_handshake(void)
             break;
         }
     }
-
+    // This counter is used to detect idle time in the ISR
+    // If the FSM is to long idle, we can assume that the handshake is done
     if (!something_happened)
     {
         last_change_in_isr++;
@@ -575,8 +577,6 @@ static void stop_send_data_timer(void)
 #endif
 }
 
-static volatile uint8_t isr_counter = 0;
-static volatile bool isr_done = true; // must be initialized to true at start
 static void send_data_isr(void)
 {
     interrupt_flag = true;
@@ -593,7 +593,7 @@ static void send_data_isr(void)
 
 static void start_send_data_timer(void)
 {
-    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(10);
+    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
@@ -609,6 +609,7 @@ static void start_send_data_timer(void)
     start_timer_with_interrupt(DATA_TIMER);
 #endif
 }
+
 
 /**
  * @brief Main data handshake function
@@ -632,6 +633,8 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
     // Allocate and initialize
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
+
+
     if (!global_datahandshake_pindata)
     {
         printf("Failed to allocate memory for data handshake pindata\n");
@@ -693,10 +696,12 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
     while (last_change_in_isr < MAXIMUM_IDLE_TIME)
     {
+        // The ISR is executed in the main thread context, to avoid crashes that can occur if ISRs overlap
         while (!interrupt_flag)
             ;
 
         interrupt_flag = false;
+        // This flag is used to indicate that the ISR is being processed, preventing re-entrancy
         isr_done = false;
         pman_timer_isr(global_datahandshake_pindata, number_of_pins);
         if (isr_counter > 10)

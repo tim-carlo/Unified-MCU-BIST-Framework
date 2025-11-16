@@ -109,7 +109,7 @@ ParallelManchesterMode dhd_get_manchester_mode(const DataHandshakeData *dhd);
 void dhd_set_manchester_mode(DataHandshakeData *dhd, ParallelManchesterMode mode);
 
 void pman_timer_isr(DataHandshakeData *dhd_instances, uint8_t pman_instance_count);
-uint32_t parallel_manchester_get_sample_interval_us(uint8_t rate);
+uint32_t parallel_manchester_get_sample_interval_us(const uint8_t rate);
 
 // Instance management - now accepts buffer per instance
 bool parallel_manchester_add_instance(DataHandshakeData *instance);

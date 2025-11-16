@@ -4,7 +4,7 @@
 #define LOG(fmt, ...) printf("GPIO: " fmt, ##__VA_ARGS__)
 
 /**
- * @brief Map absolute pin number to port register group (0–7: PJ, 8–15: P1, etc.)
+ * @brief Map absolute pin number to port register group (0-7: PJ, 8-15: P1, etc.)
  */
 static inline uint8_t abs_to_port(uint8_t abs_pin)
 {

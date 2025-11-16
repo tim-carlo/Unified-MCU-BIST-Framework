@@ -34,8 +34,6 @@
 #include "set_one_high_measure_all.h"
 #include "mutex_handeler.h"
 
-#include "crc.h"
-#include <inttypes.h>
 
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
@@ -48,8 +46,9 @@
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 
 // Flags controlled via interrupts
-volatile uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
-volatile uint64_t handshake_mask = 0;    // Mask used during handshake
+uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
+uint64_t handshake_mask = 0;    // Mask used during handshake
+
 
 DataHandshakeResult data_handshake_result_test;
 
@@ -172,7 +171,7 @@ void led2_show_error()
 
 void perfom_mutex_operations()
 {
-    run_set_one_high_measure_all(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+    run_selfexploration_tests(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
     uart_transmitter_init();
     UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
@@ -192,8 +191,8 @@ void perfom_mutex_operations()
 int main(void)
 {
     mcu_init();
-    // test of mutex handeler
     printf("Size of PinData: %zu bytes\n", sizeof(PinData));
+    printf("Size of PinConnection: %zu bytes\n", sizeof(PinConnection));
 
     DataHandshakeResult test_data_handshake_result;
 #if defined(NRF52840_XXAA)
@@ -212,6 +211,7 @@ int main(void)
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
+    // Set all pins that are needed for handshake to open drain
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
         if (handshake_mask & (1ULL << pin))
