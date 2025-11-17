@@ -9,8 +9,8 @@
 
 // Define LOG macro for LOGging (can be disabled by commenting out)
 // #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
-#define LOG(fmt, ...) // Uncomment this line to disable LOGging
-#define OUTPUT_DEBUG_LOGS(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
+#define TIME_CRITICAL_LOG(fmt, ...) // put here printf if needed, but be aware that this may affect timing!
 
 static const uint16_t SEND_INACCURACY = 5;
 
@@ -25,6 +25,9 @@ static const uint16_t INITIAL_LOW_TIME_ANSWER_MS = 20;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MS_AFTER_SETTLE = INITIAL_LOW_TIME_ANSWER_MS + INITIAL_LOW_SETTLE_TIME;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MIN_MS = INITIAL_LOW_TIME_ANSWER_MS - SEND_INACCURACY;
 static const uint16_t INITIAL_LOW_TIME_ANSWER_MAX_MS = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY;
+
+static const uint8_t WAIT_FOR_ANSWER_TIMEOUT = INITIAL_LOW_TIME_ANSWER_MS + SEND_INACCURACY + 50; // in cycles of maximum request time
+// +50 to be sure that the answer has time to arrive and the device has enough time to process it
 
 static const uint16_t REQEST_CYCLES_FACTOR_INFLUENCE = 50; // Needed for the random function
 static const uint16_t MAXIMUM_REQUEST_CYCLES = 400;
@@ -53,10 +56,12 @@ static volatile uint8_t isr_counter = 0;
 static volatile bool isr_done = true; // must be initialized to true at start
 
 // Used for mutex handling
-static uint8_t mutex_pin = 255;       // Pin currently holding the mutex (255 = none)
-static bool i_am_mutex_owner = false; // Whether this device currently owns the mutex
-static uint8_t number_of_pins = 0;
+static uint8_t mutex_pin = 255;                         // Pin currently holding the mutex (255 = none)
+static bool i_am_mutex_owner = false;                   // Whether this device currently owns the
+static volatile bool receiving_request = false; // Whether this device is currently requesting the mutex
 
+static uint8_t number_of_pins = 0;
+static bool currently_requesting_mutex = false;
 /**
  * @brief This function is used to build the initiator and responder masks based on pindata events
  * The Idea in this handshake to improve its perfomance is to only listen on pins where the MCU was the responder.
@@ -75,7 +80,7 @@ static void analyze_pindata_events(PinData *pindata)
     uint64_t mask = ~internal_blacklist_mask;
     uint8_t pin;
 
-    printf("DEBUG: Analyzing pindata events for handshake role determination\n");
+    LOG("Analyzing pindata events for handshake role determination\n");
 
     while (bitmap_iterator_next_mask_as_param(&mask, &pin))
     {
@@ -114,7 +119,7 @@ static void analyze_pindata_events(PinData *pindata)
             internal_blacklist_mask |= (1ULL << pin);
         }
     }
-    printf("DEBUG: OKE \n");
+    LOG("OKE \n");
 }
 
 static inline uint16_t get_listen_until_time(uint16_t factor)
@@ -152,7 +157,7 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     memcpy(&received_crc_le, &received_data[11], sizeof(received_crc_le));
     if (crcFast(received_data, 11) != le32toh(received_crc_le))
     {
-        LOG("Request CRC error\n");
+        TIME_CRITICAL_LOG("Request CRC error\n");
         return false;
     }
 
@@ -164,27 +169,20 @@ static inline bool handle_request_receive_complete(uint8_t pin, DataHandshakeDat
     const uint8_t mutex_request = received_data[10];
 
     // check if we already have a connection to the other device on this pin
-    //const uint8_t remote_uuid_index = add_seen_device(remote_uuid);
+    const uint8_t remote_uuid_index = add_seen_device(remote_uuid);
 
-    //add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, remote_uuid_index);
-    LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, remote_uuid_index);
+    TIME_CRITICAL_LOG("R: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     p->status |= STATUS_HANDSHAKE_SUCCESS;
 
     // Determine mutex state before writing to buffer
     uint8_t mutex_allowed = DENYING_MUTEX_ON_THIS_PIN;
+
     if (mutex_request == REQEST_MUTEX_ON_THIS_PIN && remote_uuid != uuid)
     {
-        if (mutex_pin == 255 || !i_am_mutex_owner)
-        {
-            mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN;
-            mutex_pin = pin;
-            i_am_mutex_owner = false;
-            // LOG("Mutex granted to other device on pin %u\n", pin);
-        }
-        else
-        {
-            LOG("Mutex request denied on pin %u, already owned on pin %u\n", pin, mutex_pin);
-        }
+        mutex_allowed = ALLOWING_MUTEX_ON_THIS_PIN;
+        mutex_pin = pin;
+        i_am_mutex_owner = false;
     }
 
     // Clear data buffer before assembling answer
@@ -218,7 +216,7 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
 
     if (received_data[0] != ANSWER_IDENTIFIER)
     {
-        LOG("Answer not for us (wrong packet type)\n");
+        TIME_CRITICAL_LOG("Answer not for us (wrong packet type)\n");
         return false; // Check packet type
     }
 
@@ -226,20 +224,20 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     memcpy(&received_uuid_le, &received_data[1], sizeof(received_uuid_le));
     if (le64toh(received_uuid_le) != uuid)
     {
-        LOG("Answer not for us (UUID mismatch)");
+        TIME_CRITICAL_LOG("Answer not for us (UUID mismatch)");
         return false;
     }
 
     if (received_data[9] != pin)
     {
-        LOG("Answer not for us (PIN mismatch)");
+        TIME_CRITICAL_LOG("Answer not for us (PIN mismatch)");
         return false;
     }
     uint32_t received_crc_le;
     memcpy(&received_crc_le, &received_data[20], sizeof(received_crc_le));
     if (crcFast(received_data, 20) != le32toh(received_crc_le))
     {
-        LOG("Answer CRC error\n");
+        TIME_CRITICAL_LOG("Answer CRC error\n");
         return false;
     }
 
@@ -250,11 +248,12 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     const uint8_t mutex_allowed = received_data[19];
 
     // Get index of the other device UUID
-    //const uint8_t other_device_uuid_index = add_seen_device(other_device_uuid);
-    //add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, other_device_uuid_index);
+    const uint8_t other_device_uuid_index = add_seen_device(other_device_uuid);
+    add_pin_connection(CONNECTION_TYPE_EXTERNAL, global_pindata, pin, remote_pin, other_device_uuid_index);
 
     // The secound argument is to prevent race conditions where two devices request the mutex at the same time
-    if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
+    // if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN && mutex_pin == 255)
+    if (mutex_allowed == ALLOWING_MUTEX_ON_THIS_PIN)
     {
         mutex_pin = pin;
         i_am_mutex_owner = true;
@@ -262,14 +261,15 @@ static inline bool handle_answer_complete(uint8_t pin, DataHandshakeData *p)
     }
 
     p->status |= STATUS_HANDSHAKE_SUCCESS;
-    LOG("A: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
+    TIME_CRITICAL_LOG("A: Pin connection added: local_pin=%u, remote_pin=%u\n", pin, remote_pin);
     return true;
 }
 static inline bool send_request_in_background(uint8_t pin, DataHandshakeData *p)
 {
 
-    // Dont request mutex if we already own it
-    const uint8_t mutex = (mutex_pin == 255 && !i_am_mutex_owner) ? REQEST_MUTEX_ON_THIS_PIN : 0;
+    // Dont request mutex if it is already held by another pin
+    // Dont request mutex if a other request is ongoing to avoid collisions
+    const uint8_t mutex = (mutex_pin == 255 && !receiving_request) ? REQEST_MUTEX_ON_THIS_PIN : 0;
     p->data_buffer[0] = REQUEST_IDENTIFIER;
 
     const uint64_t le_uuid = htole64(uuid);
@@ -332,17 +332,19 @@ static inline void fsm_data_handshake(void)
                 // Here we check if the low time matches a request signal
                 if (receive_counter >= INITIAL_LOW_TIME_REQUEST_MIN_MS && receive_counter <= INITIAL_LOW_TIME_REQUEST_MAX_MS)
                 {
+                    receiving_request = true;
                     // This only happens when there is a problem with the initialization of the manchester decoder
                     if (!parallel_manchester_receive_background(p))
                     {
-                        LOG("Failed to start receiving request on pin %u\n", p->pin);
+                        TIME_CRITICAL_LOG("Failed to start receiving request on pin %u\n", p->pin);
+                        receiving_request = false;
                     }
                     else
                     {
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
-                    //LOG("Request received on pin %u\n", pin);
+                    // LOG("Request received on pin %u\n", pin);
 
                     p->receiving_counter = 0;
                 }
@@ -362,9 +364,12 @@ static inline void fsm_data_handshake(void)
                         // blacklist pin internally
                         internal_blacklist_mask |= (1ULL << p->pin);
                     }
-                    p->current_job = JOB_SEND_REQUEST;
-                    p->last_send_job_order = counter;
-                    gpio_od_hold_low(p->pin); // Start sending by pulling line low
+                    else
+                    {
+                        p->current_job = JOB_SEND_REQUEST;
+                        p->last_send_job_order = counter;
+                        gpio_od_hold_low(p->pin); // Start sending by pulling line low
+                    }
                 }
             }
             break;
@@ -424,6 +429,7 @@ static inline void fsm_data_handshake(void)
                 if (p->current_job == JOB_TRANSMITTING_REQUEST)
                 {
                     p->current_job = JOB_WAIT_FOR_ANSWER;
+                    p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
                 else
                 {
@@ -453,7 +459,7 @@ static inline void fsm_data_handshake(void)
                     if (!parallel_manchester_receive_background(p))
                     {
                         is_failed = true;
-                        LOG("Failed to start receiving answer on pin %u\n", p->pin);
+                        TIME_CRITICAL_LOG("Failed to start receiving answer on pin %u\n", p->pin);
                     }
                     else
                     {
@@ -461,19 +467,29 @@ static inline void fsm_data_handshake(void)
                         p->last_send_job_order = counter; // Reset timeout counter on successful answer handling
                     }
                 }
-                // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
-                // and reschedule the request
                 else if (receive_counter > INITIAL_LOW_TIME_ANSWER_MAX_MS)
                 {
+                    // If the signal was too short or too long, just reset the counter or if timeout occurred while waiting for answer
+                    // and reschedule the request
                     is_failed = true;
                 }
+                else
+                {
+                    // Check for timeout while waiting for answer
+                    if (delta > WAIT_FOR_ANSWER_TIMEOUT)
+                    {
+                        is_failed = true;
+                    }
+                }
+
                 if (is_failed)
                 {
-                    LOG("- Failed to receive answer on pin %u\n", p->pin);
+                    TIME_CRITICAL_LOG("- Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     p->current_job = JOB_LISTEN;
                 }
             }
+
             something_happened = true;
             break;
         }
@@ -485,7 +501,7 @@ static inline void fsm_data_handshake(void)
                 {
                     // Failed to handle request properly
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
-                    LOG("Failed to handle request on pin %u\n", p->pin);
+                    TIME_CRITICAL_LOG("Failed to handle request on pin %u\n", p->pin);
                 }
                 else
                 {
@@ -493,6 +509,7 @@ static inline void fsm_data_handshake(void)
                     p->current_job = JOB_SEND_ANSWER;
                     p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                 }
+                receiving_request = false;
             }
             else if (parallel_manchester_receive_error(p))
             {
@@ -506,9 +523,10 @@ static inline void fsm_data_handshake(void)
                 else
                 {
                     // gpio_drive_high(DEBUG_PIN2);
-                    LOG("Failed to receive request on pin %u\n", p->pin);
+                    TIME_CRITICAL_LOG("Failed to receive request on pin %u\n", p->pin);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
+                receiving_request = false;
             }
             something_happened = true;
             break;
@@ -519,7 +537,7 @@ static inline void fsm_data_handshake(void)
             {
                 if (!handle_answer_complete(p->pin, p))
                 {
-                    LOG("Failed to handle answer on pin %u\n", p->pin);
+                    TIME_CRITICAL_LOG("Failed to handle answer on pin %u\n", p->pin);
                 }
                 else
                 {
@@ -610,7 +628,6 @@ static void start_send_data_timer(void)
 #endif
 }
 
-
 /**
  * @brief Main data handshake function
  * @param pindata Pointer to PinData array
@@ -629,19 +646,18 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
 
     uint64_t valid_pins_mask = ~internal_blacklist_mask & ~0ULL;
 
-    printf("DEBUG: Number of pins to use for handshake: %u\n", number_of_pins);
+    LOG("DEBUG: Number of pins to use for handshake: %u\n", number_of_pins);
 
     // Allocate and initialize
     global_datahandshake_pindata = calloc(number_of_pins, sizeof(DataHandshakeData));
 
-
     if (!global_datahandshake_pindata)
     {
-        printf("Failed to allocate memory for data handshake pindata\n");
+        LOG("Failed to allocate memory for data handshake pindata\n");
         return handshake_result;
     }
 
-    printf("DEBUG: Allocated memory for %u pins\n", number_of_pins);
+    LOG("Allocated memory for %u pins\n", number_of_pins);
     BitmapIterator it = bitmap_iterator_create(valid_pins_mask);
     uint8_t pin_index, idx = 0;
     uint64_t valid_pins_for_fsm_mask = 0;
@@ -649,7 +665,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     uint8_t initiator_cnt = 0;
     uuid = get_own_device_id();
 
-    printf("Data handshake started on %u pins\n", number_of_pins);
+    LOG("Data handshake started on %u pins\n", number_of_pins);
 
     while (bitmap_iterator_next(&it, &pin_index))
     {
@@ -690,7 +706,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     }
 
     internal_valid_pins = valid_pins_for_fsm_mask;
-    printf("Data handshake initialized \n");
+    LOG("Data handshake initialized \n");
 
     start_send_data_timer();
 
