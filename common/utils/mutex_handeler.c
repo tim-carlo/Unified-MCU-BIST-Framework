@@ -41,20 +41,20 @@ static void mutex_timer_start(void)
 {
     // Must be configured in the same way as the spooky encoder/decoder sample rate in the data handshake
 
-    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20); // 20 baud
-
+    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
 #if defined(NRF52840_XXAA)
-    configure_timer(MUTEX_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
-    set_timer_compare(MUTEX_TIMER, 0, sample_interval_us, true, true);
-    MUTEX_TIMER->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
-    set_timer_event_callback(MUTEX_TIMER, mutex_timer_interrupt);
-    start_timer(MUTEX_TIMER);
+    // Configure timer for 1MHz (1µs per tick), 1ms intervals
+    configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
+    set_timer_compare(DATA_TIMER, 0, sample_interval_us, true, true);
+    set_timer_event_callback(DATA_TIMER, mutex_timer_interrupt);
+    start_timer(DATA_TIMER);
+
 #elif defined(__MSP430FR5994__)
-    uint32_t timer_ticks = (sample_interval_us * (SMCLK_HZ / 1000000UL)) - 1;
-    configure_timer(MUTEX_TIMER, 0, MC__UP);
-    set_timer_compare(MUTEX_TIMER, 0, (uint16_t)timer_ticks);
-    set_timer_compare_callback(MUTEX_TIMER, mutex_timer_interrupt);
-    start_timer_with_interrupt(MUTEX_TIMER);
+    // At 16MHz SMCLK with /8 prescaler = 2MHz, need 2000 ticks for 1ms
+    configure_timer(DATA_TIMER, 8, MC__STOP);
+    set_timer_compare(DATA_TIMER, 0, sample_interval_us * 2);
+    set_timer_compare_callback(DATA_TIMER, mutex_timer_interrupt);
+    start_timer_with_interrupt(DATA_TIMER);
 #endif
 }
 
@@ -107,20 +107,23 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
             {
                 // Here a error occures
                 result = TIMEOUT;
+                LOG("Decoder error detected\n");
                 goto done_wait;
             }
         }
         else
         {
             if (rx == handler->last_rx)
-                timeout_counter++;
-            else
-                timeout_counter = 0;
-
-            if (timeout_counter++ >= max_timeout)
             {
-                result = TIMEOUT;
-                goto done_wait;
+                if (++timeout_counter >= max_timeout)
+                {
+                    result = TIMEOUT;
+                    goto done_wait;
+                }
+            }
+            else
+            {
+                timeout_counter = 0;
             }
             handler->last_rx = rx;
         }
@@ -130,7 +133,7 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
         {
         case SPOOKY_DECODER_STEP_DONE:
             received = handler->buffer[0];
-
+            LOG("Received mutex signal: %u\n", received);
             switch (received)
             {
             case MUTEX_ACK:
