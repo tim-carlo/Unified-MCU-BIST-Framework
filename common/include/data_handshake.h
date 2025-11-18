@@ -37,14 +37,14 @@
 #define DENYING_MUTEX_ON_THIS_PIN (0x11)
 #define NO_MUTEX_ON_THIS_PIN (0x00)
 
-typedef enum
+typedef enum __attribute__((__packed__))
 {
     PACKET_TYPE_REQUEST = 0,
     PACKET_TYPE_ANSWER = 1
 } PackageType;
 
 
-typedef enum
+typedef enum __attribute__((__packed__))
 {
     DATA_HANDSHAKE_INITIALIZING_FAILURE = 0,
     DATA_HANDSHAKE_ISR_TO_LONG = 1, // This failure is triggered when the ISR takes too long
@@ -52,7 +52,7 @@ typedef enum
     DATA_HANDSHAKE_SUCCESS = 3
 } DataHandshakeStatus;
 
-typedef struct
+typedef struct __attribute__((__packed__))
 {
     uint8_t mutex_pin;
     bool i_am_mutex_owner;
