@@ -560,7 +560,7 @@ static inline void fsm_data_handshake(void)
                 else
                 {
                     // gpio_drive_high(DEBUG_PIN2);
-                    LOG("Failed to receive answer on pin %u\n", p->pin);
+                    TIME_CRITICAL_LOG("Failed to receive answer on pin %u\n", p->pin);
                     reschedule_request(p, counter);
                     p->current_job = JOB_LISTEN; // Go back to listening on failure
                 }
