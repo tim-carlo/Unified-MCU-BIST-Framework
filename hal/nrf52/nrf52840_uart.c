@@ -70,6 +70,18 @@ void uart_init(uart_instance_t uart, const unsigned long baud_rate, const uart_p
 }
 
 /**
+ * @brief Deinitialize UART peripheral
+ * @param uart UART instance
+ */
+void uart_deinit(uart_instance_t uart) {
+    if (uart == NULL) return;
+    uart->TASKS_STOPRX = 1;
+    uart->TASKS_STOPTX = 1;
+    uart->ENABLE = UART_ENABLE_ENABLE_Disabled;
+    uart->PSEL.TXD = 0xFFFFFFFF; // Disconnect TX
+    uart->PSEL.RXD = 0xFFFFFFFF; // Disconnect RX
+}
+/**
  * @brief Check if data is ready to be read
  * 
  * @param uart UART instance
