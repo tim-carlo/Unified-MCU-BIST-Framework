@@ -1,4 +1,5 @@
 #include "msp430fr5994_utils.h"
+
 /**
  * @brief Get the unique device ID from TLV memory
  *

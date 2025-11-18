@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include "nrf.h"
 #include "nrf52840.h"
-#include "stack.h"
+
 #include "pindata.h"
 #include "printf.h"
 #include "nrf52840_uart.h"

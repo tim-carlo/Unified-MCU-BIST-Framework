@@ -4,7 +4,7 @@
 #include "printf.h"
 #include <string.h>
 
-#define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) //printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 static const uint8_t TIME_BETWEEN_PHASES = 10;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;

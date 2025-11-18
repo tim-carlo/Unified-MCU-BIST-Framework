@@ -2,7 +2,7 @@
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_helper.h"
 #include "printf.h"
-#include "stack.h"
+
 #include <stdbool.h>
 
 

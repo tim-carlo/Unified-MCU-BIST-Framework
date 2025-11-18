@@ -7,6 +7,9 @@
 
 #include <msp430.h>
 #include <msp430fr5994.h>
+#include "msp430fr5994_gpio.h"
+#include "pin_config.h"
+
 
 // UART instance type
 
@@ -48,6 +51,7 @@ extern uart_instance_t msp430_uart3_instance;
 
 // Basic UART functions
 void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_t *pins);
+void uart_deinit(uart_instance_t *uart);
 bool uart_data_ready(uart_instance_t *uart);
 bool uart_tx_idle(uart_instance_t *uart);
 uint8_t uart_read(uart_instance_t *uart);
@@ -68,7 +72,7 @@ uint16_t uart_get_status(uart_instance_t *uart);
 uint16_t uart_get_errors(uart_instance_t *uart);
 void uart_clear_errors(uart_instance_t *uart);
 
-/* // Helper function to create pin configuration from absolute pin numbers
-uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin); */
+// Helper function to create pin configuration from absolute pin numbers
+uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin);
 
 #endif // MSP430FR5994_UART_H

@@ -32,4 +32,7 @@ void uart_write_uint32(uart_instance_t uart, uint32_t value);
 uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin);
 
 
+void uart_set_receive_mode(NRF_UART_Type *uart, bool enable);
+
+
 #endif // NRF52840_UART_H 

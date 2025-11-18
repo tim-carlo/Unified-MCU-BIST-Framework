@@ -121,26 +121,6 @@ void mcu_init()
     CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;
     CSCTL0_H = 0;
 
-#if DEV_KIT == 0
-    P2SEL1 |= BIT5 | BIT6;
-    P2SEL0 &= ~(BIT5 | BIT6);
-    UCA1CTLW0 = UCSWRST;         // Reset UART
-    UCA1CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
-    UCA1BR0 = 104;               // 16MHz/9600 = 1666.67
-    UCA1BR1 = 0;                 // High byte
-    UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
-    UCA1CTLW0 &= ~UCSWRST;       // Enable UART
-#else
-    P2SEL1 |= BIT0 | BIT1;       // Set UART function
-    P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
-    UCA0CTLW0 = UCSWRST;         // Reset UART
-    UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
-    UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
-    UCA0BR1 = 0;                 // High byte
-    UCA0MCTLW = UCOS16 | 0x4900; //
-    UCA0CTLW0 &= ~UCSWRST;       // Enable UART
-#endif
-
     // Configure all timers with ID__8 (divide by 8)
     // configure_timer((volatile uint16_t *)&TA1CTL, ID__8); // Configure Timer A1
     // configure_timer((volatile uint16_t *)&TA2CTL, ID__8); // Configure Timer A2
@@ -149,5 +129,5 @@ void mcu_init()
 
     init_seeds(); // Initialize LFSR seeds
 
-    __enable_interrupt(); // Enable global interrupts
+   // __enable_interrupt(); // Enable global interrupts
 }

@@ -1,6 +1,5 @@
-#include <string.h>
+#include "msp430fr5994_uart.h"
 #include "endian.h"
-#include "msp430fr5994_helper.h"
 
 // Predefined UART instance definitions
 uart_instance_t msp430_uart0_instance = {
@@ -116,7 +115,7 @@ static void calculate_baud_rate(uint16_t baud_rate, uint16_t *br0, uint16_t *br1
     }
 }
 /**
- * @brief Initialize UART peripheral according to TI recommended sequence
+ * @brief Initialize UART peripheral
  *
  * @param uart UART instance
  * @param baud_rate Baud rate (unused, hardcoded to 9600)
@@ -127,16 +126,68 @@ void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_
     if (uart == NULL)
         return;
 
-    UCA0CTLW0 = UCSWRST;         // Reset UART
-    UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
-    UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
-    UCA0BR1 = 0;                 // High byte
-    UCA0MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
+//#if DEV_KIT == 0
+    P2SEL1 |= BIT5 | BIT6;
+    P2SEL0 &= ~(BIT5 | BIT6);
+    UCA1CTLW0 = UCSWRST;         // Reset UART
+    UCA1CTLW0 |= UCSSEL__SMCLK;  // SMCLK source (16MHz)
+    UCA1BR0 = 104;               // 16MHz/9600 = 1666.67
+    UCA1BR1 = 0;                 // High byte
+    UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
+    UCA1CTLW0 &= ~UCSWRST;       // Enable UART
+// #else
+//     P2SEL1 |= BIT0 | BIT1;       // Set UART function
+//     P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
+//     UCA0CTLW0 = UCSWRST;         // Reset UART
+//     UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
+//     UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
+//     UCA0BR1 = 0;                 // High byte
+//     UCA0MCTLW = UCOS16 | 0x4900; //
+//     UCA0CTLW0 &= ~UCSWRST;       // Enable UART
+// #endif
 
-    P2SEL0 &= ~(BIT0 | BIT1); // Clear P2.0/P2.1 SEL0
-    P2SEL1 |= BIT0 | BIT1;    // Set UART function
+__enable_interrupt(); // Enable global interrupts
 
-    UCA0CTLW0 &= ~UCSWRST; // Release from reset
+}
+
+void uart_deinit(uart_instance_t *uart)
+{
+    if (uart == NULL)
+        return;
+
+#if DEV_KIT == 0
+    /* Put UART A1 into reset */
+    UCA1CTLW0 |= UCSWRST;
+
+    /* Clear UART A1 config */
+    UCA1CTLW0 = UCSWRST;
+    UCA1BR0   = 0;
+    UCA1BR1   = 0;
+    UCA1MCTLW = 0;
+
+    /* Release pins from UART function */
+    P2SEL1 &= ~(BIT5 | BIT6);
+    P2SEL0 &= ~(BIT5 | BIT6);
+
+    /* Configure pins as GPIO input */
+    P2DIR &= ~(BIT5 | BIT6);
+#else
+    /* Put UART A0 into reset */
+    UCA0CTLW0 |= UCSWRST;
+
+    /* Clear UART A0 config */
+    UCA0CTLW0 = UCSWRST;
+    UCA0BR0   = 0;
+    UCA0BR1   = 0;
+    UCA0MCTLW = 0;
+
+    /* Release pins from UART function */
+    P2SEL1 &= ~(BIT0 | BIT1);
+    P2SEL0 &= ~(BIT0 | BIT1);
+
+    /* Configure pins as GPIO input */
+    P2DIR &= ~(BIT0 | BIT1);
+#endif
 }
 
 /**
@@ -470,22 +521,22 @@ void uart_clear_errors(uart_instance_t *uart)
  * @param abs_rx_pin Absolute RX pin number (0-63)
  * @return uart_pins_t Pin configuration structure
  */
-// uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
-// {
-//     uart_pins_t pins = {0};
+uart_pins_t create_uart_pins(uint8_t abs_tx_pin, uint8_t abs_rx_pin)
+{
+    uart_pins_t pins = {0};
 
-//     uint8_t tx_port = ABS_TO_PORT(abs_tx_pin);
-//     uint8_t tx_idx = ABS_TO_PINIDX(abs_tx_pin);
-//     uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
-//     uint8_t rx_idx = ABS_TO_PINIDX(abs_rx_pin);
+    // uint8_t tx_port = ABS_TO_PORT(abs_tx_pin);
+    // uint8_t tx_idx = ABS_TO_PINIDX(abs_tx_pin);
+    // uint8_t rx_port = ABS_TO_PORT(abs_rx_pin);
+    // uint8_t rx_idx = ABS_TO_PINIDX(abs_rx_pin);
 
-//     pins.tx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL0_OFFSET);
-//     pins.tx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL1_OFFSET);
-//     pins.tx_mask = (uint8_t)(1U << tx_idx);
+    // pins.tx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL0_OFFSET);
+    // pins.tx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + tx_port * 0x20 + PORT_SEL1_OFFSET);
+    // pins.tx_mask = (uint8_t)(1U << tx_idx);
 
-//     pins.rx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL0_OFFSET);
-//     pins.rx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL1_OFFSET);
-//     pins.rx_mask = (uint8_t)(1U << rx_idx);
+    // pins.rx_sel0 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL0_OFFSET);
+    // pins.rx_sel1 = (volatile uint16_t *)(uintptr_t)(0x0200 + rx_port * 0x20 + PORT_SEL1_OFFSET);
+    // pins.rx_mask = (uint8_t)(1U << rx_idx);
 
-//     return pins;
-// }
+    return pins;
+}

@@ -9,6 +9,9 @@
 #include "crc.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+
+uart_instance_t *msp430_uart_instance = MSP430_UART1; // Using UART1 for communication
 #endif
 
 #if defined(NRF52840_XXAA)
@@ -20,20 +23,19 @@
 #include "nrf52840_uart.h"
 #include "printf.h"
 
+uart_instance_t nrf_uart_instance = NRF_UART0; // Using UART0 for communication
+
 #endif
 
 #include "pin_config.h"
-#include "stack.h"
-#include "timing_pindata.h"
 
-#include "manchester.h"
+#include "timing_pindata.h"
 #include "handshake.h"
 #include "data_handshake.h"
 #include "serialisation.h"
 #include "uart_transmitter.h"
 #include "set_one_high_measure_all.h"
 #include "mutex_handeler.h"
-
 
 #define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
@@ -42,13 +44,14 @@
 #define LOG(fmt, ...)
 #endif
 
+
+
 // Global variables
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 
 // Flags controlled via interrupts
 uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
-uint64_t handshake_mask = 0;    // Mask used during handshake
-
+uint64_t handshake_mask = 0;     // Mask used during handshake
 
 DataHandshakeResult data_handshake_result_test;
 
@@ -89,31 +92,31 @@ const uint8_t array[] = {
     GPIO7,
     GPIO8,
     GPIO9,
-    GPIO10,
-    GPIO11,
+    // GPIO10,
+    // GPIO11,
     // GPIO12,
     // GPIO13,
     // GPIO14,
     // GPIO15,
-    PWRGDL,
-    PWRGDH,
-    PIN_LED0,
-    PIN_LED2,
-    I2C_SCL,
-    I2C_SDA,
-    /*RTC_INT,*/ MAX_INT,
-    C2C_CLK,
-    C2C_CoPi,
-    C2C_CiPo,
-    C2C_PSel,
-    C2C_GPIO,
-    THRCTRL_H0,
-    THRCTRL_H1,
-    THRCTRL_L0,
-    THRCTRL_L1,
+    // PWRGDL,
+    // PWRGDH,
+    // PIN_LED0,
+    // PIN_LED2,
+    // I2C_SCL,
+    // I2C_SDA,
+    // /*RTC_INT,*/ MAX_INT,
+    // C2C_CLK,
+    // C2C_CoPi,
+    // C2C_CiPo,
+    // C2C_PSel,
+    // C2C_GPIO,
+    // THRCTRL_H0,
+    // THRCTRL_H1,
+    // THRCTRL_L0,
+    // THRCTRL_L1,
 };
 
-void set_handshake_pins() 
+void set_handshake_pins()
 {
     handshake_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
     // white list all pins from array:
@@ -140,7 +143,7 @@ void set_shepherd_pins()
     // Black list all pins that don't exist
     for (uint8_t pin = NUMBER_OF_GPIO_PINS; pin < 64; pin++)
     {
-        initial_state_mask |= (1ULL << pin);
+        // initial_state_mask |= (1ULL << pin);
     }
 }
 
@@ -171,8 +174,25 @@ void led2_show_error()
 
 void perfom_mutex_operations()
 {
+
+// Deinitialize all UART instances to free up pins
+#if defined(__MSP430FR5994__)
+    uart_deinit(msp430_uart_instance);
+#elif defined(NRF52840_XXAA)
+    uart_deinit(nrf_uart_instance);
+#endif
+
     run_selfexploration_tests(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
+    // Send data via UART
+#if defined(__MSP430FR5994__)
+    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); 
+    uart_init(msp430_uart_instance, 9600, &uart_pins);
+#elif defined(NRF52840_XXAA)
+    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); 
+    uart_init(nrf_uart_instance, 9600, &uart_pins);
+#endif
+    //
     uart_transmitter_init();
     UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
     switch (uart_result)
@@ -191,23 +211,18 @@ void perfom_mutex_operations()
 int main(void)
 {
     mcu_init();
-    printf("Size of PinData: %zu bytes\n", sizeof(PinData));
-    printf("Size of PinConnection: %zu bytes\n", sizeof(PinConnection));
-
-    DataHandshakeResult test_data_handshake_result;
-#if defined(NRF52840_XXAA)
-    test_data_handshake_result.mutex_pin = 12;
-    test_data_handshake_result.i_am_mutex_owner = true;
-
-#elif defined(__MSP430FR5994__)
-    test_data_handshake_result.mutex_pin = ABS_PIN(2, 6);
-    test_data_handshake_result.i_am_mutex_owner = false;
+    // setup UART for debugging
+#if defined(__MSP430FR5994__)
+    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); // P2.0 = TX, P2.1 = RX
+    uart_init(msp430_uart_instance, 9600, &uart_pins);
+#elif defined(NRF52840_XXAA)
+    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); // P0.01 = TX, P0.02 = RX
+    uart_init(nrf_uart_instance, 9600, &uart_pins);
 #endif
 
     set_shepherd_pins();
     set_handshake_pins();
     LOG("DEBUG: Starting handshake process\n");
-
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 

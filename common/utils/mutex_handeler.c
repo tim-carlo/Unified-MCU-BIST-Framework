@@ -103,13 +103,12 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
 
         if (current_mode != last_mode)
         {
-            if (current_mode < last_mode && last_mode != 3)
-            {
-                // Here a error occures
-                result = TIMEOUT;
-                LOG("Decoder error detected\n");
-                goto done_wait;
-            }
+            // if (current_mode < last_mode && last_mode != 3)
+            // {
+            //     // Here a error occures
+            //     result = TIMEOUT;
+            //     goto done_wait;
+            // }
         }
         else
         {
@@ -282,6 +281,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
             {
                 LOG("Received mutex request\n");
                 uint8_t ack = MUTEX_ACK;
+                //delay_ms(10); // Small delay_ms to ensure the other device is ready
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
 
@@ -292,6 +292,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 LOG("Received mutex release\n");
                 handler->currently_having_mutex = true;
                 uint8_t ack = MUTEX_ACK;
+                //delay_ms(10); // Small delay_ms to ensure the other device is ready
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
                 gpio_reset_from_blacklist(blacklist_mask);

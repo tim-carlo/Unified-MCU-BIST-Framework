@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "stack.h"
 
 typedef enum
 {
@@ -64,7 +63,6 @@ void delay_ticks(uint32_t ticks);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);
 
-void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
 
 void start_timer(timer_type timer);
 void stop_timer(timer_type timer);

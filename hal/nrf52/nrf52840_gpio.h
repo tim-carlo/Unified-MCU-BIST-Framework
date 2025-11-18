@@ -5,7 +5,7 @@
 #include "nrf52840.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include "stack.h"
+
 
 #define BV(pos) (1u << (pos))
 #define BV_BY_NAME(field, value) ((field##_##value << field##_Pos) & field##_Msk)
@@ -41,18 +41,11 @@ void gpio_reset_from_blacklist(const uint64_t blacklist_mask);
 void gpio_input_from_blacklist(const uint64_t blacklist_mask, gpio_pull_t pull);
 uint64_t gpio_read_all_ports(void);
 
-// Interrupt handling
-void gpio_listen_on_all_pins_interrupt(
-    uint64_t blacklist_mask,
-    gpio_interrupt_handler_t falling_handler,
-    gpio_interrupt_handler_t rising_handler);
 
 // Open-Drain Functions
 void gpio_od_init(uint8_t abs_pin);
 void gpio_od_hold_low(uint8_t abs_pin);
 void gpio_od_release(uint8_t abs_pin);
 
-void gpio_disable_all_interrupts(uint64_t blacklist_mask);
-void push_active_pins_except_blacklist_to_stack(Stack *stack, bool expected_level, uint64_t blacklist_mask);
 
 #endif // NRF52840_GPIO_H
