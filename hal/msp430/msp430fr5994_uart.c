@@ -126,7 +126,7 @@ void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_
     if (uart == NULL)
         return;
 
-//#if DEV_KIT == 0
+#if DEV_KIT == 0
     P2SEL1 |= BIT5 | BIT6;
     P2SEL0 &= ~(BIT5 | BIT6);
     UCA1CTLW0 = UCSWRST;         // Reset UART
@@ -135,16 +135,16 @@ void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_
     UCA1BR1 = 0;                 // High byte
     UCA1MCTLW = UCOS16 | 0x4900; // Oversampling + fractional tuning
     UCA1CTLW0 &= ~UCSWRST;       // Enable UART
-// #else
-//     P2SEL1 |= BIT0 | BIT1;       // Set UART function
-//     P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
-//     UCA0CTLW0 = UCSWRST;         // Reset UART
-//     UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
-//     UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
-//     UCA0BR1 = 0;                 // High byte
-//     UCA0MCTLW = UCOS16 | 0x4900; //
-//     UCA0CTLW0 &= ~UCSWRST;       // Enable UART
-// #endif
+#else
+    P2SEL1 |= BIT0 | BIT1;       // Set UART function
+    P2SEL0 &= ~(BIT0 | BIT1);    // Clear P2.0/P2.1 SEL0
+    UCA0CTLW0 = UCSWRST;         // Reset UART
+    UCA0CTLW0 |= UCSSEL__SMCLK;  // SMCLK source
+    UCA0BR0 = 104;               // 16MHz/9600 = 1666.67
+    UCA0BR1 = 0;                 // High byte
+    UCA0MCTLW = UCOS16 | 0x4900; //
+    UCA0CTLW0 &= ~UCSWRST;       // Enable UART
+#endif
 
 __enable_interrupt(); // Enable global interrupts
 
