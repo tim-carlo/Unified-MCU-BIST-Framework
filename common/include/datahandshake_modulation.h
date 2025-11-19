@@ -28,44 +28,44 @@
 #include <msp430.h>
 #endif
 
-
 typedef enum
 {
-    PMAN_NOT_INITIALIZED,
-    PMAN_IDLE,
-    PMAN_SEND,
-    PMAN_RECEIVE
-} ParallelManchesterMode;
+    PMAN_NOT_INITIALIZED = 0,
+    PMAN_IDLE = 1,
+    PMAN_SEND = 2,
+    PMAN_RECEIVE  = 3
+} ParallelManchesterState;
+typedef uint8_t ParallelManchesterMode;
+
 
 // Definitions
 static const uint16_t NUMBER_OF_MAX_INSTACES_WITHOUT_TRANSITION = 1000;
 
-typedef uint8_t CurrentJobType;
-enum
+typedef enum
 {
     JOB_LISTEN = 0,
-    JOB_SEND_REQUEST,
-    JOB_SEND_ANSWER,
-    JOB_WAIT_FOR_ANSWER,
-    JOB_TRANSMITTING_ANSWER,
-    JOB_TRANSMITTING_REQUEST,
-    JOB_RECEIVING_ANSWER,
-    JOB_RECEIVING_REQUEST
-};
+    JOB_SEND_REQUEST = 1,
+    JOB_SEND_ANSWER = 2,
+    JOB_WAIT_FOR_ANSWER = 3,
+    JOB_TRANSMITTING_ANSWER = 4,
+    JOB_TRANSMITTING_REQUEST = 5,
+    JOB_RECEIVING_ANSWER = 6,
+    JOB_RECEIVING_REQUEST = 7
+} CurrentJobType;
 
-typedef uint8_t DataHandshakeRoleType;
-enum
+
+typedef enum
 {
     DHANDSHAKE_ROLE_INITIATOR = 0,
-    DHANDSHAKE_ROLE_RESPONDER,
-    DHANDSHAKE_ROLE_UNCLEAR
-};
+    DHANDSHAKE_ROLE_RESPONDER = 1,
+    DHANDSHAKE_ROLE_UNCLEAR = 2
+} DataHandshakeRoleType;
 
 #define STATUS_TX_COMPLETE (1 << 0)
 #define STATUS_RX_COMPLETE (1 << 1)
 #define STATUS_RX_ERROR (1 << 2)
 #define STATUS_DATA_RECEIVED (1 << 3)
-#define STATUS_MANCHESTER_MASK (3 << 4) // bits 4–5
+#define STATUS_MANCHESTER_MASK (3 << 4) // bits 4-5
 #define STATUS_ROLE_INITIATOR (1 << 6)
 #define STATUS_HANDSHAKE_SUCCESS (1 << 7)
 
