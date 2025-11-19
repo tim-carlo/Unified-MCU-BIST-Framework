@@ -24,7 +24,7 @@ static bool check_step(PinData *pindata, uint8_t pin, PinEventType high_event, P
 }
 
 /**
- * @brief Analyzes the events of a specific pin to determine its drive strength.
+ * @brief Analyzes the events of a specific pin to determine its external drive strength.
  * 
  * @param pindata Pointer to the PinData array
  * @param pin The index of the pin to analyze
@@ -97,8 +97,6 @@ int8_t strength_analyzer_get_strength(PinData *pindata, uint8_t pin)
 
 /**
  * @brief Checks if a pin should be blacklisted based on its strength.
- * 
- * Returns true if strength is 1 or -1.
  * 
  * @param pindata Pointer to the PinData array
  * @param pin The index of the pin to analyze
