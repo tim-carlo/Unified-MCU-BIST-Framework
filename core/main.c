@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-
 uart_instance_t *msp430_uart_instance = MSP430_UART1; // Using UART1 for communication
 #endif
 
@@ -36,15 +35,16 @@ uart_instance_t nrf_uart_instance = NRF_UART0; // Using UART0 for communication
 #include "uart_transmitter.h"
 #include "set_one_high_measure_all.h"
 #include "mutex_handeler.h"
+#include "datahandshake_modulation.h"
 
-#define DEBUG 1 // Set to 1 to enable debug logging, 0 to disable
+#define DEBUG 0 // Set to 1 to enable debug logging, 0 to disable
 #if DEBUG == 1
 #define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
 #define LOG(fmt, ...)
 #endif
 
-
+#define MUTEX_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
 // Global variables
 PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
@@ -82,7 +82,7 @@ void set_standart_blacklist_pins(volatile uint64_t *mask)
 #if DEV_KIT == 0
 
 const uint8_t array[] = {
-    GPIO0,
+    // GPIO0, // Leave UART RX pin blacklisted
     /*GPIO1,*/ // leave UART TX pin blacklisted
     GPIO2,
     GPIO3,
@@ -140,10 +140,14 @@ void set_shepherd_pins()
 
     initial_state_mask = 0ULL; // whitelist all pins
 
+    // Blacklist uart pins
+    initial_state_mask |= (1ULL << PIN_UART_TX);
+    initial_state_mask |= (1ULL << PIN_UART_RX);
+
     // Black list all pins that don't exist
     for (uint8_t pin = NUMBER_OF_GPIO_PINS; pin < 64; pin++)
     {
-        // initial_state_mask |= (1ULL << pin);
+        initial_state_mask |= (1ULL << pin);
     }
 }
 
@@ -175,24 +179,8 @@ void led2_show_error()
 void perfom_mutex_operations()
 {
 
-// Deinitialize all UART instances to free up pins
-#if defined(__MSP430FR5994__)
-    uart_deinit(msp430_uart_instance);
-#elif defined(NRF52840_XXAA)
-    uart_deinit(nrf_uart_instance);
-#endif
-
+    MUTEX_LOG("DEBUG: Performing mutex operations\n");
     run_selfexploration_tests(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
-
-    // Send data via UART
-#if defined(__MSP430FR5994__)
-    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); 
-    uart_init(msp430_uart_instance, 9600, &uart_pins);
-#elif defined(NRF52840_XXAA)
-    uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); 
-    uart_init(nrf_uart_instance, 9600, &uart_pins);
-#endif
-    //
     uart_transmitter_init();
     UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
     switch (uart_result)
@@ -211,7 +199,32 @@ void perfom_mutex_operations()
 int main(void)
 {
     mcu_init();
+    DataHandshakeResult data_handshake_test_result;
     // setup UART for debugging
+#if defined(__MSP430FR5994__)
+    data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
+    data_handshake_test_result.i_am_mutex_owner = true;
+#elif defined(NRF52840_XXAA)
+    data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
+    data_handshake_test_result.i_am_mutex_owner = false;
+#endif
+
+    set_shepherd_pins();
+    set_handshake_pins();
+
+    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+
+    // Perform mutex handelder
+
+    MutexHandler mutex_handler_test;
+
+    mutex_handler_init(&data_handshake_test_result, &mutex_handler_test);
+
+#if defined(NRF52840_XXAA)
+    delay_ms(4000);
+#endif
+    // printf("DEBUG: Starting initial tests\n");
+    mutex_handler_request_mutex(initial_state_mask, &mutex_handler_test);
 #if defined(__MSP430FR5994__)
     uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); // P2.0 = TX, P2.1 = RX
     uart_init(msp430_uart_instance, 9600, &uart_pins);
@@ -220,11 +233,23 @@ int main(void)
     uart_init(nrf_uart_instance, 9600, &uart_pins);
 #endif
 
-    set_shepherd_pins();
-    set_handshake_pins();
-    LOG("DEBUG: Starting handshake process\n");
+    printf("DEBUG: now having mutex (test)\n");
+    perfom_mutex_operations();
 
-    initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
+    // deinit uart
+#if defined(__MSP430FR5994__)
+    uart_deinit(msp430_uart_instance);
+#elif defined(NRF52840_XXAA)
+    uart_deinit(nrf_uart_instance);
+#endif
+    mutex_handler_release_mutex(initial_state_mask, &mutex_handler_test);
+
+    return 0;
+
+    LOG("DEBUG: Starting handshake process\n");
+    // Print the size of DataHandshakeData struct
+    //  74 on msp430fr5994
+    LOG("DEBUG: Size of DataHandshakeData: %zu bytes\n", sizeof(DataHandshakeData));
 
     // Set all pins that are needed for handshake to open drain
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)

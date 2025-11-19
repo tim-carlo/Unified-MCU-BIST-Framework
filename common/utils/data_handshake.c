@@ -350,8 +350,6 @@ static inline void fsm_data_handshake(void)
                         p->current_job = JOB_RECEIVING_REQUEST;
                         p->last_send_job_order = counter; // Reset timeout counter on successful request handling
                     }
-                    // LOG("Request received on pin %u\n", pin);
-
                     p->receiving_counter = 0;
                 }
                 // If the signal was too short or too long, just reset the counter
@@ -368,7 +366,7 @@ static inline void fsm_data_handshake(void)
                     {
                         // Too many attempts, give up on this pin for now
                         // blacklist pin internally
-                        internal_blacklist_mask |= (1ULL << p->pin);
+                        internal_valid_pins &= ~(1ULL << p->pin);
                     }
                     else
                     {

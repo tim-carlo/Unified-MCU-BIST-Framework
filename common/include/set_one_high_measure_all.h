@@ -12,6 +12,8 @@
 #include "nrf52840_gpio.h"
 #include "nrf52840_time.h"
 #endif
+
+#include "strength_analyzer.h"
 /**
  * @brief Main function to run all 4 phases of set-one-high-measure-all pin connectivity testing 
  * This function implements a comprehensive pin connectivity test using 4 different

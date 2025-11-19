@@ -12,7 +12,7 @@
 #define MUTEX_TIMER TIMER_A1
 #endif
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG == 1
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 #else
@@ -22,7 +22,6 @@
 static const uint8_t MAX_RELEASE_TRIES = 4;
 static const uint8_t MAX_REQUEST_TRIES = 40;
 static volatile bool interrupt_flag = false;
-static const uint16_t max_timeout = 5000;
 
 /**
  * @brief Timer interrupt handler for mutex operations
@@ -77,6 +76,9 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler, const uint16_t
 {
     uint8_t received = 0;
     uint16_t timeout_counter = 0;
+    // Reset decoder state
+    handler->last_mode = 0;
+    handler->last_rx = false;
 
     WaitForResult result = TIMEOUT;
     if (spooky_decoder_init(&handler->dec, handler->buffer, MUTEX_HANDELER_BUFFER_SIZE) != 0)
@@ -104,8 +106,8 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler, const uint16_t
             if (current_mode < last_mode && last_mode != 3)
             {
                 // Here a error occures
-                 result = TIMEOUT;
-                 goto done_wait;
+                result = TIMEOUT;
+                goto done_wait;
             }
         }
         else
@@ -268,10 +270,13 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
     {
         gpio_input_init(handler->current_mutex_pin, GPIO_PULL_NONE);
         mutex_timer_start();
+
+        uint16_t tries = 0;
         while (!handler->currently_having_mutex)
         {
             // This timeout must be longer than the owner's request interval
-            WaitForResult wf = mutex_wait_for_signal(handler, 5000);
+            // A small variation is added to reduce collision chances
+            WaitForResult wf = mutex_wait_for_signal(handler, 5000 + (100 * tries));
 
             if (wf == TIMEOUT)
                 continue;
@@ -298,6 +303,8 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 mutex_timer_stop();
                 break;
             }
+            tries++;
+            // No timeout here
         }
     }
 }

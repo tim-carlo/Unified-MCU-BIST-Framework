@@ -18,8 +18,6 @@
 // UART configuration - Fixed to UCA0 at 9600 baud
 #define UART_ID 0 // Identifier for UCA0
 #define BAUD_RATE 9600
-#define UART_PIN_TX ABS_PIN(2, 0) // P2.0 (gpio 8)
-#define UART_PIN_RX ABS_PIN(2, 1) // P2.1 (gpio 9)
 
 // Base address of the device descriptor table
 #define DEVICE_DESCRIPTOR_ADDR 0x1A00

@@ -129,5 +129,5 @@ void mcu_init()
 
     init_seeds(); // Initialize LFSR seeds
 
-   // __enable_interrupt(); // Enable global interrupts
+    __enable_interrupt(); // Enable global interrupts
 }

@@ -4,28 +4,25 @@
 #include "printf.h"
 #include <string.h>
 
-#define LOG(fmt, ...) //printf("DEBUG: " fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) // printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 static const uint8_t TIME_BETWEEN_PHASES = 10;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
-static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 5;
+static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
 
 static const uint32_t SETTLE_TIME_US = 1000;
 static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
 static const uint32_t DEBOUNCING_DELAY_US = 10;
 
-static const uint8_t threshold_percent = 50;
-static const uint8_t threshold = (NUMBER_OF_SAMPLES_FOR_DEBOUNCING * threshold_percent) / 100;
-
 static const uint8_t threshold_measure_percent = 100;
 static const uint8_t threshold_measure = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_measure_percent) / 100;
 
-static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 8;
-static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 6;
+static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
+static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
 
-static const uint8_t repetitions_step1 = 5;
-static const uint8_t repetitions_step2 = 5;
-static const uint8_t repetitions_step3 = 5;
+static const uint8_t repetitions_step1 = 10;
+static const uint8_t repetitions_step2 = 10;
+static const uint8_t repetitions_step3 = 10;
 
 typedef uint8_t SetOneMeasureALLPhase;
 enum
@@ -72,7 +69,7 @@ static inline PinSamplesMultiplePins read_all_pins(const uint64_t blacklist_mask
             }
         }
 
-        delay_us(Ddelay_us);
+        delay_us(DEBOUNCING_DELAY_US);
     }
     uint8_t pin;
 
@@ -110,7 +107,7 @@ static inline PinSamples sample_pin(const uint8_t pin, const uint8_t samples, co
         {
             high_count++;
         }
-        delay_us(Ddelay_us);
+        delay_us(DEBOUNCING_DELAY_US);
     }
 
     PinSamples result;
@@ -222,7 +219,15 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
         if (test_pin != pin && changes[pin] >= threshold_measure)
         {
             LOG("Phase %d: Pin %u affected by pin %u\n", phase, pin, test_pin);
-            add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
+            // if the pin has the event naturally disturbed, do not add connection
+            if (check_if_pinevent_exists(pindata, pin, PIN_IS_NATUTALLY_DISTURBED))
+            {
+                LOG("Pin %u is naturally disturbed, skipping connection logging\n", pin);
+            }
+            else
+            {
+                add_pin_connection(CONNECTION_TYPE_INTERNAL, pindata, test_pin, pin, (uint8_t)phase);
+            }
         }
     }
 }
@@ -233,7 +238,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_high[64] = {0};
     uint8_t pin_low[64] = {0};
 
-    const uint8_t number_of_samples = 6;
+    const uint8_t number_of_samples = 12;
     const uint8_t Ddelay_us = 10;
 
     // Phase A:
@@ -334,7 +339,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
     LOG("Step 2A/B: Weak pull-up/pull-down test\n");
 
     const uint8_t threshold_step2 = (repetitions_step2 * 100) / 100;
-    const uint8_t number_of_samples = 6;
+    const uint8_t number_of_samples = 12;
     const uint8_t Ddelay_us = 10;
 
     // Step A:
@@ -420,7 +425,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_high[64] = {0};
     uint8_t pin_low[64] = {0};
 
-    const uint8_t number_of_samples = 6;
+    const uint8_t number_of_samples = 12;
     const uint8_t Ddelay_us = 10;
 
     uint64_t mask = ~blacklist_mask;
@@ -751,13 +756,31 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
 void run_selfexploration_tests(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size)
 {
     reset_all_pins(blacklist_mask);
+
+    step_1(blacklist_mask, pindata);
+    step_2(blacklist_mask, pindata);
+    step_3(blacklist_mask, pindata);
+
+    // These phases should be split into their own functions for clarity
+    reset_all_pins(blacklist_mask);
+
+    // Now check for each pin it it should be blacklisted
+    BitmapIterator it = bitmap_iterator_create(~blacklist_mask);
+    uint8_t pin;
+
+    while (bitmap_iterator_next(&it, &pin))
+    {
+        // Check if the pin has any events that require blacklisting
+        if (strength_analyzer_should_blacklist(pindata, pin))
+        {
+            add_pin_event(pindata, pin, PIN_IS_NATUTALLY_DISTURBED);
+        }
+    }
+
     phase_0_one_set_pulldown(blacklist_mask, pindata);
     phase_1_one_set_pullup(blacklist_mask, pindata);
     phase_2_drive_low(blacklist_mask, pindata);
     phase_3_drive_high(blacklist_mask, pindata);
 
-    step_1(blacklist_mask, pindata);
-    step_2(blacklist_mask, pindata);
-    step_3(blacklist_mask, pindata);
     reset_all_pins(blacklist_mask);
 }

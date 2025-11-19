@@ -6,8 +6,6 @@
 #include <stdbool.h>
 
 
-#define DEBUG_PIN2 ABS_PIN(3, 5) // Pin used for debugging, can be changed as needed
-
 // Timer callback arrays - separate for overflow and compare interrupts
 static void (*timer_overflow_callback[5])(void) = {NULL, NULL, NULL, NULL, NULL};
 static void (*timer_compare_callback[5])(void) = {NULL, NULL, NULL, NULL, NULL};

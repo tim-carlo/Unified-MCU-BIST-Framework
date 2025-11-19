@@ -51,10 +51,6 @@ void gpio_output_init(uint8_t abs_pin)
     const uint8_t port = abs_to_port(abs_pin);
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
-    // Clear peripheral function
-    *port_sel0[port] &= ~mask;
-    *port_sel1[port] &= ~mask;
-
     // Set as output
     *port_dir[port] |= mask;
 }
@@ -63,10 +59,6 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
 {
     const uint8_t port = abs_to_port(abs_pin);
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
-
-    // Clear peripheral function
-    *port_sel0[port] &= ~mask;
-    *port_sel1[port] &= ~mask;
 
     // Set as input
     *port_dir[port] &= ~mask;
@@ -86,23 +78,6 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
         *port_ren[port] |= mask;
         *port_out[port] |= mask;
         break;
-    }
-}
-
-void gpio_reset_from_blacklist(uint64_t blacklist_mask)
-{
-    for (uint8_t port = 0; port < 8; ++port)
-    {
-        uint8_t bl = (blacklist_mask >> (port * 8)) & 0xFFU;
-
-        if (bl == 0xFF)
-            continue;
-
-        uint8_t active_mask = (uint8_t)(~bl);
-
-        *port_dir[port] &= ~active_mask;
-        *port_out[port] &= ~active_mask;
-        *port_ren[port] &= ~active_mask;
     }
 }
 
@@ -165,14 +140,27 @@ void gpio_reset(uint8_t abs_pin)
     const uint8_t port = abs_to_port(abs_pin);
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
 
-    // Clear peripheral function
-    *port_sel0[port] &= ~mask;
-    *port_sel1[port] &= ~mask;
-
     // Set as input, no pull, output low
     *port_dir[port] &= ~mask;
     *port_ren[port] &= ~mask;
     *port_out[port] &= ~mask;
+}
+
+void gpio_reset_from_blacklist(uint64_t blacklist_mask)
+{
+    for (uint8_t port = 0; port < 8; ++port)
+    {
+        uint8_t bl = (blacklist_mask >> (port * 8)) & 0xFFU;
+
+        if (bl == 0xFF)
+            continue;
+
+        uint8_t active_mask = (uint8_t)(~bl);
+
+        *port_dir[port] &= ~active_mask;
+        *port_out[port] &= ~active_mask;
+        *port_ren[port] &= ~active_mask;
+    }
 }
 
 bool gpio_read(uint8_t abs_pin)
@@ -203,10 +191,6 @@ void gpio_od_init(uint8_t abs_pin)
 {
     const uint8_t port = abs_to_port(abs_pin);
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
-
-    // Clear peripheral function
-    *port_sel0[port] &= ~mask;
-    *port_sel1[port] &= ~mask;
 
     // Set as input with pull-up (open-drain idle state)
     *port_dir[port] &= ~mask;

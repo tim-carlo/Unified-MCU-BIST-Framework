@@ -53,10 +53,7 @@ enum
     STEP_3_A_LOW = 22,
     STEP_3_B_HIGH = 23,
     STEP_3_B_LOW = 24,
-    PIN_FLOATING_IN_PHASE0 = 25,
-    PIN_FLOATING_IN_PHASE1 = 26,
-    PIN_FLOATING_IN_PHASE2 = 27,
-    PIN_FLOATING_IN_PHASE3 = 28
+    PIN_IS_NATUTALLY_DISTURBED = 25
 };
 
 typedef uint8_t ConnectionType;
