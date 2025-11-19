@@ -12,7 +12,7 @@
 #define MUTEX_TIMER TIMER_A1
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG == 1
 #define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
 #else
@@ -39,18 +39,15 @@ static void mutex_timer_interrupt(void)
  */
 static void mutex_timer_start(void)
 {
-    // Must be configured in the same way as the spooky encoder/decoder sample rate in the data handshake
 
-    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
+    const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us((uint8_t)200);
 #if defined(NRF52840_XXAA)
-    // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(MUTEX_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
     set_timer_compare(MUTEX_TIMER, 0, sample_interval_us, true, true);
     set_timer_event_callback(MUTEX_TIMER, mutex_timer_interrupt);
     start_timer(MUTEX_TIMER);
 
 #elif defined(__MSP430FR5994__)
-    // At 16MHz SMCLK with /8 prescaler = 2MHz, need 2000 ticks for 1ms
     configure_timer(MUTEX_TIMER, 8, MC__STOP);
     set_timer_compare(MUTEX_TIMER, 0, sample_interval_us * 2);
     set_timer_compare_callback(MUTEX_TIMER, mutex_timer_interrupt);
@@ -76,16 +73,17 @@ static void mutex_timer_stop(void)
  * @param handler Pointer to MutexHandler
  * @return WaitForResult Result of the wait operation
  */
-static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
+static WaitForResult mutex_wait_for_signal(MutexHandler *handler, const uint16_t timeout_cycles)
 {
     uint8_t received = 0;
     uint16_t timeout_counter = 0;
 
     WaitForResult result = TIMEOUT;
-
-    reset_decoder(&handler->dec);
-    memset(handler->buffer, 0, sizeof(handler->buffer));
-    mutex_timer_start();
+    if (spooky_decoder_init(&handler->dec, handler->buffer, MUTEX_HANDELER_BUFFER_SIZE) != 0)
+    {
+        LOG("Error: Decoder re-init failed\n");
+        return TIMEOUT;
+    }
 
     while (true)
     {
@@ -93,7 +91,7 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
             ;
         interrupt_flag = false;
 
-        bool rx = gpio_read(handler->current_mutex_pin);
+        const bool rx = gpio_read(handler->current_mutex_pin);
 
         enum spooky_decoder_step_res step = spooky_decoder_step(&handler->dec, rx);
 
@@ -103,18 +101,18 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
 
         if (current_mode != last_mode)
         {
-            // if (current_mode < last_mode && last_mode != 3)
-            // {
-            //     // Here a error occures
-            //     result = TIMEOUT;
-            //     goto done_wait;
-            // }
+            if (current_mode < last_mode && last_mode != 3)
+            {
+                // Here a error occures
+                 result = TIMEOUT;
+                 goto done_wait;
+            }
         }
         else
         {
             if (rx == handler->last_rx)
             {
-                if (++timeout_counter >= max_timeout)
+                if (++timeout_counter >= timeout_cycles)
                 {
                     result = TIMEOUT;
                     goto done_wait;
@@ -158,7 +156,6 @@ static WaitForResult mutex_wait_for_signal(MutexHandler *handler)
     }
 
 done_wait:
-    mutex_timer_stop();
     return result;
 }
 
@@ -175,8 +172,6 @@ static void mutex_send_signal(MutexHandler *handler, uint8_t data)
     bool done = false;
     spooky_encoder_clear(&handler->enc);
     spooky_encoder_enqueue(&handler->enc, &data, 1);
-
-    mutex_timer_start();
 
     while (!done)
     {
@@ -204,7 +199,6 @@ static void mutex_send_signal(MutexHandler *handler, uint8_t data)
             break;
         }
     }
-    mutex_timer_stop();
 }
 
 void mutex_handler_init(DataHandshakeResult *result, MutexHandler *handler)
@@ -247,6 +241,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
         // This is important that both devices have the same
         gpio_od_init(handler->current_mutex_pin);
         uint8_t tries = 0;
+        mutex_timer_start();
         while (!handler->currently_having_mutex)
         {
             if (tries++ >= MAX_REQUEST_TRIES)
@@ -258,7 +253,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
             uint8_t request = MUTEX_REQUEST;
             mutex_send_signal(handler, request);
 
-            WaitForResult res = mutex_wait_for_signal(handler);
+            WaitForResult res = mutex_wait_for_signal(handler, 1000);
             if (res == ACKNOWLEDGED)
             {
                 LOG("Received mutex ACK\n");
@@ -266,14 +261,17 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 break;
             }
         }
+        mutex_timer_stop();
         gpio_reset_from_blacklist(blacklist_mask);
     }
     else if (!handler->iam_mutex_owner)
     {
         gpio_input_init(handler->current_mutex_pin, GPIO_PULL_NONE);
+        mutex_timer_start();
         while (!handler->currently_having_mutex)
         {
-            WaitForResult wf = mutex_wait_for_signal(handler);
+            // This timeout must be longer than the owner's request interval
+            WaitForResult wf = mutex_wait_for_signal(handler, 5000);
 
             if (wf == TIMEOUT)
                 continue;
@@ -282,7 +280,7 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
             {
                 LOG("Received mutex request\n");
                 uint8_t ack = MUTEX_ACK;
-                // delay_ms(10); // Small delay_ms to ensure the other device is ready
+                delay_ms(50); // Small delay_ms to ensure the other device is ready
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
 
@@ -293,10 +291,11 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 LOG("Received mutex release\n");
                 handler->currently_having_mutex = true;
                 uint8_t ack = MUTEX_ACK;
-                // delay_ms(10); // Small delay_ms to ensure the other device is ready
+                delay_ms(50); // Small delay_ms to ensure the other device is ready
                 gpio_od_init(handler->current_mutex_pin);
                 mutex_send_signal(handler, ack);
                 gpio_reset_from_blacklist(blacklist_mask);
+                mutex_timer_stop();
                 break;
             }
         }
@@ -309,6 +308,8 @@ void mutex_handler_release_mutex(uint64_t blacklist_mask, MutexHandler *handler)
         return;
 
     gpio_od_init(handler->current_mutex_pin);
+    mutex_timer_start();
+
     bool released = false;
     uint8_t tries = 0;
 
@@ -324,7 +325,7 @@ void mutex_handler_release_mutex(uint64_t blacklist_mask, MutexHandler *handler)
         LOG("Releasing mutex\n");
         mutex_send_signal(handler, release);
 
-        WaitForResult res = mutex_wait_for_signal(handler);
+        WaitForResult res = mutex_wait_for_signal(handler, 1000);
         if (res == ACKNOWLEDGED)
         {
             released = true;
@@ -333,6 +334,7 @@ void mutex_handler_release_mutex(uint64_t blacklist_mask, MutexHandler *handler)
     }
 
     gpio_reset_from_blacklist(blacklist_mask);
+    mutex_timer_stop();
 }
 
 void mutex_handler_deinit(MutexHandler *handler)
