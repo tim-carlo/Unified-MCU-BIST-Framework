@@ -27,7 +27,8 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size)
  */
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
 {
-    pindata[pin].event_mask |= (1 << event);
+    // Better than ULL
+    pindata[pin].event_mask |= ((uint32_t)1u << event);
 }
 
 /**
@@ -35,7 +36,7 @@ void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)
  */
 bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event)
 {
-    return (pindata[pin].event_mask & (1 << event)) != 0;
+    return (pindata[pin].event_mask & ((uint32_t)1u << event)) != 0;
 }
 
 /**
