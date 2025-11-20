@@ -146,8 +146,6 @@ void uart_init(uart_instance_t *uart, const uint32_t baud_rate, const uart_pins_
     UCA0CTLW0 &= ~UCSWRST;       // Enable UART
 #endif
 
-__enable_interrupt(); // Enable global interrupts
-
 }
 
 void uart_deinit(uart_instance_t *uart)
@@ -156,37 +154,29 @@ void uart_deinit(uart_instance_t *uart)
         return;
 
 #if DEV_KIT == 0
-    /* Put UART A1 into reset */
     UCA1CTLW0 |= UCSWRST;
 
-    /* Clear UART A1 config */
-    UCA1CTLW0 = UCSWRST;
-    UCA1BR0   = 0;
-    UCA1BR1   = 0;
-    UCA1MCTLW = 0;
+    UCA1CTLW0 = UCSWRST;       // Reset UART A1
+    UCA1BR0   = 0; // Clear baud rate
+    UCA1BR1   = 0; // Clear baud rate
+    UCA1MCTLW = 0; // Clear modulation
 
-    /* Release pins from UART function */
-    P2SEL1 &= ~(BIT5 | BIT6);
-    P2SEL0 &= ~(BIT5 | BIT6);
+    P2SEL1 &= ~(BIT5 | BIT6); // Clear UART function
+    P2SEL0 &= ~(BIT5 | BIT6); // Clear UART function
 
-    /* Configure pins as GPIO input */
-    P2DIR &= ~(BIT5 | BIT6);
+    P2DIR &= ~(BIT5 | BIT6); // Configure pins as GPIO input
 #else
-    /* Put UART A0 into reset */
-    UCA0CTLW0 |= UCSWRST;
+    UCA0CTLW0 |= UCSWRST; // Put UART A0 in reset
 
-    /* Clear UART A0 config */
-    UCA0CTLW0 = UCSWRST;
-    UCA0BR0   = 0;
-    UCA0BR1   = 0;
-    UCA0MCTLW = 0;
+    UCA0CTLW0 = UCSWRST; // Reset UART A0
+    UCA0BR0   = 0; // Clear baud rate
+    UCA0BR1   = 0; // Clear baud rate
+    UCA0MCTLW = 0; // Clear modulation
 
-    /* Release pins from UART function */
-    P2SEL1 &= ~(BIT0 | BIT1);
-    P2SEL0 &= ~(BIT0 | BIT1);
+    P2SEL1 &= ~(BIT0 | BIT1); // Clear UART function
+    P2SEL0 &= ~(BIT0 | BIT1); // Clear UART function
 
-    /* Configure pins as GPIO input */
-    P2DIR &= ~(BIT0 | BIT1);
+    P2DIR &= ~(BIT0 | BIT1); // Configure pins as GPIO input
 #endif
 }
 
