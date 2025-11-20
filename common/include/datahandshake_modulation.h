@@ -61,13 +61,13 @@ typedef enum
     DHANDSHAKE_ROLE_UNCLEAR = 2
 } DataHandshakeRoleType;
 
-#define STATUS_TX_COMPLETE (1 << 0)
-#define STATUS_RX_COMPLETE (1 << 1)
-#define STATUS_RX_ERROR (1 << 2)
-#define STATUS_DATA_RECEIVED (1 << 3)
-#define STATUS_MANCHESTER_MASK (3 << 4) // bits 4-5
-#define STATUS_ROLE_INITIATOR (1 << 6)
-#define STATUS_HANDSHAKE_SUCCESS (1 << 7)
+#define STATUS_TX_COMPLETE (1u << 0)
+#define STATUS_RX_COMPLETE (1u << 1)
+#define STATUS_RX_ERROR (1u << 2)
+#define STATUS_DATA_RECEIVED (1u << 3)
+#define STATUS_MANCHESTER_MASK (3u << 4) // bits 4-5
+#define STATUS_ROLE_INITIATOR (1u << 6)
+#define STATUS_HANDSHAKE_SUCCESS (1u << 7)
 
 #define ANSWER_PACKSIZE (25)
 #define REQUEST_PACKSIZE (15)
