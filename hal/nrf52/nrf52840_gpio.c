@@ -5,12 +5,6 @@
 #include "printf.h"
 
 
-// States
-static volatile uint64_t s_prev_state = 0;
-static volatile uint64_t s_blacklist_mask = 0;
-static gpio_interrupt_handler_t s_falling = NULL;
-static gpio_interrupt_handler_t s_rising = NULL;
-
 static inline NRF_GPIO_Type *port_ptr(uint32_t port)
 {
 #if defined(NRF_P0_BASE)

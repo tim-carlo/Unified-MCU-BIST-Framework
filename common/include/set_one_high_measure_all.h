@@ -2,6 +2,7 @@
 #define SET_ONE_HIGH_MEASURE_ALL_H
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "pin_config.h"
 #include "pindata.h"
 

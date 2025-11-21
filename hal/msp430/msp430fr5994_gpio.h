@@ -48,7 +48,7 @@ void gpio_toggle(uint8_t abs_pin);
 bool gpio_read(uint8_t abs_pin);
 void gpio_reset(uint8_t abs_pin);
 void gpio_reset_from_blacklist(uint64_t blacklist_mask);
-void gpio_input_from_blacklist(uint64_t blacklist_mask, gpio_pull_t pull);
+void gpio_input_from_blacklist(uint64_t blacklist_mask, const gpio_pull_t pull);
 uint64_t gpio_read_all_ports(void);
 
 // Open-Drain Functions

@@ -55,7 +55,7 @@ void gpio_output_init(uint8_t abs_pin)
     *port_dir[port] |= mask;
 }
 
-void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
+void gpio_input_init(uint8_t abs_pin, const gpio_pull_t pull)
 {
     const uint8_t port = abs_to_port(abs_pin);
     const uint8_t mask = 1u << abs_to_pinidx(abs_pin);
@@ -81,7 +81,7 @@ void gpio_input_init(uint8_t abs_pin, gpio_pull_t pull)
     }
 }
 
-void gpio_input_from_blacklist(uint64_t blacklist_mask, gpio_pull_t pull)
+void gpio_input_from_blacklist(uint64_t blacklist_mask, const gpio_pull_t pull)
 {
     for (uint8_t port = 0; port < 8; ++port)
     {

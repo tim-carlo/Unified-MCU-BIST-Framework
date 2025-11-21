@@ -27,6 +27,7 @@ uart_instance_t nrf_uart_instance = NRF_UART0; // Using UART0 for communication
 #endif
 
 #include "pin_config.h"
+#include <inttypes.h>
 
 #include "timing_pindata.h"
 #include "handshake.h"
@@ -181,6 +182,14 @@ void perfom_mutex_operations()
 
     MUTEX_LOG("DEBUG: Performing mutex operations\n");
     run_selfexploration_tests(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
+
+
+    // print the event mask of each pin as a 32-bit decimal number
+    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; pin++)
+    {
+        MUTEX_LOG("DEBUG: Pin %u event mask: %" PRIu32 "\n",
+          pin, (uint32_t)pin_data[pin].event_mask);
+    }
     uart_transmitter_init();
     UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
     switch (uart_result)

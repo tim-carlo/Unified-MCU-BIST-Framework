@@ -6,16 +6,15 @@
 
 #define LOG(fmt, ...) // printf("DEBUG: " fmt, ##__VA_ARGS__)
 
-static const uint8_t TIME_BETWEEN_PHASES = 10;
+
+static const uint8_t MAX_STACK_SAMPLES = 30;
+#if defined(NRF52840_XXAA)
+static const uint8_t TIME_BETWEEN_PHASES = 1;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
 
 static const uint32_t SETTLE_TIME_US = 1000;
-static const uint32_t TIME_BETWEEN_MEASUREMENTS_US = 10000; // 10ms
 static const uint32_t DEBOUNCING_DELAY_US = 10;
-
-static const uint8_t threshold_measure_percent = 100;
-static const uint8_t threshold_measure = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_measure_percent) / 100;
 
 static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
 static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
@@ -23,6 +22,32 @@ static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
 static const uint8_t repetitions_step1 = 10;
 static const uint8_t repetitions_step2 = 10;
 static const uint8_t repetitions_step3 = 10;
+
+static const uint8_t number_of_samples_step1 = 12;
+static const uint8_t number_of_samples_step2 = 12;
+static const uint8_t number_of_samples_step3 = 12;
+
+#elif defined(__MSP430FR5994__)
+static const uint8_t TIME_BETWEEN_PHASES = 1;
+static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
+static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+static const uint32_t SETTLE_TIME_US = 1500;
+static const uint32_t DEBOUNCING_DELAY_US = 10;
+
+static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
+static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
+
+static const uint8_t repetitions_step1 = 10;
+static const uint8_t repetitions_step2 = 10;
+static const uint8_t repetitions_step3 = 10;
+
+static const uint8_t number_of_samples_step1 = 12;
+static const uint8_t number_of_samples_step2 = 12;
+static const uint8_t number_of_samples_step3 = 12;
+#endif
+
+static const uint8_t threshold_measure_percent = 100;
+static const uint8_t threshold_measure = (NUMBER_OF_SAMPLES_FOR_MEASURING * threshold_measure_percent) / 100;
 
 typedef uint8_t SetOneMeasureALLPhase;
 enum
@@ -53,50 +78,56 @@ typedef struct
  */
 static inline PinSamplesMultiplePins read_all_pins(const uint64_t blacklist_mask, const uint8_t samples, const uint32_t Ddelay_us)
 {
-    const uint64_t active_mask = ~blacklist_mask;
-    uint8_t high_count[64] = {0};
+    if (samples == 0) return (PinSamplesMultiplePins){0, 0};
+    const uint8_t actual_samples = (samples > MAX_STACK_SAMPLES) ? MAX_STACK_SAMPLES : samples;
 
-    for (uint8_t i = 0; i < samples; i++)
+    uint64_t allpin_samples[MAX_STACK_SAMPLES];
+
+    for (uint8_t i = 0; i < actual_samples; i++)
     {
-        uint64_t internal_mask = active_mask;
-        uint8_t pin;
+        allpin_samples[i] = gpio_read_all_ports();
+        delay_us(Ddelay_us);
+    }
 
-        while (bitmap_iterator_next_mask_as_param(&internal_mask, &pin))
+    PinSamplesMultiplePins result = {0, 0};
+    
+
+    const uint8_t tristate_threshold = actual_samples / 3;
+    const uint8_t high_threshold = actual_samples - tristate_threshold;
+    const uint8_t low_threshold = tristate_threshold;
+
+    uint64_t active_mask = ~blacklist_mask;
+    uint8_t pin;
+
+    while (bitmap_iterator_next_mask_as_param(&active_mask, &pin))
+    {
+        uint8_t count = 0;
+        for (uint8_t i = 0; i < actual_samples; i++)
         {
-            if (gpio_read(pin))
+            if ((allpin_samples[i] >> pin) & 1ULL)
             {
-                high_count[pin]++;
+                count++;
             }
         }
 
-        delay_us(DEBOUNCING_DELAY_US);
-    }
-    uint8_t pin;
-
-    PinSamplesMultiplePins result = {0, 0};
-
-    const uint8_t tristate_threshold = samples / 3;
-    const uint8_t high = samples - tristate_threshold;
-    const uint8_t low = tristate_threshold;
-    while (bitmap_iterator_next_mask_as_param(&active_mask, &pin))
-    {
-        if (high_count[pin] >= high)
+       if (count >= high_threshold)
         {
             result.high |= (1ULL << pin);
         }
-        else if (high_count[pin] <= low)
+        else if (count <= low_threshold)
         {
-            result.high &= ~(1ULL << pin);
+            // Low
+            // Do nothing, as low is represented by 0 bit
         }
         else
         {
+
             result.undefined |= (1ULL << pin);
         }
     }
 
     return result;
 }
-
 static inline PinSamples sample_pin(const uint8_t pin, const uint8_t samples, const uint32_t Ddelay_us)
 {
     uint8_t high_count = 0;
@@ -151,7 +182,7 @@ static inline void flush_pin_states(const uint64_t blacklist_mask, const gpio_pu
     // let the conductance discharge / charge
     delay_us(SETTLE_TIME_US);
 
-    gpio_reset_from_blacklist(blacklist_mask);
+    gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
 }
 /**
  * @brief Reset all pins to high impedance input with no pull resistors
@@ -191,7 +222,6 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
         {
         case PHASE_0_ONE_SET_PULLDOWN:
             // state_after_as_expected_of_own_pin
-            LOG("state_after_as_expected_of_own_pin %d < threshold_measure %d\n", state_after_as_expected_of_own_pin, threshold_measure);
             LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_PULLED_DOWN);
             break;
@@ -238,7 +268,6 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_high[64] = {0};
     uint8_t pin_low[64] = {0};
 
-    const uint8_t number_of_samples = 12;
     const uint8_t Ddelay_us = 10;
 
     // Phase A:
@@ -250,9 +279,9 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
 
         delay_us(SETTLE_TIME_US);
         // reset all pins to high impedance
-        gpio_reset_from_blacklist(blacklist_mask);
+        gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
         delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples, Ddelay_us);
+        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, Ddelay_us);
 
         for (uint8_t k = 0; k < 64; k++)
         {
@@ -276,6 +305,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
     uint64_t mask = ~blacklist_mask;
     while (bitmap_iterator_next_mask_as_param(&mask, &pin))
     {
+        printf("DEBUG: Pin %u: High count = %u, Low count = %u\n", pin, pin_high[pin], pin_low[pin]);
         if (pin_high[pin] >= phase_1_threshold)
         {
             add_pin_event(pindata, pin, STEP_1_A_HIGH);
@@ -298,9 +328,9 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
         // delay
         delay_us(SETTLE_TIME_US);
         // reset all pins to high impedance
-        gpio_reset_from_blacklist(blacklist_mask);
+        gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
         delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples, Ddelay_us);
+        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, Ddelay_us);
 
         for (uint8_t k = 0; k < 64; k++)
         {
@@ -353,7 +383,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_DOWN);
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
+            PinSamples state = sample_pin(pin, number_of_samples_step2, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
@@ -388,7 +418,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_UP);
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples, Ddelay_us);
+            PinSamples state = sample_pin(pin, number_of_samples_step2, Ddelay_us);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
@@ -441,7 +471,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_low(pin);
             delay_ms(1);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples, Ddelay_us);
+            PinSamples measurements = sample_pin(pin, number_of_samples_step3, Ddelay_us);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
@@ -468,6 +498,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
             add_pin_event(pindata, pin, STEP_3_A_LOW);
         }
     }
+
     // clear counts for low drive
     memset(pin_high, 0, sizeof(pin_high));
     memset(pin_low, 0, sizeof(pin_low));
@@ -481,7 +512,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_high(pin);
             delay_ms(1);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples, Ddelay_us);
+            PinSamples measurements = sample_pin(pin, number_of_samples_step3, Ddelay_us);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
