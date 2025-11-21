@@ -241,7 +241,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 7);
+    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 8);
     write_ptr += bytes_written;
 
     // 1. ACK REQUESTED (Key 8)
@@ -293,6 +293,15 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
     write_ptr += bytes_written;
+
+    // 9. Write Git commit hash (Key 9)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_VERSION);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_UTF8, GIT_COMMIT_HASH_LENGTH);
+    write_ptr += bytes_written;
+    const char *git_key = GIT_COMMIT_HASH;
+    memcpy(write_ptr, git_key, GIT_COMMIT_HASH_LENGTH);
+    write_ptr += GIT_COMMIT_HASH_LENGTH;
 
     if (seen_devices_count > 0)
     {

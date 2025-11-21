@@ -21,6 +21,9 @@ HAL_DIR := $(PROJECT_ROOT)/hal/msp430
 COMMON_UTILS_DIR := $(PROJECT_ROOT)/common/utils
 COMMON_INCLUDE_DIR := $(PROJECT_ROOT)/common/include
 
+GIT_COMMIT := $(shell git rev-parse --short=7 HEAD)
+
+
 # Output and build directories
 OUTPUT_DIR := build
 BUILD_SUBDIRS := core hal common_utils
@@ -61,6 +64,8 @@ INCLUDES := $(foreach dir,$(INC_DIRS),-I$(dir))
 
 # Compiler flags
 CFLAGS += -Os -g3 -mlarge -flto -ffunction-sections -fdata-sections -mdata-region=lower -Wall -mmcu=$(DEVICE) $(INCLUDES)
+CFLAGS += -DGIT_COMMIT_HASH=\"$(GIT_COMMIT)\"
+CFLAGS += -DGIT_COMMIT_HASH_LENGTH=7
 CFLAGS += -MMD -MP  # Generate dependencies
 
 # Linker flags

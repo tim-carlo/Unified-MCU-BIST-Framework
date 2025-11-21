@@ -12,16 +12,11 @@
 #include "nrf52840_time.h"
 #include "nrf52840_utils.h"
 
-
 #elif defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
 #include "msp430fr5994_gpio.h"
 #include "msp430fr5994_time.h"
 #include "msp430fr5994_utils.h"
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 #include "pindata.h"
@@ -30,6 +25,15 @@ extern "C" {
 #include "crc.h"
 #include "endian.h"
 
+// This is used to embed the git commit hash into the binary
+#ifndef GIT_COMMIT_HASH 
+#define GIT_COMMIT_HASH "unknown"
+#endif
+
+#ifndef GIT_COMMIT_HASH_LENGTH
+#define GIT_COMMIT_HASH_LENGTH (7)
+#endif
+
 typedef struct
 {
     uint8_t chunk_id;
@@ -37,7 +41,6 @@ typedef struct
     size_t size_in_bytes;
     crc crc32;
 } SerializedChunk;
-
 
 // Serialization constants
 extern SerializedChunk *current_chunk;
@@ -55,7 +58,6 @@ extern uint8_t current_chunk_id;
 #define KEY_CONNECTION_PARAMETER (8)
 #define KEY_CONNECTION_TYPE (9)
 
-
 #define HEADER_KEY_DEVICE_UUID (0)
 #define HEADER_KEY_DEVICE_FAMILY (1)
 #define HEADER_KEY_TOTAL_CHUNKS (2)
@@ -65,6 +67,7 @@ extern uint8_t current_chunk_id;
 #define HEADER_KEY_NUMBER_SEEN_DEVICES (6)
 #define HEADER_KEY_SEEN_DEVICE_IDS (7)
 #define ACK_REQUESTED (8) // Key to indicate if ACK was requested, so if the sender requires an ACK
+#define HEADER_KEY_VERSION (9)
 
 #define HEADER_VERSION (1)
 #define HEADER_BUFFER_SIZE (64)
@@ -72,7 +75,8 @@ extern uint8_t current_chunk_id;
 #define NUMBER_OF_ENTRIES_PER_CHUNK (2)
 
 // Error codes for serialization operations
-typedef enum {
+typedef enum
+{
     SERIALIZATION_OK = 0,
     SERIALIZATION_ERROR_BUFFER_TOO_SMALL = -1,
     SERIALIZATION_ERROR_INVALID_INPUT = -2,
@@ -81,20 +85,15 @@ typedef enum {
     SERIALIZATION_MEMORY_ALLOCATION_FAILED = -5
 } SerializationResult;
 
-typedef enum {
+typedef enum
+{
     INITIALIZATION_OK = 0,
     INITIALIZATION_ERROR = -1
 } InitializationResult;
-
 
 // Function declarations
 InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req);
 SerializationResult serialize_next_chunk();
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested);
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // SERIALISATION_H

@@ -8,6 +8,9 @@ LINKER_SCRIPT   := nrf52840_xxaa.ld
 OUTPUT_DIR      := build
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 
+GIT_COMMIT := $(shell git rev-parse --short=7 HEAD)
+
+
 
 SRC_DIRS := \
     $(ROOT)/core \
@@ -39,6 +42,8 @@ CFLAGS += -Wall -fno-builtin -mthumb -mcpu=cortex-m4
 CFLAGS += -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 
 CFLAGS += -fsingle-precision-constant -ffunction-sections -fdata-sections
 CFLAGS += -Wa,-adhlns=$@.lst
+CFLAGS += -DGIT_COMMIT_HASH=\"$(GIT_COMMIT)\"
+CFLAGS += -DGIT_COMMIT_HASH_LENGTH=7
 
 ASMFLAGS := $(filter-out -std=gnu99,$(CFLAGS))
 
