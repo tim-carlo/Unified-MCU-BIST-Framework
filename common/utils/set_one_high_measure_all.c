@@ -823,8 +823,10 @@ void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
+        
         log_pin_changes(PHASE_4_ALLPULLUP_LOW, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
+    gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
 }
 
 /**
@@ -880,8 +882,10 @@ void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pindata)
                 }
             }
         }
+        // reset pin to pull-down after test
         log_pin_changes(PHASE_5_ALLPULLDOWN_HIGH, pindata, blacklist_mask, changes, undefined_counts, state_after_as_expected_of_own_pin, pin);
     }
+    gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
 }
 
 /**
