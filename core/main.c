@@ -181,27 +181,71 @@ void perfom_mutex_operations()
 {
 
     MUTEX_LOG("DEBUG: Performing mutex operations\n");
-    run_selfexploration_tests(initial_state_mask, pin_data, NUMBER_OF_GPIO_PINS);
 
-    // print the event mask of each pin as a 32-bit decimal number
-    for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; pin++)
-    {
-        MUTEX_LOG("DEBUG: Pin %u event mask: %" PRIu32 "\n",
-                  pin, (uint32_t)pin_data[pin].event_mask);
-    }
     uart_transmitter_init();
-    UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
-    switch (uart_result)
-    {
-    case UART_TRANSMISSION_ERROR_SEND_FAILED:
-        printf("DEBUG: UART send failed\n");
-        led2_show_error();
-        break;
-    case UART_TRANSMISSION_ERROR_ACK_FAILED:
-        printf("DEBUG: UART ACK failed\n");
-    default:
-        break;
-    }
+    const uint8_t total_expected_sessions = 7;  
+    uint8_t session_id = 0;
+    uart_send_header_info(pin_data, NUMBER_OF_GPIO_PINS, total_expected_sessions);
+
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+    step_1(initial_state_mask, pin_data);
+    step_2(initial_state_mask, pin_data);
+    step_3(initial_state_mask, pin_data);
+
+    
+
+    phase_0_one_set_pulldown(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+
+    phase_1_one_set_pullup(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+
+    
+    phase_2_drive_low(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+
+    phase_3_drive_high(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+
+    phase_4_pullup_all_drive_low(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
+    session_id++;
+
+    phase_5_pulldown_all_drive_high(initial_state_mask, pin_data);
+    uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
+    session_id++;
+
+
+    // // print the event mask of each pin as a 32-bit decimal number
+    // for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; pin++)
+    // {
+    //     MUTEX_LOG("DEBUG: Pin %u event mask: %" PRIu32 "\n",
+    //               pin, (uint32_t)pin_data[pin].event_mask);
+    // }
+    
+    // UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
+    // switch (uart_result)
+    // {
+    // case UART_TRANSMISSION_ERROR_SEND_FAILED:
+    //     printf("DEBUG: UART send failed\n");
+    //     led2_show_error();
+    //     break;
+    // case UART_TRANSMISSION_ERROR_ACK_FAILED:
+    //     printf("DEBUG: UART ACK failed\n");
+    // default:
+    //     break;
+    // }
 }
 
 int main(void)
@@ -211,7 +255,7 @@ int main(void)
     // setup UART for debugging
 #if defined(__MSP430FR5994__)
     return 0;
-    
+
 
     data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
     data_handshake_test_result.i_am_mutex_owner = true;

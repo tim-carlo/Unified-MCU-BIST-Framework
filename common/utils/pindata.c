@@ -23,6 +23,26 @@ void initialize_pin_data_array(PinData *pindata, uint8_t size)
 }
 
 /**
+ * @brief Clear all connections and events from PinData array.
+ * @param pindata Pointer to PinData array
+ */
+void clear_pin_connections_from_array(PinData *pindata, uint8_t size)
+{
+    for (uint8_t i = 0; i < size; ++i)
+    {
+
+        // Clear all connections
+        for (uint8_t j = 0; j < MAX_CONNECTIONS_PER_PIN; j++)
+        {
+            memset(&pindata[i].connections[j], 0, sizeof(PinConnection));
+        }
+        // Clear all connections
+        pindata[i].connection_index = 0;
+        pindata[i].connections_count = 0;
+    }
+}
+
+/**
  * @brief Adds a pin event.
  */
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event)

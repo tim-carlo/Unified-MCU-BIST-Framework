@@ -56,5 +56,7 @@ typedef enum
 void uart_transmitter_init(void);
 UartTransmissionResult send_complete_transmission_with_ack(PinData *pindata, uint8_t pindata_size);
 UartTransmissionResult send_complete_transmission_no_ack(PinData *pindata, uint8_t pindata_size);
+UartTransmissionResult uart_send_header_info(PinData *pindata, uint8_t pindata_size, uint8_t total_expected_sessions);
+UartTransmissionResult uart_send_session_data(PinData *pindata, uint8_t pindata_size, uint8_t session_id);
 
 #endif // UART_TRANSMITTER_H

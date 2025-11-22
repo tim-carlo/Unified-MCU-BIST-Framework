@@ -88,6 +88,8 @@ struct PinData
 typedef struct PinData PinData;
 
 void initialize_pin_data_array(PinData *pindata, uint8_t size);
+
+void clear_pin_connections_from_array(PinData *pindata, uint8_t size);
 void add_pin_event(PinData *pindata, uint8_t pin, PinEventType event);
 bool check_if_pinevent_exists(PinData *pindata, uint8_t pin, PinEventType event);
 
@@ -95,8 +97,6 @@ uint8_t add_seen_device(uint64_t other_device_id);
 uint8_t get_index_of_unique_id(uint64_t unique_id);
 
 void add_pin_connection(ConnectionType connection_type, PinData *pindata, uint8_t pin, uint8_t other_pin_index, uint8_t parameter);
-
-// Not sure if this is needed externally
 
 uint64_t get_own_device_id();
 

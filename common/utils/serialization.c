@@ -5,7 +5,6 @@
 
 SerializedChunk *current_chunk = NULL;
 uint8_t current_pin_data_index = 0;
-uint8_t current_chunk_id = 1;
 
 static PinData *current_pindata = NULL;
 static uint8_t actual_pindata_size = 0;
@@ -13,7 +12,9 @@ static uint32_t current_hash = 0;
 static uint32_t current_header_hash = 0;
 static bool ack_required = false;
 
-InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req)
+static uint8_t stream_session_number = 0;
+
+InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req, uint8_t stream_number)
 {
     if (output_chunk == NULL || pindata == NULL)
         return INITIALIZATION_ERROR;
@@ -25,13 +26,13 @@ InitializationResult initialize_serialization(SerializedChunk *output_chunk, Pin
     current_pin_data_index = 0;
     actual_pindata_size = pindata_size;
     ack_required = ack_req;
+    stream_session_number = stream_number;
 
     return INITIALIZATION_OK;
 }
 
 // Serialize pin data in chunks for transmission
-// Fixed serialize_next_chunk function - add ack_required field to CBOR
-SerializationResult serialize_next_chunk()
+SerializationResult serialize_next_chunk(const uint8_t chunck_id)
 {
     if (current_chunk == NULL || current_pindata == NULL)
         return SERIALIZATION_ERROR_NULL_POINTER;
@@ -64,23 +65,28 @@ SerializationResult serialize_next_chunk()
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    // CHANGED: CBOR map now has 3 entries (was 2) - added ack_required field
-    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
+    uint8_t bytes_written = cb0r_write(write_ptr, CB0R_MAP, 4);
     write_ptr += bytes_written;
 
-    // ADD: ACK_REQUIRED field (Key 8)
+    // ACK_REQUIRED field (Key 8)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ACK_REQUESTED);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, ack_required ? 1 : 0);
     write_ptr += bytes_written;
 
-    // Existing KEY_NUM_ENTRIES field (Key 7)
+    // KEY_NUM_ENTRIES field (Key 7)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_NUM_ENTRIES);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_INT, entries_to_serialize);
     write_ptr += bytes_written;
 
-    // Existing KEY_PINS field (Key 9)
+    // STREAM_NUMBER field (Key 10)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_STREAM_NUMBER);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, stream_session_number);
+    write_ptr += bytes_written;
+
+    // KEY_PINS field (Key 9)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_PINS);
     write_ptr += bytes_written;
     bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, entries_to_serialize);
@@ -172,7 +178,7 @@ SerializationResult serialize_next_chunk()
     uint8_t *packet_ptr = packet_buffer;
 
     // Write 1-byte packet ID
-    *packet_ptr = current_chunk_id;
+    *packet_ptr = chunck_id;
     packet_ptr += 1;
 
     // Write 2-byte length (LITTLE ENDIAN) - length of CBOR data only
@@ -197,7 +203,7 @@ SerializationResult serialize_next_chunk()
     return SERIALIZATION_OK;
 }
 
-SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested)
+SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested, uint8_t total_expected_sessions)
 {
     if (output_chunk == NULL || pindata == NULL)
     {
@@ -241,7 +247,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 8);
+    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 9);
     write_ptr += bytes_written;
 
     // 1. ACK REQUESTED (Key 8)
@@ -288,12 +294,6 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     bytes_written = cb0r_write(write_ptr, CB0R_INT, seen_devices_count);
     write_ptr += bytes_written;
 
-    // 8. List of seen device IDs (Key 6)
-    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_SEEN_DEVICE_IDS);
-    write_ptr += bytes_written;
-    bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
-    write_ptr += bytes_written;
-
     // 9. Write Git commit hash (Key 9)
     bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_VERSION);
     write_ptr += bytes_written;
@@ -302,6 +302,18 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
     const char *git_key = GIT_COMMIT_HASH;
     memcpy(write_ptr, git_key, GIT_COMMIT_HASH_LENGTH);
     write_ptr += GIT_COMMIT_HASH_LENGTH;
+
+    // 10. Number of expected sessions (Key 10)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_NUMBER_OF_EXPECTED_SESSIONS);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, total_expected_sessions);
+    write_ptr += bytes_written;
+
+    // 8. List of seen device IDs (Key 6)
+    bytes_written = cb0r_write(write_ptr, CB0R_INT, HEADER_KEY_SEEN_DEVICE_IDS);
+    write_ptr += bytes_written;
+    bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, seen_devices_count);
+    write_ptr += bytes_written;
 
     if (seen_devices_count > 0)
     {

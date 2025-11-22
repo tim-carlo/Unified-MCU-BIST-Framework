@@ -45,7 +45,6 @@ typedef struct
 // Serialization constants
 extern SerializedChunk *current_chunk;
 extern uint8_t current_pin_data_index;
-extern uint8_t current_chunk_id;
 
 #define KEY_CHUNK_ID (0)
 #define KEY_NUM_ENTRIES (1)
@@ -57,6 +56,7 @@ extern uint8_t current_chunk_id;
 #define KEY_OTHER_PIN (7)
 #define KEY_CONNECTION_PARAMETER (8)
 #define KEY_CONNECTION_TYPE (9)
+#define KEY_STREAM_NUMBER (10)
 
 #define HEADER_KEY_DEVICE_UUID (0)
 #define HEADER_KEY_DEVICE_FAMILY (1)
@@ -68,6 +68,7 @@ extern uint8_t current_chunk_id;
 #define HEADER_KEY_SEEN_DEVICE_IDS (7)
 #define ACK_REQUESTED (8) // Key to indicate if ACK was requested, so if the sender requires an ACK
 #define HEADER_KEY_VERSION (9)
+#define HEADER_NUMBER_OF_EXPECTED_SESSIONS (10)
 
 #define HEADER_VERSION (1)
 #define HEADER_BUFFER_SIZE (64)
@@ -92,8 +93,8 @@ typedef enum
 } InitializationResult;
 
 // Function declarations
-InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req);
+InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req, uint8_t stream_number);
 SerializationResult serialize_next_chunk();
-SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested);
+SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested, uint8_t total_expected_sessions);
 
 #endif // SERIALISATION_H

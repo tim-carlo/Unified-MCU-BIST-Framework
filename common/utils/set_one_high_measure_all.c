@@ -7,46 +7,32 @@
 #define LOG(fmt, ...) // printf("DEBUG: " fmt, ##__VA_ARGS__)
 
 static const uint8_t MAX_STACK_SAMPLES = 30;
-#if defined(NRF52840_XXAA)
-static const uint8_t TIME_BETWEEN_PHASES = 1;
+static const uint8_t TIME_BETWEEN_PHASES = 5;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+static const uint32_t DEBOUNCING_DELAY_US = 10;
+
+static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
+static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
+
+static const uint8_t repetitions_step1 = 10;
+static const uint8_t repetitions_step2 = 10;
+static const uint8_t repetitions_step3 = 10;
+
+static const uint8_t number_of_samples_step1 = 12;
+static const uint8_t number_of_samples_step2 = 12;
+static const uint8_t number_of_samples_step3 = 12;
+
+static const uint8_t DRIVE_SETTLE_TIME_US = 1000;
+
+#if defined(NRF52840_XXAA)
 
 static const uint32_t SETTLE_TIME_US = 1000;
-static const uint32_t DEBOUNCING_DELAY_US = 10;
-
-static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
-static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
-
-static const uint8_t repetitions_step1 = 10;
-static const uint8_t repetitions_step2 = 10;
-static const uint8_t repetitions_step3 = 10;
-
-static const uint8_t number_of_samples_step1 = 12;
-static const uint8_t number_of_samples_step2 = 12;
-static const uint8_t number_of_samples_step3 = 12;
-
-static const uint8_t DRIVE_SETTLE_TIME_US = 1000;
 
 #elif defined(__MSP430FR5994__)
-static const uint8_t TIME_BETWEEN_PHASES = 1;
-static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
-static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
+
 static const uint32_t SETTLE_TIME_US = 1500;
-static const uint32_t DEBOUNCING_DELAY_US = 10;
 
-static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
-static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
-
-static const uint8_t repetitions_step1 = 10;
-static const uint8_t repetitions_step2 = 10;
-static const uint8_t repetitions_step3 = 10;
-
-static const uint8_t number_of_samples_step1 = 12;
-static const uint8_t number_of_samples_step2 = 12;
-static const uint8_t number_of_samples_step3 = 12;
-
-static const uint8_t DRIVE_SETTLE_TIME_US = 1000;
 #endif
 
 static const uint8_t threshold_measure_percent = 100;
@@ -260,7 +246,7 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
     }
 }
 
-static void step_1(uint64_t blacklist_mask, PinData *pindata)
+void step_1(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Step 1A/B: Passive pull-up/pull-down test\n");
     uint8_t pin_high[64] = {0};
@@ -362,7 +348,7 @@ static void step_1(uint64_t blacklist_mask, PinData *pindata)
         }
     }
 }
-static void step_2(uint64_t blacklist_mask, PinData *pindata)
+void step_2(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Step 2A/B: Weak pull-up/pull-down test\n");
 
@@ -444,7 +430,7 @@ static void step_2(uint64_t blacklist_mask, PinData *pindata)
     }
 }
 
-static void step_3(uint64_t blacklist_mask, PinData *pindata)
+void step_3(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Step 3A/B: Active drive strength test\n");
 
@@ -542,7 +528,7 @@ static void step_3(uint64_t blacklist_mask, PinData *pindata)
 /**
  * @brief Phase 0: Pull-down configuration, drive each pin low and measure others
  */
-static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
+void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 0: Pull-down, drive low\n");
     reset_all_pins(blacklist_mask);
@@ -606,7 +592,7 @@ static void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
 /**
  * @brief Phase 1: Pull-up configuration, drive each pin high and measure others
  */
-static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
+void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 1: Pull-up, drive high\n");
     reset_all_pins(blacklist_mask);
@@ -664,7 +650,7 @@ static void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
 /**
  * @brief Phase 2: No pull resistors, drive each pin low and measure others
  */
-static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
+void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 2: No pull, drive low\n");
     reset_all_pins(blacklist_mask);
@@ -723,7 +709,7 @@ static void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
 /**
  * @brief Phase 3: No pull resistors, drive each pin high and measure others
  */
-static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
+void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 3: No pull, drive high\n");
     reset_all_pins(blacklist_mask);
@@ -783,7 +769,7 @@ static void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
  * @brief Phase 4: Configure each pin with pull-up and measure all pins
  *
  */
-static void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pindata)
+void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 4: All pull-up, drive low\n");
     reset_all_pins(blacklist_mask);
@@ -801,7 +787,7 @@ static void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pinda
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
-            
+
             PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
 
             gpio_output_init(pin);
@@ -841,11 +827,10 @@ static void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pinda
     }
 }
 
-
 /**
  * @brief Phase 5: Configure each pin with pull-down and measure all pins
  */
-static void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pindata)
+void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pindata)
 {
     LOG("Phase 5: All pull-down, drive high\n");
     reset_all_pins(blacklist_mask);
@@ -902,7 +887,7 @@ static void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pi
 /**
  * @brief Run all 7 measurement phases
  */
-void run_selfexploration_tests(uint64_t blacklist_mask, PinData *pindata, uint8_t pindata_size)
+void run_selfexploration_tests(uint64_t blacklist_mask, PinData *pindata)
 {
     reset_all_pins(blacklist_mask);
 
