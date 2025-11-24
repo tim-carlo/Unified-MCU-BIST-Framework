@@ -171,7 +171,7 @@ bool gpio_read(uint8_t abs_pin)
 }
 
 /**
- * @brief Read all 8 ports (PJ + P1–P7) into 64-bit bitmap
+ * @brief Read all 8 ports (PJ + P1-P7) into 64-bit bitmap
  */
 uint64_t gpio_read_all_ports(void)
 {

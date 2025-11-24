@@ -131,7 +131,7 @@ SerializationResult serialize_next_chunk(const uint8_t chunck_id)
             bytes_written = cb0r_write(write_ptr, CB0R_ARRAY, pin_data->connections_count);
             write_ptr += bytes_written;
 
-            for (uint8_t i = 0; i < pin_data->connections_count; i++)
+            for (uint8_t j = 0; j < pin_data->connections_count; j++)
             {
                 // Write connection map
                 bytes_written = cb0r_write(write_ptr, CB0R_MAP, 3);
@@ -139,17 +139,17 @@ SerializationResult serialize_next_chunk(const uint8_t chunck_id)
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_TYPE);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].connection_type);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].connection_type);
                 write_ptr += bytes_written;
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_OTHER_PIN);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].other_pin);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].other_pin);
                 write_ptr += bytes_written;
 
                 bytes_written = cb0r_write(write_ptr, CB0R_INT, KEY_CONNECTION_PARAMETER);
                 write_ptr += bytes_written;
-                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[i].parameter);
+                bytes_written = cb0r_write(write_ptr, CB0R_INT, (uint8_t)pin_data->connections[j].parameter);
                 write_ptr += bytes_written;
             }
         }
@@ -199,7 +199,7 @@ SerializationResult serialize_next_chunk(const uint8_t chunck_id)
     current_chunk->size_in_bytes = total_packet_size;
     current_chunk->data = packet_buffer;
     current_chunk->crc32 = current_hash;
-    current_chunk->chunk_id = current_chunk_id;
+    current_chunk->chunk_id = chunck_id;
     return SERIALIZATION_OK;
 }
 
@@ -247,7 +247,7 @@ SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData 
         return SERIALIZATION_ERROR_BUFFER_TOO_SMALL;
     }
 
-    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 9);
+    bytes_written = cb0r_write(write_ptr, CB0R_MAP, 10);
     write_ptr += bytes_written;
 
     // 1. ACK REQUESTED (Key 8)

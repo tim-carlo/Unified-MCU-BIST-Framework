@@ -224,28 +224,7 @@ void perfom_mutex_operations()
 
     phase_5_pulldown_all_drive_high(initial_state_mask, pin_data);
     uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
-    session_id++;
 
-
-    // // print the event mask of each pin as a 32-bit decimal number
-    // for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; pin++)
-    // {
-    //     MUTEX_LOG("DEBUG: Pin %u event mask: %" PRIu32 "\n",
-    //               pin, (uint32_t)pin_data[pin].event_mask);
-    // }
-    
-    // UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
-    // switch (uart_result)
-    // {
-    // case UART_TRANSMISSION_ERROR_SEND_FAILED:
-    //     printf("DEBUG: UART send failed\n");
-    //     led2_show_error();
-    //     break;
-    // case UART_TRANSMISSION_ERROR_ACK_FAILED:
-    //     printf("DEBUG: UART ACK failed\n");
-    // default:
-    //     break;
-    // }
 }
 
 int main(void)
@@ -254,11 +233,9 @@ int main(void)
     DataHandshakeResult data_handshake_test_result;
     // setup UART for debugging
 #if defined(__MSP430FR5994__)
-    return 0;
-
-
     data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
     data_handshake_test_result.i_am_mutex_owner = true;
+    
 #elif defined(NRF52840_XXAA)
     data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
     data_handshake_test_result.i_am_mutex_owner = false;
@@ -279,8 +256,8 @@ int main(void)
         }
         gpio_od_init(pin);
     }
-    //HandshakeResult handshake_result = perform_handshake(pin_data, handshake_mask);
-    //MutexHandler mutex_handler_test;
+    HandshakeResult handshake_result = perform_handshake(pin_data, handshake_mask);
+    MutexHandler mutex_handler_test;
 
     //mutex_handler_init(&data_handshake_test_result, &mutex_handler_test);
 

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "bitmap_iterator.h"
 
 
@@ -53,7 +54,8 @@ enum
     STEP_3_A_LOW = 22,
     STEP_3_B_HIGH = 23,
     STEP_3_B_LOW = 24,
-    PIN_IS_NATUTALLY_DISTURBED = 25
+    PIN_IS_NOT_LOW_WHEN_ALL_PULLED_UP = 26,
+    PIN_IS_NOT_HIGH_WHEN_ALL_PULLED_DOWN = 27,
 };
 
 typedef uint8_t ConnectionType;

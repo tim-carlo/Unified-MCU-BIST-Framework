@@ -72,7 +72,7 @@ extern uint8_t current_pin_data_index;
 
 #define HEADER_VERSION (1)
 #define HEADER_BUFFER_SIZE (64)
-#define CHUNK_BUFFER_SIZE (500)
+#define CHUNK_BUFFER_SIZE (128)
 #define NUMBER_OF_ENTRIES_PER_CHUNK (2)
 
 // Error codes for serialization operations
@@ -94,7 +94,7 @@ typedef enum
 
 // Function declarations
 InitializationResult initialize_serialization(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_req, uint8_t stream_number);
-SerializationResult serialize_next_chunk();
+SerializationResult serialize_next_chunk(const uint8_t chunck_id);
 SerializationResult generate_cbor_header(SerializedChunk *output_chunk, PinData *pindata, uint8_t pindata_size, bool ack_requested, uint8_t total_expected_sessions);
 
 #endif // SERIALISATION_H

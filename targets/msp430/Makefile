@@ -22,6 +22,9 @@ COMMON_UTILS_DIR := $(PROJECT_ROOT)/common/utils
 COMMON_INCLUDE_DIR := $(PROJECT_ROOT)/common/include
 
 GIT_COMMIT := $(shell git rev-parse --short=7 HEAD)
+ifeq ($(strip $(GIT_COMMIT)),)
+GIT_COMMIT := UNKNOWN
+endif
 
 
 # Output and build directories

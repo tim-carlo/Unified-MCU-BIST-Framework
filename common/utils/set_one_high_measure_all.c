@@ -228,6 +228,14 @@ static void log_pin_changes(SetOneMeasureALLPhase phase,
             LOG("Phase %d: Pin %u did not go high as expected\n", phase, test_pin);
             add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_DRIVEN_HIGH);
             break;
+        case PHASE_4_ALLPULLUP_LOW:
+            LOG("Phase %d: Pin %u did not go low as expected\n", phase, test_pin);
+            add_pin_event(pindata, test_pin, PIN_IS_NOT_LOW_WHEN_ALL_PULLED_UP);
+            break;
+        case PHASE_5_ALLPULLDOWN_HIGH:
+            LOG("Phase %d: Pin %u did not go high as expected\n", phase, test_pin);
+            add_pin_event(pindata, test_pin, PIN_IS_NOT_HIGH_WHEN_ALL_PULLED_DOWN);
+            break;
         default:
             break;
         }
@@ -809,7 +817,7 @@ void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pindata)
                     if (check_pin == pin)
                     {
                         // Check if the pin is high as expected
-                        if ((after.high & (1ULL << check_pin)))
+                        if (!(after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own_pin++;
                         }
@@ -868,7 +876,7 @@ void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pindata)
                     if (check_pin == pin)
                     {
                         // Check if the pin is low as expected
-                        if (!(after.high & (1ULL << check_pin)))
+                        if ((after.high & (1ULL << check_pin)))
                         {
                             state_after_as_expected_of_own_pin++;
                         }
