@@ -53,6 +53,7 @@ PinData pin_data[NUMBER_OF_GPIO_PINS]; // Global variable to hold pin data
 // Flags controlled via interrupts
 uint64_t initial_state_mask = 0; // Global blacklist mask for GPIO pins
 uint64_t handshake_mask = 0;     // Mask used during handshake
+uint64_t initial_handshake_mask = 0;
 
 DataHandshakeResult data_handshake_result_test;
 
@@ -93,35 +94,44 @@ const uint8_t array[] = {
     GPIO7,
     GPIO8,
     GPIO9,
-    // GPIO10,
-    // GPIO11,
-    // GPIO12,
-    // GPIO13,
-    // GPIO14,
-    // GPIO15,
-    // PWRGDL,
-    // PWRGDH,
-    // PIN_LED0,
-    // PIN_LED2,
-    // I2C_SCL,
-    // I2C_SDA,
-    // /*RTC_INT,*/ MAX_INT,
-    // C2C_CLK,
-    // C2C_CoPi,
-    // C2C_CiPo,
-    // C2C_PSel,
-    // C2C_GPIO,
-    // THRCTRL_H0,
-    // THRCTRL_H1,
-    // THRCTRL_L0,
-    // THRCTRL_L1,
+    GPIO10,
+    GPIO11,
+    GPIO12,
+    GPIO13,
+    GPIO14,
+    GPIO15,
+    PWRGDL,
+    PWRGDH,
+    PIN_LED0,
+    PIN_LED2,
+    I2C_SCL,
+    I2C_SDA,
+    /*RTC_INT,*/ MAX_INT,
+    C2C_CLK,
+    C2C_CoPi,
+    C2C_CiPo,
+    C2C_PSel,
+    C2C_GPIO,
+    THRCTRL_H0,
+    THRCTRL_H1,
+    THRCTRL_L0,
+    THRCTRL_L1,
 };
 
+void initial_mask_handshake_pins()
+{
+    initial_handshake_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
+    // white list all pins from array:
+    for (size_t i = 0; i < (sizeof(array) / sizeof(array[0])); i++)
+    {
+        initial_handshake_mask &= ~(1ULL << array[i]);
+    }
+}
 void set_handshake_pins()
 {
     handshake_mask = 0xFFFFFFFFFFFFFFFFULL; // Start with all pins blacklisted
     // white list all pins from array:
-    for (size_t i = 0; i < (sizeof(array) / sizeof(array[0])); i++)
+    for (size_t i = 0; i < 8; i++)
     {
         handshake_mask &= ~(1ULL << array[i]);
     }
@@ -183,7 +193,7 @@ void perfom_mutex_operations()
     MUTEX_LOG("DEBUG: Performing mutex operations\n");
 
     uart_transmitter_init();
-    const uint8_t total_expected_sessions = 7;  
+    const uint8_t total_expected_sessions = 7;
     uint8_t session_id = 0;
     uart_send_header_info(pin_data, NUMBER_OF_GPIO_PINS, total_expected_sessions);
 
@@ -193,8 +203,6 @@ void perfom_mutex_operations()
     step_1(initial_state_mask, pin_data);
     step_2(initial_state_mask, pin_data);
     step_3(initial_state_mask, pin_data);
-
-    
 
     phase_0_one_set_pulldown(initial_state_mask, pin_data);
     uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
@@ -206,7 +214,6 @@ void perfom_mutex_operations()
     clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
     session_id++;
 
-    
     phase_2_drive_low(initial_state_mask, pin_data);
     uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
     clear_pin_connections_from_array(pin_data, NUMBER_OF_GPIO_PINS);
@@ -224,29 +231,17 @@ void perfom_mutex_operations()
 
     phase_5_pulldown_all_drive_high(initial_state_mask, pin_data);
     uart_send_session_data(pin_data, NUMBER_OF_GPIO_PINS, session_id);
-
 }
 
 int main(void)
 {
     mcu_init();
-    DataHandshakeResult data_handshake_test_result;
-    // setup UART for debugging
-#if defined(__MSP430FR5994__)
-    data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
-    data_handshake_test_result.i_am_mutex_owner = true;
-    
-#elif defined(NRF52840_XXAA)
-    data_handshake_test_result.mutex_pin = GPIO2; // Pin 22
-    data_handshake_test_result.i_am_mutex_owner = false;
-#endif
-
     set_shepherd_pins();
     set_handshake_pins();
+    initial_mask_handshake_pins();
 
     initialize_pin_data_array(pin_data, NUMBER_OF_GPIO_PINS);
 
-    // Perform mutex handelder
     // Set all pins that are needed for handshake to open drain
     for (uint8_t pin = 0; pin < NUMBER_OF_GPIO_PINS; ++pin)
     {
@@ -256,14 +251,44 @@ int main(void)
         }
         gpio_od_init(pin);
     }
-    HandshakeResult handshake_result = perform_handshake(pin_data, handshake_mask);
-    MutexHandler mutex_handler_test;
 
-    //mutex_handler_init(&data_handshake_test_result, &mutex_handler_test);
+    HandshakeResult handshake_result = perform_handshake(pin_data, initial_handshake_mask);
 
-    
-    //printf("DEBUG: Starting initial tests\n");
-    //mutex_handler_request_mutex(initial_state_mask, &mutex_handler_test);
+    if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
+    {
+        printf("DEBUG: HANDSHAKE ISR TO LONG\n");
+        return 1; // Handshake failed, exit program
+    }
+
+    // if no working pin found, exit program, but run initial tests first
+    if (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND)
+    {
+        LOG("DEBUG: NO WORKING PIN FOUND DURING HANDSHAKE\n");
+        return 1; // Handshake failed, exit program
+    }
+
+    // LOG("DEBUG: PERFORMING DATA HANDSHAKE\n");
+    DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, handshake_mask);
+    LOG("DEBUG: Data handshake result status: %u, mutex_pin: %u, i_am_mutex_owner: %u\n",
+        data_handshake_result.status,
+        data_handshake_result.mutex_pin,
+        data_handshake_result.i_am_mutex_owner);
+    if (data_handshake_result.status != DATA_HANDSHAKE_SUCCESS)
+    {
+        // Reason data handshake failed
+        LOG("DEBUG: Data handshake failed with status %u\n", data_handshake_result.status);
+        return 1; // Handshake failed, exit program
+    }
+
+    if (data_handshake_result.mutex_pin == 255)
+    {
+        LOG("DEBUG: No mutex pin assigned\n");
+        return 0; // No mutex pin assigned, exit program
+    }
+    MutexHandler mutex_handler;
+
+    mutex_handler_init(&data_handshake_result, &mutex_handler);
+    mutex_handler_request_mutex(initial_state_mask, &mutex_handler);
 #if defined(__MSP430FR5994__)
     uart_pins_t uart_pins = create_uart_pins(PIN_UART_TX, PIN_UART_RX); // P2.0 = TX, P2.1 = RX
     uart_init(msp430_uart_instance, 9600, &uart_pins);
@@ -272,71 +297,74 @@ int main(void)
     uart_init(nrf_uart_instance, 9600, &uart_pins);
 #endif
 
-    printf("DEBUG: now having mutex (test)\n");
-    perfom_mutex_operations();
+    // Print the Device Family Identifier
+    char *chip_family = get_chip_family_name();
+    MUTEX_LOG("DEBUG: Device Family: %s\n", chip_family);
 
-    // deinit uart
-#if defined(__MSP430FR5994__)
-    uart_deinit(msp430_uart_instance);
-#elif defined(NRF52840_XXAA)
+    MUTEX_LOG("DEBUG: Seen Devices (%u):\n", seen_devices_count);
+    for (uint8_t i = 0; i < seen_devices_count; i++)
+    {
+        // Split 64-bit ID into two 32-bit parts for printf compatibility
+        uint32_t id_high = (uint32_t)(seen_devices[i] >> 32);
+        uint32_t id_low = (uint32_t)(seen_devices[i] & 0xFFFFFFFF);
+
+        if (i == 0)
+        {
+            MUTEX_LOG("DEBUG:  - Index %u (Self): %08lx%08lx\n", i, id_high, id_low);
+        }
+        else
+        {
+            MUTEX_LOG("DEBUG:  - Index %u: %08lx%08lx\n", i, id_high, id_low);
+        }
+    }
+
+    // print the pin data connections
+    for (uint8_t i = 0; i < NUMBER_OF_GPIO_PINS; i++)
+    {
+        if (pin_data[i].connections_count > 0)
+        {
+
+            MUTEX_LOG("DEBUG: Pin %u connections:\n", pin_data[i].pin);
+            for (uint8_t j = 0; j < pin_data[i].connections_count; j++)
+            {
+                if (pin_data[i].connections[j].connection_type == 1)
+                {
+                    MUTEX_LOG("DEBUG:  - To Pin %u (Type: external, DeviceID: %u)\n",
+                              pin_data[i].connections[j].other_pin,
+                              pin_data[i].connections[j].parameter);
+                }
+                else
+                {
+                    MUTEX_LOG("DEBUG:  - To Pin %u (Type: %u, DeviceID: %u)\n",
+                              pin_data[i].connections[j].other_pin,
+                              pin_data[i].connections[j].connection_type,
+                              pin_data[i].connections[j].parameter);
+                }
+            }
+        }
+    }
+
+    // Print the roles of the initial handshake
+    MUTEX_LOG("DEBUG: Handshake Roles:\n");
+    for (uint8_t i = 0; i < NUMBER_OF_GPIO_PINS; i++)
+    {
+        if (check_if_pinevent_exists(pin_data, i, HANDSHAKE_OK_INITIATOR))
+        {
+            MUTEX_LOG("DEBUG: Pin %u: Initiator\n", i);
+        }
+        else if (check_if_pinevent_exists(pin_data, i, HANDSHAKE_OK_RESPONDER))
+        {
+            MUTEX_LOG("DEBUG: Pin %u: Responder\n", i);
+        }
+    }
+
+#if defined(NRF52840_XXAA)
     uart_deinit(nrf_uart_instance);
+#elif defined(__MSP430FR5994__)
+    uart_deinit(msp430_uart_instance);
 #endif
-    //mutex_handler_release_mutex(initial_state_mask, &mutex_handler_test);
-
-    return 0;
-
-    LOG("DEBUG: Starting handshake process\n");
-    // Print the size of DataHandshakeData struct
-    //  74 on msp430fr5994
-    LOG("DEBUG: Size of DataHandshakeData: %zu bytes\n", sizeof(DataHandshakeData));
-
-    // HandshakeResult handshake_result = perform_handshake(pin_data, handshake_mask);
-
-    // if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
-    // {
-    //     LOG("DEBUG: HANDSHAKE ISR TO LONG\n");
-    //     return 1; // Handshake failed, exit program
-    // }
-
-    // // if no working pin found, exit program, but run initial tests first
-    // if (handshake_result == HANDSHAKE_NO_WORKING_PIN_FOUND)
-    // {
-    //     LOG("DEBUG: NO WORKING PIN FOUND DURING HANDSHAKE\n");
-    //     perfom_mutex_operations();
-    //     return 1; // Handshake failed, exit program
-    // }
-
-    // LOG("DEBUG: PERFORMING DATA HANDSHAKE\n");
-    // DataHandshakeResult data_handshake_result = perform_data_handshake(pin_data, handshake_mask);
-    // LOG("DEBUG: Data handshake result status: %u, mutex_pin: %u, i_am_mutex_owner: %u\n",
-    //     data_handshake_result.status,
-    //     data_handshake_result.mutex_pin,
-    //     data_handshake_result.i_am_mutex_owner);
-    // if (data_handshake_result.status != DATA_HANDSHAKE_SUCCESS)
-    // {
-    //     // Reason data handshake failed
-    //     LOG("DEBUG: Data handshake failed with status %u\n", data_handshake_result.status);
-
-    //     perfom_mutex_operations();
-    //     return 1; // Handshake failed, exit program
-    // }
-
-    // if (data_handshake_result.mutex_pin == 255)
-    // {
-    //     LOG("DEBUG: No mutex pin assigned\n");
-
-    //     uart_transmitter_init();
-    //     UartTransmissionResult uart_result = send_complete_transmission_no_ack(pin_data, NUMBER_OF_GPIO_PINS);
-    //     return 0; // No mutex pin assigned, exit program
-    // }
-    // MutexHandler mutex_handler;
-
-    // mutex_handler_init(&data_handshake_result, &mutex_handler);
-    // mutex_handler_request_mutex(initial_state_mask, &mutex_handler);
-    // LOG("DEBUG: now having mutex\n");
-    // perfom_mutex_operations();
-    // LOG("DEBUG: releasing mutex\n");
-    // mutex_handler_release_mutex(initial_state_mask, &mutex_handler);
+    LOG("DEBUG: releasing mutex\n");
+    mutex_handler_release_mutex(initial_state_mask, &mutex_handler);
 
     return 0;
 }

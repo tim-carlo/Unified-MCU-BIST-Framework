@@ -5,7 +5,11 @@ static HandshakeState *handshake_state = NULL;
 static HandshakeResult handshake_result = HANDSHAKE_NO_WORKING_PIN_FOUND;
 
 // #define LOG(fmt, ...) // Uncomment this line to disable Logging
-#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#if defined(NRF52840_XXAA)
+#define LOG(fmt, ...) //printf(fmt, ##__VA_ARGS__)
+#elif defined(__MSP430FR5994__)
+#define LOG(fmt, ...) // printf(fmt, ##__VA_ARGS__)
+#endif
 
 /**
  * @brief Initialize handshake state
@@ -352,15 +356,18 @@ HandshakeResult perform_handshake(PinData *pin_data_array, const uint64_t initia
 
             case ROLE_UNCLEAR:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_FAILURE);
+                LOG("Pin %u: ROLE_UNCLEAR\n", physical_pin);
                 break;
 
             default:
                 add_pin_event(pin_data_array, physical_pin, HANDSHAKE_FAILURE);
+                LOG("Pin %u: FAILURE\n", physical_pin);
                 break;
             }
         }
         else
         {
+            LOG("Pin %u: No successful handshakes\n", physical_pin);
             add_pin_event(pin_data_array, physical_pin, HANDSHAKE_FAILURE);
         }
     }

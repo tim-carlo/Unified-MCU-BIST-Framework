@@ -12,18 +12,34 @@ static const uint8_t NUMBER_OF_SAMPLES_FOR_DEBOUNCING = 11;
 static const uint8_t NUMBER_OF_SAMPLES_FOR_MEASURING = 10;
 static const uint32_t DEBOUNCING_DELAY_US = 10;
 
-static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 6;
-static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 12;
-
 static const uint8_t repetitions_step1 = 10;
 static const uint8_t repetitions_step2 = 10;
 static const uint8_t repetitions_step3 = 10;
+
+static const uint8_t SAMPLES_BEFORE_CHANGING_PIN = 3;
+static const uint8_t SAMPLES_AFTER_CHANGING_PIN = 9;
 
 static const uint8_t number_of_samples_step1 = 12;
 static const uint8_t number_of_samples_step2 = 12;
 static const uint8_t number_of_samples_step3 = 12;
 
 static const uint8_t DRIVE_SETTLE_TIME_US = 1000;
+
+
+
+// Settle sample delay in step1, step2, step3
+static const uint8_t sample_delay_step1 = 10;
+static const uint8_t sample_delay_step2 = 10;
+static const uint8_t sample_delay_step3 = 10;
+
+// Settle sample delay in phases
+static const uint8_t sample_delay_phase0 = 10;
+static const uint8_t sample_delay_phase1 = 10;
+static const uint8_t sample_delay_phase2 = 10;
+static const uint8_t sample_delay_phase3 = 10;
+static const uint8_t sample_delay_phase4 = 10;
+static const uint8_t sample_delay_phase5 = 10;
+
 
 #if defined(NRF52840_XXAA)
 
@@ -260,7 +276,6 @@ void step_1(uint64_t blacklist_mask, PinData *pindata)
     uint8_t pin_high[64] = {0};
     uint8_t pin_low[64] = {0};
 
-    const uint8_t Ddelay_us = 10;
 
     // Phase A:
     const uint8_t phase_1_threshold = (repetitions_step1 * 100) / 100;
@@ -273,7 +288,7 @@ void step_1(uint64_t blacklist_mask, PinData *pindata)
         // reset all pins to high impedance
         gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
         delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, Ddelay_us);
+        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, sample_delay_step1);
 
         for (uint8_t k = 0; k < 64; k++)
         {
@@ -322,7 +337,7 @@ void step_1(uint64_t blacklist_mask, PinData *pindata)
         // reset all pins to high impedance
         gpio_input_from_blacklist(blacklist_mask, GPIO_PULL_NONE);
         delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, Ddelay_us);
+        PinSamplesMultiplePins state = read_all_pins(blacklist_mask, number_of_samples_step1, sample_delay_step1);
 
         for (uint8_t k = 0; k < 64; k++)
         {
@@ -375,7 +390,7 @@ void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_DOWN);
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples_step2, Ddelay_us);
+            PinSamples state = sample_pin(pin, number_of_samples_step2, sample_delay_step2);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
@@ -410,7 +425,7 @@ void step_2(uint64_t blacklist_mask, PinData *pindata)
         {
             gpio_input_init(pin, GPIO_PULL_UP);
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-            PinSamples state = sample_pin(pin, number_of_samples_step2, Ddelay_us);
+            PinSamples state = sample_pin(pin, number_of_samples_step2, sample_delay_step2);
             // Rest to high impedance
             gpio_reset(pin);
             // Check if pin is low
@@ -463,7 +478,7 @@ void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_low(pin);
             delay_us(DRIVE_SETTLE_TIME_US);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples_step3, Ddelay_us);
+            PinSamples measurements = sample_pin(pin, number_of_samples_step3, sample_delay_step3);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
@@ -504,7 +519,7 @@ void step_3(uint64_t blacklist_mask, PinData *pindata)
             gpio_drive_high(pin);
             delay_us(DRIVE_SETTLE_TIME_US);
             // measure while driven
-            PinSamples measurements = sample_pin(pin, number_of_samples_step3, Ddelay_us);
+            PinSamples measurements = sample_pin(pin, number_of_samples_step3, sample_delay_step3);
             // Reset the pin quickly
             gpio_reset(pin);
             // Check which pins were affected
@@ -556,14 +571,14 @@ void phase_0_one_set_pulldown(uint64_t blacklist_mask, PinData *pindata)
             // Read own pin state:
             flush_pin_states(blacklist_mask, GPIO_PULL_UP);
 
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase0);
 
             gpio_input_init(pin, GPIO_PULL_DOWN);
 
             // variable delay
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
 
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase0);
             gpio_reset(pin);
 
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
@@ -617,12 +632,12 @@ void phase_1_one_set_pullup(uint64_t blacklist_mask, PinData *pindata)
         for (uint8_t i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
             flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase1);
 
             gpio_input_init(pin, GPIO_PULL_UP);
             // variable delay
             delay_ms(TIME_BETWEEN_PHASES * (i + 1));
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase1);
 
             gpio_reset(pin);
 
@@ -675,7 +690,7 @@ void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
             flush_pin_states(blacklist_mask, GPIO_PULL_UP);
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase2);
 
             gpio_output_init(pin);
             gpio_drive_low(pin);
@@ -683,7 +698,7 @@ void phase_2_drive_low(uint64_t blacklist_mask, PinData *pindata)
             // Here is a shorter delay to allow for line settling
             delay_us(DRIVE_SETTLE_TIME_US);
 
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase2);
             gpio_reset(pin);
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
             {
@@ -734,14 +749,14 @@ void phase_3_drive_high(uint64_t blacklist_mask, PinData *pindata)
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
             flush_pin_states(blacklist_mask, GPIO_PULL_DOWN);
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase3);
 
             gpio_output_init(pin);
             gpio_drive_high(pin);
 
             delay_us(DRIVE_SETTLE_TIME_US);
 
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase3);
             gpio_reset(pin);
 
             for (uint8_t check_pin = 0; check_pin < 64; check_pin++)
@@ -796,13 +811,13 @@ void phase_4_pullup_all_drive_low(uint64_t blacklist_mask, PinData *pindata)
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
 
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase4);
 
             gpio_output_init(pin);
             gpio_drive_low(pin);
 
             delay_us(DRIVE_SETTLE_TIME_US);
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase4);
             // Configure back to pull-up
             gpio_input_init(pin, GPIO_PULL_UP);
 
@@ -855,13 +870,13 @@ void phase_5_pulldown_all_drive_high(uint64_t blacklist_mask, PinData *pindata)
 
         for (int i = 0; i < NUMBER_OF_SAMPLES_FOR_MEASURING; i++)
         {
-            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, 10);
+            PinSamplesMultiplePins before = read_all_pins(blacklist_mask, SAMPLES_BEFORE_CHANGING_PIN, sample_delay_phase5);
 
             gpio_output_init(pin);
             gpio_drive_high(pin);
 
             delay_us(DRIVE_SETTLE_TIME_US);
-            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, 10);
+            PinSamplesMultiplePins after = read_all_pins(blacklist_mask, SAMPLES_AFTER_CHANGING_PIN, sample_delay_phase5);
             // Configure back to pull-down
             gpio_input_init(pin, GPIO_PULL_DOWN);
 

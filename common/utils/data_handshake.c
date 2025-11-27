@@ -7,7 +7,7 @@
 #define TIME_CRITICAL_LOG(fmt, ...) // put here printf if needed, but be aware that this may affect timing!
 #elif defined(__MSP430FR5994__)
 #include "endian.h"
-#define LOG(fmt, ...) printf("DEBUG: " fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) // printf("DEBUG: " fmt, ##__VA_ARGS__)
 #define TIME_CRITICAL_LOG(fmt, ...) // put here printf if needed, but be aware that this may affect timing!
 #endif
 
