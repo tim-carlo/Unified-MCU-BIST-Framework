@@ -312,12 +312,12 @@ static inline void fsm_data_handshake(void)
 {
     counter++;
 
-    BitmapIterator it = bitmap_iterator_create(internal_valid_pins);
+    uint64_t valid_mask = internal_valid_pins;
     uint8_t pin_index;
 
     bool something_happened = false;
 
-    while (bitmap_iterator_next(&it, &pin_index))
+    while (bitmap_iterator_next_mask_as_param(&valid_mask, &pin_index))
     {
         DataHandshakeData *p = &global_datahandshake_pindata[pin_index];
         const uint32_t delta = counter - p->last_send_job_order;
@@ -587,7 +587,7 @@ static inline void fsm_data_handshake(void)
         last_change_in_isr = 0;
     }
 }
-static void stop_send_data_timer(void)
+static void stop_datahandshaketimer(void)
 {
 #if defined(NRF52840_XXAA)
     clear_timer_event_callback(DATA_TIMER);
@@ -599,7 +599,7 @@ static void stop_send_data_timer(void)
 #endif
 }
 
-static void send_data_isr(void)
+static void datahandshake_isr(void)
 {
     interrupt_flag = true;
     if (!isr_done)
@@ -608,26 +608,26 @@ static void send_data_isr(void)
         // ISR overrun detected!
         handshake_result.status = DATA_HANDSHAKE_ISR_TO_LONG;
         // Force exit
-        stop_send_data_timer();
+        stop_datahandshaketimer();
         last_change_in_isr = MAXIMUM_IDLE_TIME;
     }
 }
 
-static void start_send_data_timer(void)
+static void start_datahandshake_timer(void)
 {
     const uint32_t sample_interval_us = parallel_manchester_get_sample_interval_us(20);
 #if defined(NRF52840_XXAA)
     // Configure timer for 1MHz (1µs per tick), 1ms intervals
     configure_timer(DATA_TIMER, 4, TIMER_BITMODE_BITMODE_32Bit);
     set_timer_compare(DATA_TIMER, 0, sample_interval_us, true, true);
-    set_timer_event_callback(DATA_TIMER, send_data_isr);
+    set_timer_event_callback(DATA_TIMER, datahandshake_isr);
     start_timer(DATA_TIMER);
 
 #elif defined(__MSP430FR5994__)
     // At 16MHz SMCLK with /8 prescaler = 2MHz, need 2000 ticks for 1ms
     configure_timer(DATA_TIMER, 8, MC__STOP);
     set_timer_compare(DATA_TIMER, 0, sample_interval_us * 2);
-    set_timer_compare_callback(DATA_TIMER, send_data_isr);
+    set_timer_compare_callback(DATA_TIMER, datahandshake_isr);
     start_timer_with_interrupt(DATA_TIMER);
 #endif
 }
@@ -712,7 +712,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     internal_valid_pins = valid_pins_for_fsm_mask;
     LOG("Data handshake initialized \n");
 
-    start_send_data_timer();
+    start_datahandshake_timer();
 
     while (last_change_in_isr < MAXIMUM_IDLE_TIME)
     {
@@ -744,7 +744,7 @@ DataHandshakeResult perform_data_handshake(PinData *pindata, uint64_t blacklist_
     }
 
     LOG("Data handshake finished due to timeout\n");
-    stop_send_data_timer();
+    stop_datahandshaketimer();
     if (global_datahandshake_pindata)
     {
         LOG("Successful handshakes on pins:\n");
