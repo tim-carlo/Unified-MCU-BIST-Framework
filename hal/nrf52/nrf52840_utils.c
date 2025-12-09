@@ -4,12 +4,30 @@
  * from Wikipedia: https://de.wikipedia.org/wiki/Linear_r%C3%BCckgekoppeltes_Schieberegister
  *
  */
+#include "nrf.h" // Standard CMSIS header for nRF52840
+
 uint32_t random32_lfsr(void)
 {
-    static unsigned r = 1;
+    static uint32_t r = 0; 
+    if (r == 0) 
+    {
+        // Access the Factory Information Configuration Registers (FICR)
+        uint32_t id_low  = NRF_FICR->DEVICEID[0];
+        uint32_t id_high = NRF_FICR->DEVICEID[1];
+
+        // XOR the lower and upper 32 bits to create a unique 32-bit seed
+        r = id_low ^ id_high;
+
+        // Safety check: An LFSR must never be seeded with 0, otherwise it stays 0 forever.
+        if (r == 0) {
+            r = 0xC3308398; 
+        }
+    }
+
+    // 3. The LFSR Algorithm
     unsigned b = r & 1;
     r = (r >> 1) ^ (-b & 0xc3308398);
-    return b;
+    return r; 
 }
 
 /**
@@ -17,7 +35,7 @@ uint32_t random32_lfsr(void)
  *
  * @return uint32_t
  */
-uint32_t random32(void)
+uint32_t hardware_random32(void)
 {
     uint32_t rnd = 0;
     for (int i = 0; i < 4; i++)
@@ -35,7 +53,7 @@ uint32_t random32(void)
     return rnd;
 }
 
-uint16_t random16(void)
+uint16_t hardware_random16(void)
 {
     uint16_t rnd = 0;
     for (int i = 0; i < 2; i++)
@@ -51,6 +69,18 @@ uint16_t random16(void)
         NRF_RNG->EVENTS_VALRDY = 0;
     }
     return rnd;
+}
+
+uint32_t random32(void)
+{
+    // Prefer lfsr method instead of hardware RNG for performance and simplicity
+    return random32_lfsr();
+}
+
+uint16_t random16(void)
+{
+    // Prefer lfsr method instead of hardware RNG for performance and simplicity
+    return (uint16_t)(random32_lfsr() & 0xFFFF);
 }
 
 /**
