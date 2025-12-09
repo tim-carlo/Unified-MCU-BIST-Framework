@@ -11,8 +11,8 @@
 void mcu_init(void)
 {
     // Start HFCLK if not running
-    //NRF_CLOCK->TASKS_HFCLKSTOP = 1;
-    //NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+    NRF_CLOCK->TASKS_HFCLKSTOP = 1;
+    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
 
     // Turn on this to use the external 32MHz crystal
     if (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
