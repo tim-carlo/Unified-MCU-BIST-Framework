@@ -115,6 +115,9 @@ The diagram below shows the transition from the initial handshake into the data 
 The green segment in the visualization highlights the time window used by the data handshake:
 ![Example for initial Handshake](examples/data_and_initialhandshake.png)
 
+The following Example shows the complete execution of the Testframework:
+![Complete example of the execution](examples/complete.png)
+
 
 ## HAL (Hardware Abstraction Layer)
 
