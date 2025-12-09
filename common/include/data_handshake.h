@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include "timing_pindata.h"
+#include "handshake_pindata.h"
 #include "pindata.h"
 #include "bitmap_iterator.h"
 #include "crc.h"

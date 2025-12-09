@@ -29,8 +29,8 @@ uart_instance_t nrf_uart_instance = NRF_UART0; // Using UART0 for communication
 #include "pin_config.h"
 #include <inttypes.h>
 
-#include "timing_pindata.h"
-#include "handshake.h"
+#include "handshake_pindata.h"
+#include "initial_handshake.h"
 #include "data_handshake.h"
 #include "serialisation.h"
 #include "uart_transmitter.h"
@@ -228,7 +228,7 @@ int main(void)
         gpio_od_init(pin);
     }
 
-    HandshakeResult handshake_result = perform_handshake(pin_data, initial_handshake_mask);
+    InitialHandshakeResult handshake_result = perform_initial_handshake(pin_data, initial_handshake_mask);
 
     if (handshake_result == HANDSHAKE_ISR_TIMEOUT)
     {

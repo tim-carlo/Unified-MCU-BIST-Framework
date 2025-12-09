@@ -1,5 +1,5 @@
-#ifndef HANDSHAKE_H
-#define HANDSHAKE_H
+#ifndef INITIAL_HANDSHAKE_H
+#define INITIAL_HANDSHAKE_H
 
 #if defined(__MSP430FR5994__)
 #include "msp430fr5994_helper.h"
@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "timing_pindata.h"
+#include "handshake_pindata.h"
 #include "pindata.h"
 #include "bitmap_iterator.h"
 #include "pindata.h"
@@ -63,24 +63,24 @@
 typedef struct
 {
     uint16_t cycles;
-    void (*on_complete)(TimingPinData *);
+    void (*on_complete)(HandshakePinData *);
 } TimingTaskDef;
 
 typedef struct
 {
     volatile uint64_t initial_state_mask;   // Mask to store the initial state of pins
-    TimingPinData *global_timing_pindata;   // Global pointer to TimingPinData array
+    HandshakePinData *global_timing_pindata;   // Global pointer to HandshakePinData array
     volatile uint8_t number_of_active_pins; // Number of active pins participating in handshake
     volatile uint32_t handshake_time;       // Current handshake time counter
-} HandshakeState;
+} InitialHandshakeState;
 
 typedef enum
 {
     HANDSHAKE_FOUND_WORKING_PIN = 0,
     HANDSHAKE_NO_WORKING_PIN_FOUND = 1,
     HANDSHAKE_ISR_TIMEOUT = 2,
-} HandshakeResult;
+} InitialHandshakeResult;
 
-HandshakeResult perform_handshake(PinData *pin_data, uint64_t initial_blacklist_mask);
+InitialHandshakeResult perform_initial_handshake(PinData *pin_data, uint64_t initial_blacklist_mask);
 
-#endif // HANDSHAKE_H
+#endif // INITIAL_HANDSHAKE_H
