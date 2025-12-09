@@ -41,8 +41,8 @@ static const uint16_t MAXIMUM_IDLE_TIME = MAXIMUM_REQUEST_CYCLES + 100; // This 
 
 static const uint8_t MAXIMUM_NUMBER_OF_HANDSHAKE_ATTEMPTS = 3; // It could happen that a dataline is only working in one direction
 
-static const uint8_t ANSWER_IDENTIFIER = 0x55;
-static const uint8_t REQUEST_IDENTIFIER = 0xAA;
+static const uint8_t REQUEST_IDENTIFIER = 0x33;
+static const uint8_t ANSWER_IDENTIFIER = 0xCC;
 
 static const uint8_t REQUEST_RENEWAL_TIME = 50;
 

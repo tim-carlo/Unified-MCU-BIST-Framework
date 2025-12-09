@@ -43,11 +43,11 @@ static const uint8_t sample_delay_phase5 = 10;
 
 #if defined(NRF52840_XXAA)
 
-static const uint32_t SETTLE_TIME_US = 1000;
+static const uint32_t SETTLE_TIME_US = 6500;
 
 #elif defined(__MSP430FR5994__)
 
-static const uint32_t SETTLE_TIME_US = 1500;
+static const uint32_t SETTLE_TIME_US = 17500;
 
 #endif
 

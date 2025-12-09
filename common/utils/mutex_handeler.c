@@ -304,6 +304,10 @@ void mutex_handler_request_mutex(uint64_t blacklist_mask, MutexHandler *handler)
                 break;
             }
             tries++;
+            if (tries > 5)
+            {
+                tries = 0;
+            }
             // No timeout here
         }
     }
